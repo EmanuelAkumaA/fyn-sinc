@@ -104,7 +104,10 @@ function ClienteDetalhe() {
                   )}
                 </div>
               </div>
-              <div className="shrink-0"><StatusBadge status={client.status} /></div>
+              <div className="shrink-0 flex flex-wrap items-center gap-1.5">
+                <ClientStatusBadge value={client.client_status ?? client.status} />
+                <FinancialStatusBadge value={client.financial_status} />
+              </div>
             </div>
           </header>
         );
