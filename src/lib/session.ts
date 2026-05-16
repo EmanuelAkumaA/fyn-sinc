@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hora
+export const SESSION_WARNING_MS = 5 * 60 * 1000; // 5 minutos antes de expirar
 const STORAGE_KEY = "fynsinc:session_expires_at";
 
 function hasWindow() {
@@ -47,4 +48,9 @@ export async function signOutAndRedirect(
     toast.info("Sua sessão expirou. Faça login novamente.");
   }
   navigate({ to: "/login" });
+}
+
+export function renewSessionTimer(): void {
+  if (!hasWindow()) return;
+  window.localStorage.setItem(STORAGE_KEY, String(Date.now() + SESSION_TTL_MS));
 }
