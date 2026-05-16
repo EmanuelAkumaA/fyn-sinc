@@ -101,3 +101,6 @@ function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
     </Link>
   );
 }
+
+export const ClientCard = memo(ClientCardImpl);
+
