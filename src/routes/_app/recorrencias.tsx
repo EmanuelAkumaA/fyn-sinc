@@ -202,9 +202,9 @@ function RecorrenciasPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <MetricCard title="Receita mensal estimada" value={formatBRL(totalMonthly)} subtitle="Soma normalizada por mês" />
-        <MetricCard title="Contratos ativos" value={String(activeRows.length)} subtitle={`${rows.length} no total`} />
-        <MetricCard title="Próximo vencimento" value={formatDate(nextDue)} subtitle={nextDue ? clientById[activeRows[0]?.client_id]?.name ?? "" : "—"} />
+        <MetricCard label="Receita mensal estimada" value={formatBRL(totalMonthly)} hint="Soma normalizada por mês" />
+        <MetricCard label="Contratos ativos" value={String(activeRows.length)} hint={`${rows.length} no total`} />
+        <MetricCard label="Próximo vencimento" value={formatDate(nextDue)} hint={nextDue ? clientById[activeRows[0]?.client_id]?.name ?? "" : "—"} />
       </div>
 
       <div className="flex flex-col md:flex-row gap-2 mb-4">
