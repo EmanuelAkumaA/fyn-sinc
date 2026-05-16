@@ -14,7 +14,7 @@ import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
 import { ClientLogoUpload } from "@/components/client-logo-upload";
 import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
-import { getCurrentOrgId as _getOrgId } from "@/lib/fynsinc";
+// re-export already imported above
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
