@@ -1,6 +1,3 @@
-// @ts-expect-error - colorthief ships its own loose types
-import ColorThief from "colorthief";
-
 const rgbToHex = (r: number, g: number, b: number) =>
   "#" +
   [r, g, b]
@@ -18,21 +15,77 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Extrai a cor dominante de uma imagem (File ou URL). Retorna HEX ou null. */
+/**
+ * Extrai a cor dominante (mais saturada/representativa) de uma imagem,
+ * ignorando pixels transparentes e quase brancos/pretos.
+ * Implementação própria via canvas — sem dependências externas.
+ */
 export async function extractBrandColor(source: File | string): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  const url = typeof source === "string" ? source : URL.createObjectURL(source);
   try {
-    const url = typeof source === "string" ? source : URL.createObjectURL(source);
+    const img = await loadImage(url);
+    if (img.width < 2 || img.height < 2) return null;
+
+    // Reduz para acelerar e suavizar
+    const MAX = 80;
+    const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+    const w = Math.max(1, Math.round(img.width * ratio));
+    const h = Math.max(1, Math.round(img.height * ratio));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    let data: Uint8ClampedArray;
     try {
-      const img = await loadImage(url);
-      const thief = new ColorThief();
-      // Fallback if image is too tiny
-      if (img.width < 2 || img.height < 2) return null;
-      const [r, g, b] = thief.getColor(img) as [number, number, number];
-      return rgbToHex(r, g, b);
-    } finally {
-      if (typeof source !== "string") URL.revokeObjectURL(url);
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch {
+      return null; // CORS taint
     }
+
+    // Quantiza em buckets de 32 e pondera por saturação
+    const buckets = new Map<string, { r: number; g: number; b: number; weight: number }>();
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a < 200) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      // Ignora quase preto / quase branco / cinza
+      if (max < 25 || min > 235) continue;
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const weight = 1 + sat * 4; // dá mais peso para cores saturadas
+
+      const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
+      const cur = buckets.get(key);
+      if (cur) {
+        cur.r += r * weight;
+        cur.g += g * weight;
+        cur.b += b * weight;
+        cur.weight += weight;
+      } else {
+        buckets.set(key, { r: r * weight, g: g * weight, b: b * weight, weight });
+      }
+    }
+
+    if (buckets.size === 0) return null;
+
+    let best: { r: number; g: number; b: number; weight: number } | null = null;
+    for (const v of buckets.values()) {
+      if (!best || v.weight > best.weight) best = v;
+    }
+    if (!best) return null;
+
+    return rgbToHex(best.r / best.weight, best.g / best.weight, best.b / best.weight);
   } catch {
     return null;
+  } finally {
+    if (typeof source !== "string") URL.revokeObjectURL(url);
   }
 }
