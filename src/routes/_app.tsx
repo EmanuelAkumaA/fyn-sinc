@@ -1,24 +1,41 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
 import { clearSessionTimer, isSessionExpired } from "@/lib/session";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
-    if (isSessionExpired()) {
-      try { await supabase.auth.signOut(); } catch { /* ignore */ }
-      clearSessionTimer();
-      throw redirect({ to: "/login" });
-    }
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
-  },
   component: AppLayout,
 });
 
 function AppLayout() {
   useSessionTimeout();
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (isSessionExpired()) {
+        try { await supabase.auth.signOut(); } catch { /* ignore */ }
+        clearSessionTimer();
+        if (active) navigate({ to: "/login" });
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!data.session) {
+        navigate({ to: "/login" });
+        return;
+      }
+      setReady(true);
+    })();
+    return () => { active = false; };
+  }, [navigate]);
+
+  if (!ready) return null;
+
   return (
     <div className="min-h-screen flex bg-background">
       <AppSidebar />
