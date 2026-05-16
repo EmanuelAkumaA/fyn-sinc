@@ -17,6 +17,7 @@ import { Route as AppRecorrenciasRouteImport } from './routes/_app/recorrencias'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
+import { Route as AppAportesRouteImport } from './routes/_app/aportes'
 import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
 const SignupRoute = SignupRouteImport.update({
@@ -58,6 +59,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAportesRoute = AppAportesRouteImport.update({
+  id: '/aportes',
+  path: '/aportes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/aportes': typeof AppAportesRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/aportes': typeof AppAportesRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_app/aportes': typeof AppAportesRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/aportes'
     | '/clientes'
     | '/dashboard'
     | '/financeiro'
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/aportes'
     | '/clientes'
     | '/dashboard'
     | '/financeiro'
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/signup'
+    | '/_app/aportes'
     | '/_app/clientes'
     | '/_app/dashboard'
     | '/_app/financeiro'
@@ -195,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/aportes': {
+      id: '/_app/aportes'
+      path: '/aportes'
+      fullPath: '/aportes'
+      preLoaderRoute: typeof AppAportesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clientes/$id': {
       id: '/_app/clientes/$id'
       path: '/$id'
@@ -218,6 +237,7 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAportesRoute: typeof AppAportesRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
@@ -225,6 +245,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAportesRoute: AppAportesRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
@@ -242,3 +263,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
