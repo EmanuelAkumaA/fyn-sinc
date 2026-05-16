@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, type CSSProperties, type MouseEvent } from 
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Pencil, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StatusBadge } from "@/components/ui-helpers";
+import { ClientStatusBadge, FinancialStatusBadge } from "@/components/ui-helpers";
 import { ClientLogo } from "@/components/client-logo";
 import { Button } from "@/components/ui/button";
 import {
