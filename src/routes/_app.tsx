@@ -16,7 +16,8 @@ function AppLayout() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+
+    const evaluate = async () => {
       if (isSessionExpired()) {
         try { await supabase.auth.signOut(); } catch { /* ignore */ }
         clearSessionTimer();
@@ -30,8 +31,25 @@ function AppLayout() {
         return;
       }
       setReady(true);
-    })();
-    return () => { active = false; };
+    };
+
+    evaluate();
+
+    // Reage a SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED etc.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        if (active) navigate({ to: "/login" });
+        return;
+      }
+      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        if (active) setReady(true);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (!ready) return null;
