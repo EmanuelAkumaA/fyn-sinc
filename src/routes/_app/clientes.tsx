@@ -467,3 +467,15 @@ function ClientForm({
     </form>
   );
 }
+
+function SummaryCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "destructive" }) {
+  const cls =
+    tone === "success" ? "text-[color:var(--success)]" :
+    tone === "destructive" ? "text-[color:var(--destructive)]" : "";
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`font-display text-2xl font-bold mt-1 ${cls}`}>{value}</div>
+    </div>
+  );
+}
