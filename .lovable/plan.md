@@ -1,118 +1,71 @@
 ## Objetivo
 
-Tornar o módulo **Clientes** mais visual e premium: cada cliente passa a ter logo e cor de marca próprias, com hover dinâmico nos cards usando essa cor. Sem mexer em lógica financeira, dashboard, recorrências ou aportes.
+Após o login, a sessão dura no máximo **1 hora**. Passou disso → logout automático e volta para `/login`. Antes disso, só sai mesmo se o usuário clicar em **Sair**.
+
+O checkbox "Lembrar conexão" deixa de mexer em sessão: ele só salva o e-mail para pré-preencher o login da próxima vez.
 
 ---
 
-## 1. Banco de dados (migration Supabase)
+## 1. Helper de sessão — `src/lib/session.ts` (novo)
 
-Adicionar dois campos opcionais à tabela `clients`:
+Centraliza o limite de 1h:
 
-- `logo_url text null` — URL pública da imagem.
-- `brand_color text null` — cor HEX (ex.: `#14B8A6`).
+- `SESSION_TTL_MS = 60 * 60 * 1000`
+- `STORAGE_KEY = "fynsinc:session_expires_at"`
+- `startSessionTimer()` — grava `Date.now() + SESSION_TTL_MS` no `localStorage`.
+- `getSessionExpiresAt()` — lê o valor (ou `null`).
+- `isSessionExpired()` — `expires_at != null && Date.now() >= expires_at`.
+- `clearSessionTimer()` — remove a chave.
+- `signOutAndRedirect(router, opts?)` — chama `supabase.auth.signOut()`, `clearSessionTimer()`, e redireciona para `/login`. Mostra um toast opcional ("Sua sessão expirou. Faça login novamente.").
 
-RLS já existente (`is_org_member(organization_id)`) cobre os novos campos automaticamente — nenhuma policy nova é necessária.
+Tudo é client-side (checagem `typeof window !== "undefined"`) para não quebrar SSR.
 
-Após a migration, o arquivo `src/integrations/supabase/types.ts` será regenerado.
+## 2. Login — `src/routes/login.tsx`
 
----
+- Remover o `options: { remember }` falso passado pro `signInWithPassword` (essa opção não existe no Supabase).
+- Após `signInWithPassword` com sucesso: chamar `startSessionTimer()` antes do `navigate({ to: "/dashboard" })`.
+- "Lembrar conexão" passa a controlar apenas o e-mail:
+  - Marcado → `localStorage.setItem("fynsinc:remembered_email", email)`
+  - Desmarcado → `localStorage.removeItem("fynsinc:remembered_email")`
+- No mount do componente: se a chave existir, preencher `email` e deixar `remember` marcado.
+- Texto do label atualizado para deixar claro: **"Lembrar meu e-mail"** (evita confusão com sessão).
 
-## 2. Helper visual compartilhado
+## 3. Guard da área autenticada — `src/routes/_app.tsx`
 
-Criar `src/lib/client-brand.ts` com:
+- `beforeLoad`: se `isSessionExpired()` → `await supabase.auth.signOut()` + `clearSessionTimer()` + `throw redirect({ to: "/login" })`. Só depois checa `getSession()`.
+- Componente `AppLayout` recebe um novo hook `useSessionTimeout()` (próximo item) que faz a expiração ao vivo enquanto o app está aberto.
 
-- `DEFAULT_BRAND_COLOR = "#14B8A6"`
-- `getBrandColor(client)` — retorna `brand_color` ou fallback.
-- `hexToRgba(hex, alpha)` — converte HEX para `rgba(...)` (usado no glow/box-shadow, evita depender de `color-mix`).
-- `getInitials(name)` — 1–2 letras maiúsculas.
-- `isValidHex(value)` — valida `#RGB` / `#RRGGBB`.
+## 4. Hook `useSessionTimeout` — `src/hooks/use-session-timeout.ts` (novo)
 
----
+Roda dentro de `_app` (área autenticada). Comportamento:
 
-## 3. Componentes novos
+- Lê `getSessionExpiresAt()`.
+- Agenda um `setTimeout` para o tempo restante. Quando dispara → `signOutAndRedirect(router, { reason: "expired" })`.
+- Listener `visibilitychange` / `focus`: ao voltar para a aba, reavalia. Se já passou → logout imediato (cobre o caso de a aba ter ficado dormindo).
+- Cleanup: limpa o timeout e os listeners no unmount.
 
-**`src/components/client-logo.tsx`**
-- Props: `client`, `size` (`sm` 44px / `md` 48px), `glow?: boolean`.
-- Container quadrado, `rounded-xl`, fundo escuro, borda sutil, `object-fit: contain`, padding 6px.
-- Se `logo_url` ausente OU `onError` na imagem → fallback com iniciais, fundo `brand_color` em baixa opacidade, borda `brand_color`, texto branco.
-- Quando `glow`, aplica leve `drop-shadow` na cor da marca.
+Isso garante que mesmo com o app aberto a sessão cai exatamente em 1h.
 
-**`src/components/client-card.tsx`**
-- Extrai o card atual da listagem.
-- Recebe `style={{ "--client-color": getBrandColor(client) }}`.
-- Layout: logo à esquerda · nome + responsável/telefone/e-mail no centro · `StatusBadge` + menu `...` à direita.
-- Borda padrão `rgba(247,249,250,0.10)`, `rounded-[20px]`, padding generoso, `transition` 250ms.
-- Hover (desktop, via `@media (hover: hover)`): borda na cor da marca, `box-shadow: 0 0 0 1px var(--client-color), 0 0 28px <rgba brand 25%>`, `translateY(-2px)`, gradiente discreto de fundo, brilho na logo.
-- Mobile: hover desativado, mas borda **esquerda** de 3px em `var(--client-color)` como acento permanente.
+## 5. Logout manual — `src/components/app-sidebar.tsx`
 
----
+Trocar o `supabase.auth.signOut()` solto pelo helper `signOutAndRedirect(router)` para também limpar o timer e ir pro `/login` de forma consistente.
 
-## 4. Formulário de cliente
+## 6. Cuidados / fora de escopo
 
-Em `src/routes/_app/clientes.tsx` (`ClientForm`):
-
-- Nova seção **"Identidade visual do cliente"** ao final do formulário, antes do botão.
-- Campo **Logo do cliente**: `Input` URL, placeholder e texto auxiliar conforme briefing.
-- Campo **Cor da marca**: `<input type="color">` + `Input` HEX sincronizados, com um quadrado de preview.
-- Validação client-side: se HEX preenchido e inválido → toast de erro e bloqueia submit.
-- Preview ao vivo do `ClientCard` logo abaixo dos campos, usando os valores atuais do formulário.
-- Mutation `create` já existente passa `logo_url` e `brand_color` no `insert`.
-
-Adicionar também suporte a **edição** do cliente:
-- Botão "Editar" no menu `...` do card abre o mesmo `Sheet` em modo edição.
-- Usa `update` em vez de `insert`.
+- **Não** mexer em `autoRefreshToken` do client Supabase — deixa o token sendo renovado normalmente; quem controla a expiração de 1h é nosso timer.
+- **Não** mexer em RLS, server functions, ou na lógica financeira.
+- O JWT do Supabase já expira em 1h por padrão, mas como ele renova sozinho, é o nosso `session_expires_at` que vira a fonte de verdade. Quando o usuário desloga, o helper limpa essa chave + chama `signOut()`.
+- Aba "esquecida" aberta por 1h passa a cair sozinha (timer dispara), e abrir o app depois do prazo também cai (checagem em `beforeLoad` + `visibilitychange`).
 
 ---
 
-## 5. Listagem `/clientes`
-
-- Substituir o `<Link>` inline atual pelo novo `<ClientCard client={c} />`.
-- Mantém grid vertical (`grid gap-3`), busca e empty state como estão.
-
----
-
-## 6. Detalhe `/clientes/$id`
-
-Atualizar o header em `src/routes/_app/clientes.$id.tsx`:
-
-- Bloco "perfil premium": container com `--client-color`, leve glow/acento à esquerda na cor da marca.
-- Logo grande (64px) à esquerda usando `<ClientLogo size="md" glow />`.
-- Nome, responsável (`company`), telefone, e-mail, `StatusBadge` e ações alinhados.
-- Fallback de iniciais idêntico ao card.
-- Resto da página (tabs, métricas, transações) **não muda**.
-
----
-
-## 7. Fora de escopo (não tocar)
-
-- Dashboard, Financeiro, Recorrências, Aportes/Repasses, regras financeiras.
-- Upload de logo via Supabase Storage (só URL por enquanto).
-- Extração automática de cor dominante / `canvas` / libs pesadas.
-- RLS existente.
-
----
-
-## Detalhes técnicos
-
-- Migration via `supabase--migration` (eu chamo a tool e aguardo aprovação antes de qualquer código).
-- Tokens de cor neutros continuam vindo de `src/styles.css`; a cor da marca entra **apenas** via variável CSS inline `--client-color` no card/header (não vira token global).
-- Hover só no desktop: usar `@media (hover: hover) and (pointer: fine)` para não disparar em touch.
-- `onError` no `<img>` da logo troca para fallback sem quebrar layout.
-- Todos os novos arquivos seguem o padrão do projeto (TanStack Start, Tailwind v4, shadcn).
-
----
-
-## Arquivos afetados
+## Arquivos
 
 **Novos**
-- `src/lib/client-brand.ts`
-- `src/components/client-logo.tsx`
-- `src/components/client-card.tsx`
+- `src/lib/session.ts`
+- `src/hooks/use-session-timeout.ts`
 
 **Editados**
-- `src/routes/_app/clientes.tsx` (form + edição + uso do ClientCard)
-- `src/routes/_app/clientes.$id.tsx` (header premium)
-- `src/integrations/supabase/types.ts` (regenerado pela migration)
-
-**Migration**
-- `clients`: `+ logo_url text`, `+ brand_color text`
+- `src/routes/login.tsx`
+- `src/routes/_app.tsx`
+- `src/components/app-sidebar.tsx`
