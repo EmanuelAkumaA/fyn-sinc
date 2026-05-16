@@ -127,7 +127,7 @@ function FinanceiroPage() {
                 clients={clients}
                 banks={banks}
                 services={services}
-                onSubmit={(d) => create.mutate(d)}
+                onSubmit={(d: any) => create.mutate(d)}
                 loading={create.isPending}
               />
             </SheetContent>
@@ -171,7 +171,7 @@ function FinanceiroPage() {
       <Dialog open={!!payTx} onOpenChange={(o) => !o && setPayTx(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Marcar como pago</DialogTitle></DialogHeader>
-          {payTx && <MarkPaidForm tx={payTx} banks={banks} onSubmit={(d) => markPaid.mutate(d)} loading={markPaid.isPending} />}
+          {payTx && <MarkPaidForm tx={payTx} banks={banks} onSubmit={(d: any) => markPaid.mutate(d)} loading={markPaid.isPending} />}
         </DialogContent>
       </Dialog>
     </>
