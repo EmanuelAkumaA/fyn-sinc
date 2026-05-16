@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -15,12 +16,17 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await (supabase.auth.signInWithPassword as any)({
+      email,
+      password,
+      options: { remember },
+    });
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Bem-vindo de volta");
@@ -46,6 +52,10 @@ function LoginPage() {
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
+            <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">Lembrar conexão</Label>
           </div>
           <Button type="submit" disabled={loading} className="w-full h-11 text-base font-medium" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
             {loading ? "Entrando..." : "Entrar"}
