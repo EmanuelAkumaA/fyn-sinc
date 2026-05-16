@@ -218,6 +218,8 @@ function ClientForm({
         phone: initial.phone ? maskPhone(initial.phone) : "",
         company: initial.company ?? "",
         notes: initial.notes ?? "",
+        client_status: initial.client_status ?? (initial.status === "inativo" ? "inativo" : "ativo"),
+        financial_status: initial.financial_status ?? (initial.status === "inadimplente" ? "inadimplente" : "em_dia"),
         logo_url: initial.logo_url ?? "",
         brand_color: initial.brand_color ?? "",
       });
