@@ -20,7 +20,9 @@ type ClientLike = {
   email?: string | null;
   phone?: string | null;
   company?: string | null;
-  status: string;
+  status?: string | null;
+  client_status?: string | null;
+  financial_status?: string | null;
   logo_url?: string | null;
   brand_color?: string | null;
 };
