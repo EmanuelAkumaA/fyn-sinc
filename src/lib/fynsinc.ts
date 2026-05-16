@@ -23,3 +23,36 @@ export function formatDate(d: string | Date | null | undefined): string {
   const date = typeof d === "string" ? new Date(d) : d;
   return date.toLocaleDateString("pt-BR");
 }
+
+export type RecurrenceFreq = "semanal" | "quinzenal" | "mensal" | "trimestral" | "semestral" | "anual";
+
+export const RECURRENCE_LABELS: Record<RecurrenceFreq, string> = {
+  semanal: "Semanal",
+  quinzenal: "Quinzenal",
+  mensal: "Mensal",
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
+};
+
+export function addPeriod(dateStr: string, freq: RecurrenceFreq): string {
+  const d = new Date(dateStr + "T00:00:00");
+  switch (freq) {
+    case "semanal": d.setDate(d.getDate() + 7); break;
+    case "quinzenal": d.setDate(d.getDate() + 15); break;
+    case "mensal": d.setMonth(d.getMonth() + 1); break;
+    case "trimestral": d.setMonth(d.getMonth() + 3); break;
+    case "semestral": d.setMonth(d.getMonth() + 6); break;
+    case "anual": d.setFullYear(d.getFullYear() + 1); break;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+export const PLATFORMS = [
+  "Google Ads",
+  "Meta Ads",
+  "TikTok Ads",
+  "LinkedIn Ads",
+  "Ferramenta",
+  "Outro",
+] as const;
