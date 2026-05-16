@@ -14,16 +14,647 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      banks: {
+        Row: {
+          account_type: string | null
+          color: string | null
+          created_at: string
+          id: string
+          initial_balance: number
+          name: string
+          organization_id: string
+          status: Database["public"]["Enums"]["entity_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          initial_balance?: number
+          name: string
+          organization_id: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          initial_balance?: number
+          name?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          company: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["client_status"]
+          type: Database["public"]["Enums"]["client_type"]
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          type?: Database["public"]["Enums"]["client_type"]
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          type?: Database["public"]["Enums"]["client_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_transactions: {
+        Row: {
+          amount_gross: number
+          amount_net: number | null
+          bank_id: string | null
+          category: string | null
+          client_id: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          fornecedor: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          parent_transaction_id: string | null
+          payment_method: string | null
+          platform: string | null
+          recurring_contract_id: string | null
+          service_id: string | null
+          status: Database["public"]["Enums"]["transaction_status"]
+          third_party_plan_id: string | null
+          transfer_to_bank_id: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount_gross: number
+          amount_net?: number | null
+          bank_id?: string | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          description: string
+          due_date?: string | null
+          fornecedor?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          parent_transaction_id?: string | null
+          payment_method?: string | null
+          platform?: string | null
+          recurring_contract_id?: string | null
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"]
+          third_party_plan_id?: string | null
+          transfer_to_bank_id?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount_gross?: number
+          amount_net?: number | null
+          bank_id?: string | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          fornecedor?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          parent_transaction_id?: string | null
+          payment_method?: string | null
+          platform?: string | null
+          recurring_contract_id?: string | null
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"]
+          third_party_plan_id?: string | null
+          transfer_to_bank_id?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance"
+            referencedColumns: ["bank_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_wallet"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_parent_transaction_id_fkey"
+            columns: ["parent_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_recurring_contract_id_fkey"
+            columns: ["recurring_contract_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_transfer_to_bank_id_fkey"
+            columns: ["transfer_to_bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_transfer_to_bank_id_fkey"
+            columns: ["transfer_to_bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance"
+            referencedColumns: ["bank_id"]
+          },
+        ]
+      }
+      organization_users: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recurring_contracts: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          default_bank_id: string | null
+          description: string | null
+          frequency: Database["public"]["Enums"]["recurrence_freq"]
+          id: string
+          next_due_date: string
+          notes: string | null
+          organization_id: string
+          service_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["entity_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          default_bank_id?: string | null
+          description?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_freq"]
+          id?: string
+          next_due_date: string
+          notes?: string | null
+          organization_id: string
+          service_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          default_bank_id?: string | null
+          description?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_freq"]
+          id?: string
+          next_due_date?: string
+          notes?: string | null
+          organization_id?: string
+          service_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_wallet"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_default_bank_id_fkey"
+            columns: ["default_bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_default_bank_id_fkey"
+            columns: ["default_bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance"
+            referencedColumns: ["bank_id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          category: string | null
+          created_at: string
+          default_value: number | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          status: Database["public"]["Enums"]["entity_status"]
+          type: Database["public"]["Enums"]["service_type"]
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          default_value?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          type?: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          default_value?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          type?: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      third_party_plans: {
+        Row: {
+          amount_paid_to_supplier: number
+          amount_received_from_client: number
+          bank_id: string | null
+          cashback_expected: number
+          cashback_received: number
+          client_id: string
+          commission_pct: number
+          commission_value: number
+          created_at: string
+          fornecedor: string
+          full_value: number | null
+          id: string
+          notes: string | null
+          organization_id: string
+          payment_method: string | null
+          period: string | null
+          plan_name: string
+          status: Database["public"]["Enums"]["plan_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount_paid_to_supplier?: number
+          amount_received_from_client?: number
+          bank_id?: string | null
+          cashback_expected?: number
+          cashback_received?: number
+          client_id: string
+          commission_pct?: number
+          commission_value?: number
+          created_at?: string
+          fornecedor: string
+          full_value?: number | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          payment_method?: string | null
+          period?: string | null
+          plan_name: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount_paid_to_supplier?: number
+          amount_received_from_client?: number
+          bank_id?: string | null
+          cashback_expected?: number
+          cashback_received?: number
+          client_id?: string
+          commission_pct?: number
+          commission_value?: number
+          created_at?: string
+          fornecedor?: string
+          full_value?: number | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          payment_method?: string | null
+          period?: string | null
+          plan_name?: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "third_party_plans_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance"
+            referencedColumns: ["bank_id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_wallet"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_bank_balance: {
+        Row: {
+          bank_id: string | null
+          color: string | null
+          current_balance: number | null
+          name: string | null
+          organization_id: string | null
+        }
+        Insert: {
+          bank_id?: string | null
+          color?: string | null
+          current_balance?: never
+          name?: string | null
+          organization_id?: string | null
+        }
+        Update: {
+          bank_id?: string | null
+          color?: string | null
+          current_balance?: never
+          name?: string | null
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_client_wallet: {
+        Row: {
+          available_balance: number | null
+          client_id: string | null
+          client_name: string | null
+          organization_id: string | null
+          platform: string | null
+          total_received: number | null
+          total_used: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      current_org_id: { Args: never; Returns: string }
+      is_org_member: { Args: { _org_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "financeiro"
+        | "gerente"
+        | "operacional"
+        | "visualizador"
+      client_status: "ativo" | "inativo" | "inadimplente"
+      client_type: "PF" | "PJ"
+      entity_status: "ativo" | "inativo" | "pausado" | "cancelado"
+      plan_status:
+        | "pendente"
+        | "recebido"
+        | "pago_fornecedor"
+        | "concluido"
+        | "cancelado"
+      recurrence_freq:
+        | "semanal"
+        | "quinzenal"
+        | "mensal"
+        | "trimestral"
+        | "semestral"
+        | "anual"
+      service_type: "avulso" | "recorrente"
+      transaction_status: "pendente" | "pago" | "atrasado" | "cancelado"
+      transaction_type:
+        | "receita_propria"
+        | "despesa_propria"
+        | "repasse_recebido"
+        | "uso_repasse"
+        | "comissao"
+        | "cashback"
+        | "taxa"
+        | "transferencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +781,44 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "financeiro",
+        "gerente",
+        "operacional",
+        "visualizador",
+      ],
+      client_status: ["ativo", "inativo", "inadimplente"],
+      client_type: ["PF", "PJ"],
+      entity_status: ["ativo", "inativo", "pausado", "cancelado"],
+      plan_status: [
+        "pendente",
+        "recebido",
+        "pago_fornecedor",
+        "concluido",
+        "cancelado",
+      ],
+      recurrence_freq: [
+        "semanal",
+        "quinzenal",
+        "mensal",
+        "trimestral",
+        "semestral",
+        "anual",
+      ],
+      service_type: ["avulso", "recorrente"],
+      transaction_status: ["pendente", "pago", "atrasado", "cancelado"],
+      transaction_type: [
+        "receita_propria",
+        "despesa_propria",
+        "repasse_recebido",
+        "uso_repasse",
+        "comissao",
+        "cashback",
+        "taxa",
+        "transferencia",
+      ],
+    },
   },
 } as const
