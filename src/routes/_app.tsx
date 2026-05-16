@@ -35,13 +35,15 @@ function AppLayout() {
 
     evaluate();
 
-    // Reage a SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED etc.
+    // Só desloga em SIGNED_OUT explícito. INITIAL_SESSION/TOKEN_REFRESHED
+    // podem chegar com session=null momentaneamente durante a hidratação,
+    // o que causava redirecionamento indevido para /login logo após o login.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
+      if (event === "SIGNED_OUT") {
         if (active) navigate({ to: "/login" });
         return;
       }
-      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+      if (session && (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
         if (active) setReady(true);
       }
     });
