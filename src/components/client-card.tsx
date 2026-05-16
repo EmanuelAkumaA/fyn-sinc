@@ -78,7 +78,10 @@ function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StatusBadge status={client.status} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ClientStatusBadge value={client.client_status ?? client.status} />
+            <FinancialStatusBadge value={client.financial_status} />
+          </div>
           {onEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={stopNav}>
