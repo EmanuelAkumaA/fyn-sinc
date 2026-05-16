@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { startSessionTimer } from "@/lib/session";
+
+const REMEMBER_EMAIL_KEY = "fynsinc:remembered_email";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -19,16 +22,27 @@ function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (saved) {
+      setEmail(saved);
+      setRemember(true);
+    }
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await (supabase.auth.signInWithPassword as any)({
-      email,
-      password,
-      options: { remember },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) return toast.error(error.message);
+
+    if (typeof window !== "undefined") {
+      if (remember) window.localStorage.setItem(REMEMBER_EMAIL_KEY, email);
+      else window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+    }
+    startSessionTimer();
     toast.success("Bem-vindo de volta");
     navigate({ to: "/dashboard" });
   }
@@ -55,8 +69,13 @@ function LoginPage() {
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
-            <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">Lembrar conexão</Label>
+            <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">
+              Lembrar meu e-mail
+            </Label>
           </div>
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            Por segurança, sua sessão expira automaticamente após 1 hora.
+          </p>
           <Button type="submit" disabled={loading} className="w-full h-11 text-base font-medium" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>
