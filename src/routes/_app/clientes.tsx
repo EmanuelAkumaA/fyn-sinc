@@ -12,7 +12,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
+import { ClientLogoUpload } from "@/components/client-logo-upload";
 import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
+
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
@@ -192,6 +194,12 @@ function ClientForm({
   submitLabel: string;
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [brandColorTouched, setBrandColorTouched] = useState(false);
+
+  useEffect(() => {
+    getCurrentOrgId().then(setOrgId).catch(() => setOrgId(null));
+  }, []);
 
   useEffect(() => {
     if (initial) {
@@ -206,8 +214,10 @@ function ClientForm({
         logo_url: initial.logo_url ?? "",
         brand_color: initial.brand_color ?? "",
       });
+      setBrandColorTouched(Boolean(initial.brand_color));
     } else {
       setForm(emptyForm);
+      setBrandColorTouched(false);
     }
   }, [initial]);
 
@@ -264,14 +274,28 @@ function ClientForm({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Logo do cliente</Label>
+            <ClientLogoUpload
+              value={form.logo_url}
+              orgId={orgId}
+              onChange={(url, extractedColor) => {
+                setForm((prev) => ({
+                  ...prev,
+                  logo_url: url,
+                  brand_color:
+                    extractedColor && !brandColorTouched ? extractedColor : prev.brand_color,
+                }));
+              }}
+              onRemove={() => setForm((prev) => ({ ...prev, logo_url: "" }))}
+            />
             <Input
               type="url"
-              placeholder="https://exemplo.com/logo.png"
+              placeholder="ou cole uma URL: https://exemplo.com/logo.png"
               value={form.logo_url}
               onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+              className="text-xs"
             />
             <p className="text-xs text-muted-foreground">
-              Use uma imagem quadrada ou horizontal simples para melhor resultado.
+              Envie do dispositivo ou cole uma URL. A cor da marca é extraída automaticamente.
             </p>
           </div>
 
@@ -281,14 +305,20 @@ function ClientForm({
               <input
                 type="color"
                 value={colorForPicker}
-                onChange={(e) => setForm({ ...form, brand_color: e.target.value.toUpperCase() })}
+                onChange={(e) => {
+                  setBrandColorTouched(true);
+                  setForm({ ...form, brand_color: e.target.value.toUpperCase() });
+                }}
                 className="h-10 w-12 rounded-md border border-input bg-transparent cursor-pointer"
                 aria-label="Seletor de cor"
               />
               <Input
                 placeholder="#14B8A6"
                 value={form.brand_color}
-                onChange={(e) => setForm({ ...form, brand_color: e.target.value })}
+                onChange={(e) => {
+                  setBrandColorTouched(true);
+                  setForm({ ...form, brand_color: e.target.value });
+                }}
                 className="flex-1 font-mono"
               />
               <div
@@ -297,6 +327,9 @@ function ClientForm({
                 aria-hidden
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Editar manualmente sobrescreve a cor automática da logo.
+            </p>
           </div>
 
           {form.name && (
