@@ -14,6 +14,7 @@ import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
 import { ClientLogoUpload } from "@/components/client-logo-upload";
 import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
+import { maskDocument, maskPhone, isValidDocument, isValidPhone, isValidEmail } from "@/lib/masks";
 
 
 export const Route = createFileRoute("/_app/clientes")({
@@ -206,9 +207,9 @@ function ClientForm({
       setForm({
         name: initial.name ?? "",
         type: initial.type ?? "PJ",
-        document: initial.document ?? "",
+        document: initial.document ? maskDocument(initial.document, initial.type ?? "PJ") : "",
         email: initial.email ?? "",
-        phone: initial.phone ?? "",
+        phone: initial.phone ? maskPhone(initial.phone) : "",
         company: initial.company ?? "",
         notes: initial.notes ?? "",
         logo_url: initial.logo_url ?? "",
@@ -229,19 +230,36 @@ function ClientForm({
       toast.error("Cor da marca inválida. Use o formato HEX (ex.: #14B8A6).");
       return;
     }
+    if (form.document.trim() && !isValidDocument(form.document, form.type)) {
+      toast.error(form.type === "PF" ? "CPF inválido. Use 11 dígitos." : "CNPJ inválido. Use 14 dígitos.");
+      return;
+    }
+    if (form.email.trim() && !isValidEmail(form.email)) {
+      toast.error("E-mail inválido.");
+      return;
+    }
+    if (form.phone.trim() && !isValidPhone(form.phone)) {
+      toast.error("Telefone inválido. Use DDD + número (10 ou 11 dígitos).");
+      return;
+    }
     onSubmit(form);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-6 pb-8">
       <div className="space-y-2">
-        <Label>Nome *</Label>
+        <Label>Nome da Empresa *</Label>
         <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label>Tipo</Label>
-          <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+          <Select
+            value={form.type}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, type: v, document: prev.document ? maskDocument(prev.document, v) : "" }))
+            }
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="PJ">Pessoa jurídica</SelectItem>
@@ -251,16 +269,33 @@ function ClientForm({
         </div>
         <div className="space-y-2">
           <Label>CPF/CNPJ</Label>
-          <Input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} />
+          <Input
+            value={form.document}
+            onChange={(e) => setForm({ ...form, document: maskDocument(e.target.value, form.type) })}
+            inputMode="numeric"
+            maxLength={form.type === "PF" ? 14 : 18}
+            placeholder={form.type === "PF" ? "000.000.000-00" : "00.000.000/0000-00"}
+          />
         </div>
       </div>
       <div className="space-y-2">
         <Label>E-mail</Label>
-        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <Input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          placeholder="nome@empresa.com"
+        />
       </div>
       <div className="space-y-2">
         <Label>Telefone</Label>
-        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <Input
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: maskPhone(e.target.value) })}
+          inputMode="tel"
+          maxLength={15}
+          placeholder="(00) 00000-0000"
+        />
       </div>
       <div className="space-y-2">
         <Label>Empresa / Responsável</Label>
