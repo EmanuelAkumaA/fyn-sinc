@@ -113,6 +113,13 @@ function ClienteDetalhe() {
         );
       })()}
 
+      {(client.financial_status ?? (client.status === "inadimplente" ? "inadimplente" : "em_dia")) === "inadimplente" && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-[color:var(--destructive)]/30 bg-[color:var(--destructive)]/10 px-4 py-2.5 text-sm text-[color:var(--destructive)]">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Cliente com pendências financeiras.</span>
+        </div>
+      )}
+
       <Tabs defaultValue="overview">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start">
           <TabsTrigger value="overview">Visão geral</TabsTrigger>
