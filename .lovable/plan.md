@@ -1,71 +1,60 @@
+# Upload de logo + cor automática no cadastro de cliente
+
 ## Objetivo
+No modal "Novo cliente" / "Editar cliente", permitir enviar a logo direto do dispositivo (galeria/arquivos), salvar no Supabase Storage e extrair automaticamente a cor predominante da imagem para preencher o campo "Cor da marca" — mantendo o HEX editável manualmente a qualquer momento.
 
-Após o login, a sessão dura no máximo **1 hora**. Passou disso → logout automático e volta para `/login`. Antes disso, só sai mesmo se o usuário clicar em **Sair**.
+## Comportamento esperado
 
-O checkbox "Lembrar conexão" deixa de mexer em sessão: ele só salva o e-mail para pré-preencher o login da próxima vez.
+1. Campo "Logo do cliente" passa a ter duas formas de uso:
+   - Botão **"Enviar imagem"** (abre seletor de arquivos / galeria no mobile, aceita PNG/JPG/WebP/SVG até ~2 MB).
+   - Campo de URL continua disponível (colar link externo) como alternativa.
+2. Ao escolher uma imagem:
+   - Upload imediato para o bucket `client-logos` do Supabase Storage, dentro da pasta `{organization_id}/{client_id_ou_temp}-{timestamp}.{ext}`.
+   - `logo_url` recebe a URL pública retornada.
+   - Pré-visualização da logo aparece acima do campo.
+   - A cor dominante da imagem é extraída no cliente e preenche `brand_color` **apenas se o campo estiver vazio ou não tiver sido editado manualmente** (sem sobrescrever escolha do usuário).
+3. Botão **"Recalcular cor"** ao lado do swatch — reextrai a cor a partir da logo atual (útil se o usuário trocou a imagem ou quer voltar à cor automática).
+4. Campo HEX e color picker continuam funcionando como hoje — edição manual sempre vence.
+5. Botão **"Remover"** limpa logo + reseta brand_color (opcional, só se houver logo).
 
----
+## Mudanças técnicas
 
-## 1. Helper de sessão — `src/lib/session.ts` (novo)
+### 1. Supabase Storage (migration)
+- Criar bucket público `client-logos` (`public = true`, limite 2 MB, mime types de imagem).
+- Policies em `storage.objects` para o bucket `client-logos`:
+  - `SELECT`: público (bucket já é público, mas policy explícita para autenticados também).
+  - `INSERT` / `UPDATE` / `DELETE`: apenas para `authenticated` cujo `(storage.foldername(name))[1]` seja uma `organization_id` da qual o usuário é membro (via função `is_org_member` já existente).
 
-Centraliza o limite de 1h:
+### 2. Extração de cor
+- Adicionar dependência `colorthief` (puro JS, roda no navegador).
+- Util `src/lib/extract-brand-color.ts`:
+  - Recebe `File` ou URL, carrega num `<img>` (com `crossOrigin="anonymous"` quando URL), passa pelo ColorThief e devolve HEX em maiúsculas.
+  - Trata falhas (CORS, SVG) retornando `null` silenciosamente.
 
-- `SESSION_TTL_MS = 60 * 60 * 1000`
-- `STORAGE_KEY = "fynsinc:session_expires_at"`
-- `startSessionTimer()` — grava `Date.now() + SESSION_TTL_MS` no `localStorage`.
-- `getSessionExpiresAt()` — lê o valor (ou `null`).
-- `isSessionExpired()` — `expires_at != null && Date.now() >= expires_at`.
-- `clearSessionTimer()` — remove a chave.
-- `signOutAndRedirect(router, opts?)` — chama `supabase.auth.signOut()`, `clearSessionTimer()`, e redireciona para `/login`. Mostra um toast opcional ("Sua sessão expirou. Faça login novamente.").
+### 3. Componente de upload
+- Novo `src/components/client-logo-upload.tsx`:
+  - Props: `value` (url atual), `orgId`, `onChange(url, extractedColor?)`, `onRemove()`.
+  - Usa `<input type="file" accept="image/*" />` escondido + botão estilizado.
+  - Faz upload via `supabase.storage.from("client-logos").upload(...)` + `getPublicUrl`.
+  - Mostra preview, loading state, e botão "Recalcular cor".
 
-Tudo é client-side (checagem `typeof window !== "undefined"`) para não quebrar SSR.
+### 4. Modal de cliente (`src/routes/_app/clientes.tsx`)
+- Substituir o input atual de `logo_url` pelo novo componente, mantendo o input de URL como fallback (accordion "Usar URL externa" ou simples link "Colar URL no lugar").
+- Adicionar flag local `brandColorTouched` para não sobrescrever cor digitada pelo usuário.
+- Ao receber `extractedColor` do upload: se `!brandColorTouched` ou campo vazio → setar `brand_color`.
+- Ao usuário digitar/escolher cor manualmente → marcar `brandColorTouched = true`.
+- Botão "Recalcular cor" reseta `brandColorTouched` e re-extrai.
 
-## 2. Login — `src/routes/login.tsx`
+### 5. Limpeza opcional
+- Sem deleção automática de arquivos antigos no Storage nesta iteração (evita complexidade). Documentar para futuro.
 
-- Remover o `options: { remember }` falso passado pro `signInWithPassword` (essa opção não existe no Supabase).
-- Após `signInWithPassword` com sucesso: chamar `startSessionTimer()` antes do `navigate({ to: "/dashboard" })`.
-- "Lembrar conexão" passa a controlar apenas o e-mail:
-  - Marcado → `localStorage.setItem("fynsinc:remembered_email", email)`
-  - Desmarcado → `localStorage.removeItem("fynsinc:remembered_email")`
-- No mount do componente: se a chave existir, preencher `email` e deixar `remember` marcado.
-- Texto do label atualizado para deixar claro: **"Lembrar meu e-mail"** (evita confusão com sessão).
+## Fora de escopo
+- Crop/edição da imagem.
+- Limpeza retroativa de logos órfãs.
+- Mudanças no schema da tabela `clients` (campos `logo_url` e `brand_color` já existem).
+- Aplicar mesma extração em contratos/transações.
 
-## 3. Guard da área autenticada — `src/routes/_app.tsx`
-
-- `beforeLoad`: se `isSessionExpired()` → `await supabase.auth.signOut()` + `clearSessionTimer()` + `throw redirect({ to: "/login" })`. Só depois checa `getSession()`.
-- Componente `AppLayout` recebe um novo hook `useSessionTimeout()` (próximo item) que faz a expiração ao vivo enquanto o app está aberto.
-
-## 4. Hook `useSessionTimeout` — `src/hooks/use-session-timeout.ts` (novo)
-
-Roda dentro de `_app` (área autenticada). Comportamento:
-
-- Lê `getSessionExpiresAt()`.
-- Agenda um `setTimeout` para o tempo restante. Quando dispara → `signOutAndRedirect(router, { reason: "expired" })`.
-- Listener `visibilitychange` / `focus`: ao voltar para a aba, reavalia. Se já passou → logout imediato (cobre o caso de a aba ter ficado dormindo).
-- Cleanup: limpa o timeout e os listeners no unmount.
-
-Isso garante que mesmo com o app aberto a sessão cai exatamente em 1h.
-
-## 5. Logout manual — `src/components/app-sidebar.tsx`
-
-Trocar o `supabase.auth.signOut()` solto pelo helper `signOutAndRedirect(router)` para também limpar o timer e ir pro `/login` de forma consistente.
-
-## 6. Cuidados / fora de escopo
-
-- **Não** mexer em `autoRefreshToken` do client Supabase — deixa o token sendo renovado normalmente; quem controla a expiração de 1h é nosso timer.
-- **Não** mexer em RLS, server functions, ou na lógica financeira.
-- O JWT do Supabase já expira em 1h por padrão, mas como ele renova sozinho, é o nosso `session_expires_at` que vira a fonte de verdade. Quando o usuário desloga, o helper limpa essa chave + chama `signOut()`.
-- Aba "esquecida" aberta por 1h passa a cair sozinha (timer dispara), e abrir o app depois do prazo também cai (checagem em `beforeLoad` + `visibilitychange`).
-
----
-
-## Arquivos
-
-**Novos**
-- `src/lib/session.ts`
-- `src/hooks/use-session-timeout.ts`
-
-**Editados**
-- `src/routes/login.tsx`
-- `src/routes/_app.tsx`
-- `src/components/app-sidebar.tsx`
+## Arquivos afetados
+- **Novo**: `src/lib/extract-brand-color.ts`, `src/components/client-logo-upload.tsx`, migration do bucket + policies.
+- **Editado**: `src/routes/_app/clientes.tsx`.
+- **Dependência**: `bun add colorthief`.

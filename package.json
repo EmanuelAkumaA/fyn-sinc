@@ -48,6 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "colorthief": "^3.3.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@types/colorthief": "^2.6.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
