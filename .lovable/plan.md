@@ -1,218 +1,799 @@
-# Plano — Fyn Sinc v1
+Plano aprovado com ajustes — Módulos Recorrências e Aportes/Repasses
 
-Sistema financeiro operacional para empresas de serviço. Foco do v1: provar o diferencial (separar receita própria de repasse/aporte/comissão) com UX dark premium e mobile-first.
+Pode seguir com a implementação dos módulos Recorrências e Aportes/Repasses, mantendo a estrutura visual, técnica e funcional proposta, mas com os ajustes abaixo para preservar a lógica financeira correta do Fyn Sinc.
 
-## Escopo do v1
+O objetivo desta etapa é finalizar dois módulos importantes da V1:
 
-**Inclui**
+1. Recorrências/Mensalidades
 
-- Auth (login/cadastro) + criação automática de organização
-- Layout shell: sidebar desktop, bottom nav mobile, header com filtro de período
-- PWA completo (manifest + service worker, com guard para preview do Lovable)
-- Dashboard executivo com cards, gráficos e rankings
-- Clientes (listagem + detalhe com abas)
-- Financeiro (receitas, despesas, taxas, transferências)
-- Bancos (saldo calculado)
-- Recorrências/mensalidades
-- Aportes/Repasses (entrada + uso, saldo por cliente)
-- Planos/Ferramentas (comissão + cashback)
-- Cashback (controle próprio)
-- Seed de demonstração (botão "carregar dados de exemplo")
+2. Aportes/Repasses
 
-**Fica para depois**: Cartões de crédito, Freelancers, módulo dedicado de Serviços (no v1 serviço é só um campo texto no lançamento), Arquivos/Storage, Usuários e papéis, Configurações avançadas, multiempresa com troca, auditoria, relatórios.
+Esses módulos devem seguir o mesmo padrão visual já usado em Dashboard, Clientes e Financeiro, com dark mode premium, mobile-first, sidebar desktop, bottom nav mobile, componentes reutilizáveis, Supabase, React Query, react-hook-form, zod e RLS por organization_id.
 
-## Identidade visual
+==================================================
 
-Tokens em `src/styles.css` (oklch):
+1. RECORRÊNCIAS
 
-- `--background` #0D1B2A, `--surface` #111827, card branco 4%, borda branca 10%
-- `--foreground` #F7F9FA, `--muted-foreground` #94A3B8
-- `--primary` #14B8A6, `--success` #22C55E, `--destructive` #EF4444, `--neutral` #4B5563
-- Gradiente `--gradient-primary` petróleo→esmeralda para CTAs/cards destacados
-- Sombras suaves, radius cards 20px, botões 14px, glassmorphism leve
+==================================================
 
-Tipografia: Sora (headings/números grandes) + Inter (UI/textos), Google Fonts.
+Criar a rota:
 
-## Arquitetura técnica
+src/routes/_app/recorrencias.tsx
 
-- TanStack Start + file-based routing
-- Supabase: auth + Postgres + RLS
-- Server logic via `createServerFn` (não Edge Functions)
-- Browser client para reads sob RLS; `requireSupabaseAuth` em mutations sensíveis
-- Tailwind v4 + shadcn/ui
-- PWA via `vite-plugin-pwa` com `devOptions.enabled: false` e guard contra iframe/hosts de preview
+Usar a tabela existente:
 
-## Estrutura de rotas
+recurring_contracts
 
-```
-src/routes/
-  __root.tsx               shell PWA, providers, listener onAuthStateChange
-  index.tsx                redireciona para /dashboard ou /login
-  login.tsx
-  signup.tsx
-  _app.tsx                 layout autenticado (sidebar + bottom nav + header)
-  _app/dashboard.tsx
-  _app/clientes.tsx
-  _app/clientes.$id.tsx    detalhe com abas
-  _app/financeiro.tsx
-  _app/recorrencias.tsx
-  _app/aportes.tsx
-  _app/planos.tsx
-  _app/bancos.tsx
-  _app/configuracoes.tsx   (seed/reset)
-```
+A tabela já possui RLS por organization_id.
 
-## Banco de dados (Supabase) — v1
+--------------------------------------------------
 
-Todas com `organization_id`, `created_at`, `updated_at`, RLS via função `is_org_member(uuid)`.
+1.1 Listagem
 
-- `organizations` — nome, slug
-- `organization_users` — user_id, organization_id, role (admin no v1)
-- `clients` — nome, tipo (PF/PJ), documento, email, telefone, status
-- `banks` — nome, tipo, saldo_inicial, cor
-- `recurring_contracts` — client_id, descricao, valor, frequencia, proximo_vencimento, status
-- `financial_transactions` — tipo (`receita_propria | despesa_propria | repasse_recebido | uso_repasse | comissao | cashback | taxa | transferencia`), client_id?, bank_id?, valor_bruto, valor_liquido, descricao, categoria, due_date, paid_at, status, parent_transaction_id (taxa↔receita; uso↔repasse), platform, fornecedor, observacao
-- `third_party_plans` — client_id, fornecedor, nome_plano, valor_recebido_cliente, valor_pago_fornecedor, perc_comissao, valor_comissao, cashback_previsto, cashback_recebido, status
+--------------------------------------------------
 
-Views auxiliares:
+A tela Recorrências deve conter:
 
-- `v_client_wallet` — saldo de repasse por cliente/plataforma
-- `v_bank_balance` — saldo_inicial + entradas pagas − saídas pagas + transferências
-- `v_dashboard_metrics` — receita própria, despesas, lucro, a receber, inadimplência
+- Header com título "Recorrências"
 
-Trigger `handle_new_user`: cria organização + organization_users como admin no signup.
+- Botão "Nova recorrência"
 
-## Regras de cálculo (em SQL views + helpers TS)
+- Cards de resumo no topo
 
-- Receita própria = Σ(receita_propria pagas) + Σ(comissao recebidas) + Σ(cashback recebidos)
-- Repasse NÃO entra em receita própria, mas aumenta saldo do banco
-- Taxa = despesa, vinculada via `parent_transaction_id` à receita original
-- Marcar receita como paga abre drawer: banco, data, teve_taxa? → cria transação `taxa` filha automaticamente
+- Tabela responsiva
 
-## Componentes reutilizáveis
+- Busca
 
-`AppSidebar`, `MobileBottomNav`, `AppHeader`, `PeriodFilter`, `MetricCard`, `StatusBadge`, `DataTable`, `EmptyState`, `NewTransactionDrawer`, `ClientDetailTabs`, `BankCard`, `RevenueExpenseChart` (Recharts), `RankingCard`, `ConfirmDialog`, `MarkAsPaidDrawer`.
+- Filtros
 
-## PWA
+- Ações por linha
 
-- `vite-plugin-pwa` com `registerType: autoUpdate`
-- Manifest: nome "Fyn Sinc", theme `#0D1B2A`, display standalone, ícones 192/512
-- Service worker desabilitado em dev e em hosts de preview Lovable / dentro de iframe
-- NetworkFirst para HTML
-- Instalação real só no app publicado
+Cards de resumo:
 
-## Seed de demonstração
+1. Total ativo no mês
 
-Server fn `seedDemoData()` (chamada de Configurações): 5 clientes, 3 bancos, 1 recorrência, ~20 lançamentos cobrindo todos os tipos, 2 planos de terceiros, 1 cashback previsto. `resetDemoData()` limpa tudo da org.
+2. Número de contratos ativos
 
-## Etapas de implementação
+3. Próximo vencimento
 
-1. Tokens + fontes + `src/styles.css` dark
-2. Migração SQL: tabelas, RLS, `is_org_member`, trigger `handle_new_user`, views
-3. Auth: login/signup, listener no `__root`, rota `_app` protegida
-4. Shell: sidebar desktop, bottom nav mobile, header com PeriodFilter
-5. PWA: vite-plugin-pwa + manifest + ícones + guard
-6. Dashboard: cards, gráficos, rankings
-7. Clientes: lista + detalhe com abas
-8. Financeiro: tabela + NewTransactionDrawer + MarkAsPaidDrawer (taxa automática)
-9. Bancos: cards com saldo calculado
-10. Recorrências: CRUD + próxima ocorrência
-11. Aportes: entrada + uso, saldo por cliente/plataforma
-12. Planos/Ferramentas: CRUD com comissão e cashback
-13. Cashback: lista + marcar como recebido
-14. Configurações: seed/reset
+Tabela responsiva com as colunas:
 
-## Observações importantes
+- Cliente
 
-- Pré-requisito Supabase: "Confirm email" precisa estar desabilitado em dev (vou avisar com link no momento certo), senão o signup não loga direto.
-- PWA tem limitações no preview do Lovable; só funciona de verdade no app publicado.
-- Cartões, Freelancers, Arquivos, Permissões e módulo de Serviços ficam para v2 — o schema já permite encaixar depois sem refactor grande.  
-  
-  
-MELHORIA NO PLANO 
+- Descrição
 
-Gostei do plano geral e quero seguir com ele, mas antes de aprovar faça estes ajustes:
+- Serviço, se existir
 
-1. PWA:
+- Valor
 
-Na V1, implemente apenas o manifest instalável:
+- Frequência
 
-- nome do app: Fyn Sinc;
+- Próximo vencimento
 
-- ícones;
+- Banco padrão
 
-- theme color #0D1B2A;
+- Status
 
-- display standalone;
+- Ações
 
-- mobile-first;
+Filtros:
 
-- experiência parecida com app no celular.
+- Busca por descrição
 
-Não implemente service worker/offline agora, porque o sistema ainda estará em desenvolvimento e não quero problemas de cache ou preview no Lovable. Deixe o PWA completo com service worker para uma etapa futura, depois que a versão estiver publicada e estável.
+- Busca por cliente
 
-2. Serviços:
+- Filtro por status: ativa, pausada, cancelada
 
-Não deixe serviço apenas como campo texto. Crie uma tabela simples services já na V1, com:
+- Filtro por frequência: semanal, quinzenal, mensal, bimestral, trimestral, semestral, anual
 
-- id
+No mobile, a tabela deve virar lista de cards com as principais informações e ações acessíveis.
+
+--------------------------------------------------
+
+1.2 Ações por linha
+
+--------------------------------------------------
+
+Cada recorrência deve ter as ações:
+
+1. Gerar transação
+
+2. Editar
+
+3. Pausar/Ativar
+
+4. Excluir
+
+--------------------------------------------------
+
+1.3 Gerar transação
+
+--------------------------------------------------
+
+Ao clicar em "Gerar transação", criar uma financial_transaction com:
+
+- type = 'receita_propria'
+
+- status = 'pendente'
+
+- due_date = next_due_date da recorrência
+
+- client_id vinculado à recorrência
+
+- service_id quando existir
+
+- bank_id padrão da recorrência, quando existir
+
+- recurring_contract_id vinculado, se esse campo existir no schema
+
+- organization_id da organização atual
+
+- valor_bruto = valor da recorrência
+
+- valor_liquido = valor da recorrência
+
+- descrição baseada na descrição da recorrência
+
+- categoria = 'Recorrência' ou 'Mensalidade'
+
+Depois de gerar a transação, avançar o próximo vencimento conforme a frequência.
+
+Frequências:
+
+- semanal: +7 dias
+
+- quinzenal: +15 dias
+
+- mensal: +1 mês
+
+- bimestral: +2 meses
+
+- trimestral: +3 meses
+
+- semestral: +6 meses
+
+- anual: +1 ano
+
+Importante:
+
+A transação gerada pela recorrência deve aparecer no módulo Financeiro como receita própria pendente.
+
+Depois ela deve poder ser marcada como paga usando o fluxo já existente no Financeiro, incluindo:
+
+- banco de recebimento
+
+- data de pagamento
+
+- taxa, se houver
+
+- criação automática de taxa vinculada
+
+- cálculo de valor líquido
+
+Não criar um fluxo paralelo de pagamento para recorrência. Usar o fluxo já existente do Financeiro.
+
+--------------------------------------------------
+
+1.4 Formulário de recorrência
+
+--------------------------------------------------
+
+Abrir o formulário em Drawer/Sheet.
+
+Campos:
+
+- Cliente: obrigatório, select da tabela clients
+
+- Serviço: opcional, select da tabela services se já existir
+
+- Descrição: obrigatório
+
+- Valor: obrigatório
+
+- Frequência: obrigatório
+
+- Data de início: obrigatório
+
+- Próximo vencimento: obrigatório, default igual à data de início
+
+- Banco padrão: opcional, select da tabela banks
+
+- Observações: opcional
+
+- Status: ativa, pausada ou cancelada
+
+Validação com zod.
+
+Ao salvar:
+
+- inserir ou atualizar recurring_contracts
+
+- incluir organization_id da organização atual
+
+- fechar o Sheet
+
+- invalidar queries relacionadas:
+
+  - ['recorrencias']
+
+  - ['dashboard']
+
+  - ['transactions']
+
+--------------------------------------------------
+
+1.5 Regras importantes das recorrências
+
+--------------------------------------------------
+
+- Recorrência ativa pode gerar transação.
+
+- Recorrência pausada não deve gerar transação.
+
+- Recorrência cancelada não deve gerar transação.
+
+- Não gerar duplicidade para o mesmo cliente, descrição e due_date sem confirmação.
+
+- A geração automática agendada fica fora deste escopo.
+
+- Por enquanto, a geração será manual via botão.
+
+==================================================
+
+2. APORTES E REPASSES
+
+==================================================
+
+Criar a rota:
+
+src/routes/_app/aportes.tsx
+
+A tela pode se chamar visualmente:
+
+"Aportes & Repasses"
+
+Mas internamente NÃO usar os tipos 'aporte' e 'repasse'.
+
+Usar os tipos financeiros oficiais do Fyn Sinc:
+
+1. repasse_recebido
+
+2. uso_repasse
+
+Definição:
+
+repasse_recebido:
+
+Quando o cliente envia dinheiro para mídia, ferramenta ou outro uso operacional.
+
+uso_repasse:
+
+Quando a empresa usa esse dinheiro para pagar Google, Meta, fornecedor, ferramenta ou outro terceiro.
+
+Essa diferença é obrigatória para não misturar dinheiro do cliente com receita própria da empresa.
+
+--------------------------------------------------
+
+2.1 Estrutura técnica
+
+--------------------------------------------------
+
+Não criar tabela dedicada para aportes nesta etapa.
+
+Usar financial_transactions com os tipos:
+
+- repasse_recebido
+
+- uso_repasse
+
+Usar a view:
+
+v_client_wallet
+
+Para calcular saldo por cliente e plataforma.
+
+--------------------------------------------------
+
+2.2 Listagem
+
+--------------------------------------------------
+
+A tela Aportes & Repasses deve ter:
+
+- Header com título "Aportes & Repasses"
+
+- Botão "Novo aporte"
+
+- Botão "Usar aporte" ou "Registrar uso de aporte"
+
+- Cards de resumo
+
+- Tabela de saldos por cliente/plataforma
+
+- Tabela de movimentações recentes
+
+- Filtros
+
+Cards de resumo:
+
+1. Total aportado
+
+2. Total utilizado
+
+3. Saldo disponível
+
+4. Clientes com saldo ativo
+
+Tabela de saldos usando v_client_wallet:
+
+- Cliente
+
+- Plataforma
+
+- Total aportado
+
+- Total utilizado
+
+- Saldo disponível
+
+Tabela de movimentações recentes usando financial_transactions:
+
+- Data
+
+- Cliente
+
+- Tipo
+
+- Descrição
+
+- Plataforma
+
+- Fornecedor, quando existir
+
+- Valor
+
+- Banco
+
+- Status
+
+Filtros:
+
+- Cliente
+
+- Plataforma
+
+- Período
+
+- Tipo: aporte recebido ou uso de aporte
+
+No mobile, as tabelas devem virar cards/listas.
+
+--------------------------------------------------
+
+2.3 Nomenclatura na interface
+
+--------------------------------------------------
+
+Na interface, usar nomes amigáveis:
+
+- "Aporte recebido" para type = 'repasse_recebido'
+
+- "Uso de aporte" para type = 'uso_repasse'
+
+- "Saldo disponível" para saldo restante por cliente/plataforma
+
+Botões:
+
+- "Novo aporte"
+
+- "Usar aporte"
+
+Evitar o botão "Novo repasse", porque pode gerar confusão.
+
+--------------------------------------------------
+
+2.4 Formulário "Novo aporte"
+
+--------------------------------------------------
+
+Abrir em Drawer/Sheet.
+
+Campos:
+
+- Cliente: obrigatório
+
+- Banco de destino: obrigatório
+
+- Plataforma: obrigatório, texto livre ou select simples
+
+  Exemplos:
+
+  - Google Ads
+
+  - Meta Ads
+
+  - TikTok Ads
+
+  - LinkedIn Ads
+
+  - Ferramenta
+
+  - Outro
+
+- Valor: obrigatório
+
+- Data: obrigatório
+
+- Descrição: obrigatório
+
+- Observações: opcional
+
+Ao salvar, inserir em financial_transactions com:
+
+- type = 'repasse_recebido'
+
+- status = 'pago'
+
+- paid_at = data informada
+
+- due_date = data informada
+
+- valor_bruto = valor
+
+- valor_liquido = valor
+
+- client_id obrigatório
+
+- bank_id obrigatório
+
+- platform preenchida
+
+- descricao preenchida
+
+- organization_id da organização atual
+
+Regra financeira:
+
+repasse_recebido aumenta o saldo do banco e aumenta o saldo de repasse do cliente, mas NÃO entra como receita própria da empresa.
+
+--------------------------------------------------
+
+2.5 Formulário "Usar aporte"
+
+--------------------------------------------------
+
+Abrir em Drawer/Sheet.
+
+Campos:
+
+- Cliente: obrigatório
+
+- Plataforma: obrigatório
+
+- Saldo disponível: mostrar em tempo real ao escolher cliente + plataforma
+
+- Banco de origem: obrigatório quando o valor sair de banco
+
+- Fornecedor: opcional
+
+  Exemplos:
+
+  - Google Ads
+
+  - Meta Ads
+
+  - Kommo
+
+  - Hostinger
+
+  - Outro
+
+- Valor: obrigatório
+
+- Data: obrigatório
+
+- Descrição: obrigatório
+
+- Observações: opcional
+
+Ao salvar, inserir em financial_transactions com:
+
+- type = 'uso_repasse'
+
+- status = 'pago'
+
+- paid_at = data informada
+
+- due_date = data informada
+
+- valor_bruto = valor
+
+- valor_liquido = valor
+
+- client_id obrigatório
+
+- bank_id obrigatório quando sair de banco
+
+- platform preenchida
+
+- fornecedor opcional
+
+- descricao preenchida
+
+- organization_id da organização atual
+
+Regra financeira:
+
+uso_repasse reduz o saldo do banco e reduz o saldo de repasse disponível do cliente, mas NÃO entra como despesa própria comum.
+
+--------------------------------------------------
+
+2.6 Validação de saldo
+
+--------------------------------------------------
+
+No formulário "Usar aporte", ao escolher cliente + plataforma, consultar v_client_wallet e mostrar o saldo disponível.
+
+Se o valor informado for maior que o saldo disponível, bloquear o submit na V1.
+
+Mensagem de erro:
+
+"Saldo insuficiente para esta plataforma. Registre um novo aporte antes de usar esse valor."
+
+Não permitir saldo negativo na V1.
+
+Essa regra é obrigatória para manter o controle correto dos valores de cliente.
+
+--------------------------------------------------
+
+2.7 View v_client_wallet
+
+--------------------------------------------------
+
+Garantir que v_client_wallet calcule:
+
+saldo = total de repasse_recebido pago - total de uso_repasse pago
+
+Agrupar por:
 
 - organization_id
 
-- name
+- client_id
 
-- category
+- platform
 
-- type: avulso | recorrente
+A view deve retornar:
 
-- status
+- organization_id
 
-- created_at
+- client_id
 
-- updated_at
+- client_name
 
-Nos lançamentos financeiros e recorrências, permitir selecionar um serviço existente.
+- platform
 
-3. Repasses/Aportes:
+- total_aportado
 
-Garanta que repasse_recebido:
+- total_usado
 
-- aumenta saldo do banco;
+- saldo_disponivel
 
-- aumenta saldo de repasse do cliente;
+Somar apenas transações com status = 'pago'.
 
-- não entra como receita própria.
+--------------------------------------------------
 
-Garanta que uso_repasse:
+2.8 Dashboard
 
-- reduz saldo do banco ou cartão;
+--------------------------------------------------
 
-- reduz saldo de repasse do cliente;
+Garantir que o dashboard respeite estas regras:
 
-- não entra como despesa própria comum.
+- repasse_recebido NÃO entra em receita própria
 
-4. Planos/Ferramentas:
+- uso_repasse NÃO entra em despesa própria
 
-Ao criar um plano/ferramenta de terceiro, o sistema deve refletir corretamente no financeiro:
+- repasse_recebido pode aparecer em cards operacionais como "Repasses recebidos"
 
-- valor recebido do cliente como repasse_recebido;
+- uso_repasse pode aparecer em cards operacionais como "Aportes utilizados"
 
-- valor pago ao fornecedor como uso_repasse;
+- saldo disponível deve aparecer como dinheiro de cliente ainda não utilizado
 
-- comissão como receita própria do tipo comissao;
+==================================================
 
-- cashback como receita própria do tipo cashback quando recebido.
+3. COMPONENTES COMPARTILHADOS
 
-5. Cashback:
+==================================================
 
-Evite duplicidade de cashback entre third_party_plans e financial_transactions. Defina uma fonte oficial para o valor financeiro. O dashboard deve somar cashback apenas uma vez.
+Adicionar ou reaproveitar componentes compartilhados:
 
-6. Cliente:
+- StatusBadge
 
-Mesmo que Arquivos/Storage fique para V2, crie no detalhe do cliente uma aba “Arquivos” com estado vazio, já preparada visualmente para contratos, comprovantes e documentos.
+- EmptyState
 
-7. Segurança:
+- MetricCard
 
-Confirme que todas as tabelas terão RLS ativo e isolamento por organization_id desde a primeira versão.
+- DataTable
 
-Com esses ajustes, pode iniciar a implementação da V1.
+- ConfirmDialog
+
+- Sheet/Drawer de formulário
+
+- PeriodFilter
+
+- formatCurrency
+
+- formatDate
+
+- addPeriod(date, freq)
+
+Criar helper:
+
+addPeriod(date, freq)
+
+Para calcular o próximo vencimento das recorrências.
+
+O helper precisa suportar:
+
+- semanal
+
+- quinzenal
+
+- mensal
+
+- bimestral
+
+- trimestral
+
+- semestral
+
+- anual
+
+==================================================
+
+4. DETALHES TÉCNICOS
+
+==================================================
+
+Usar:
+
+- @tanstack/react-query
+
+- useQuery
+
+- useMutation
+
+- Supabase client
+
+- react-hook-form
+
+- zod
+
+- shadcn/ui sheet
+
+- shadcn/ui table
+
+- shadcn/ui select
+
+- shadcn/ui button
+
+- shadcn/ui input
+
+- shadcn/ui badge
+
+Seguir o mesmo padrão já usado em:
+
+- clientes.tsx
+
+- financeiro.tsx
+
+Sempre incluir organization_id via getCurrentOrgId() nos inserts.
+
+Mutations devem invalidar as queries afetadas:
+
+- ['recorrencias']
+
+- ['aportes']
+
+- ['wallet']
+
+- ['transactions']
+
+- ['dashboard']
+
+- ['clients']
+
+- ['banks']
+
+Não usar serverFn nesta etapa se as telas atuais já estão usando Supabase client direto com RLS.
+
+Manter o padrão atual do projeto.
+
+==================================================
+
+5. SEGURANÇA E RLS
+
+==================================================
+
+Todas as operações precisam respeitar RLS por organization_id.
+
+Nenhuma query deve buscar dados fora da organização atual.
+
+Todos os inserts devem incluir organization_id da organização atual.
+
+Todos os selects de clients, banks, services e financial_transactions devem retornar apenas dados da organização atual.
+
+Não expor dados de outras organizações.
+
+Não criar tabela sem RLS.
+
+==================================================
+
+6. FORA DESTE ESCOPO
+
+==================================================
+
+Não implementar agora:
+
+- Planos/Ferramentas
+
+- Serviços como módulo completo, se ainda não estiver pronto
+
+- Bancos como módulo completo, se ainda não estiver pronto
+
+- Configurações
+
+- Seed de demonstração
+
+- Arquivos/Storage
+
+- Cartões
+
+- Freelancers
+
+- Usuários e papéis
+
+- Geração automática agendada de recorrências
+
+A geração de recorrências nesta etapa será manual via botão.
+
+==================================================
+
+7. RESULTADO ESPERADO
+
+==================================================
+
+Ao final desta etapa, o sistema deve ter:
+
+1. Tela Recorrências funcional
+
+2. Cadastro e edição de recorrências
+
+3. Geração manual de transação financeira a partir da recorrência
+
+4. Avanço automático do próximo vencimento
+
+5. Tela Aportes & Repasses funcional
+
+6. Registro de aporte recebido
+
+7. Registro de uso de aporte
+
+8. Saldo disponível por cliente e plataforma
+
+9. Bloqueio de uso maior que o saldo disponível
+
+10. Dashboard respeitando a separação entre receita própria e dinheiro de cliente
+
+O ponto mais importante:
+
+Não misturar dinheiro do cliente com receita própria da empresa.
+
+No Fyn Sinc:
+
+- Receita própria é dinheiro da empresa.
+
+- Repasse recebido é dinheiro do cliente em custódia.
+
+- Uso de repasse é utilização desse dinheiro.
+
+- Saldo de repasse é o que ainda resta disponível para uso do cliente.
