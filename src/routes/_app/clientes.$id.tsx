@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, AlertTriangle, FileText, Mail, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge, EmptyState } from "@/components/ui-helpers";
+import { StatusBadge, EmptyState, ClientStatusBadge, FinancialStatusBadge } from "@/components/ui-helpers";
 import { formatBRL, formatDate } from "@/lib/fynsinc";
 import { ClientLogo } from "@/components/client-logo";
 import { getBrandColor, hexToRgba } from "@/lib/client-brand";
