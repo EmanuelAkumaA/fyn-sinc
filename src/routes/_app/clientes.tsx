@@ -468,7 +468,8 @@ function ClientForm({
                   email: form.email || null,
                   phone: form.phone || null,
                   company: form.company || null,
-                  status: "ativo",
+                  client_status: form.client_status,
+                  financial_status: form.financial_status,
                   logo_url: form.logo_url || null,
                   brand_color: form.brand_color || null,
                 }}
