@@ -1,10 +1,13 @@
+import type { CSSProperties } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, Mail, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge, EmptyState } from "@/components/ui-helpers";
 import { formatBRL, formatDate } from "@/lib/fynsinc";
+import { ClientLogo } from "@/components/client-logo";
+import { getBrandColor, hexToRgba } from "@/lib/client-brand";
 
 export const Route = createFileRoute("/_app/clientes/$id")({
   component: ClienteDetalhe,
@@ -75,13 +78,37 @@ function ClienteDetalhe() {
       <Link to="/clientes" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3">
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Link>
-      <header className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold">{client.name}</h1>
-          <p className="text-sm text-muted-foreground">{client.type} {client.document && `· ${client.document}`}</p>
-        </div>
-        <StatusBadge status={client.status} />
-      </header>
+      {(() => {
+        const color = getBrandColor(client);
+        const style = {
+          "--client-color": color,
+          "--client-glow": hexToRgba(color, 0.22),
+          "--client-tint": hexToRgba(color, 0.08),
+        } as CSSProperties;
+        return (
+          <header className="client-header p-5 md:p-6 mb-6" style={style}>
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <ClientLogo client={client} size="lg" glow />
+              <div className="flex-1 min-w-0">
+                <h1 className="font-display text-2xl md:text-3xl font-bold truncate">{client.name}</h1>
+                <p className="text-sm text-muted-foreground">
+                  {client.type}{client.document && ` · ${client.document}`}
+                  {client.company && ` · ${client.company}`}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {client.phone && (
+                    <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {client.phone}</span>
+                  )}
+                  {client.email && (
+                    <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {client.email}</span>
+                  )}
+                </div>
+              </div>
+              <div className="shrink-0"><StatusBadge status={client.status} /></div>
+            </div>
+          </header>
+        );
+      })()}
 
       <Tabs defaultValue="overview">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start">

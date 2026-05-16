@@ -60,11 +60,13 @@ export type Database = {
       }
       clients: {
         Row: {
+          brand_color: string | null
           company: string | null
           created_at: string
           document: string | null
           email: string | null
           id: string
+          logo_url: string | null
           name: string
           notes: string | null
           organization_id: string
@@ -74,11 +76,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_color?: string | null
           company?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           notes?: string | null
           organization_id: string
@@ -88,11 +92,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_color?: string | null
           company?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           notes?: string | null
           organization_id?: string
