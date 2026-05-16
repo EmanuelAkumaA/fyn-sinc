@@ -118,7 +118,36 @@ function ClientesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const onlyDigits = (s: string) => s.replace(/\D/g, "");
+  const q = search.trim().toLowerCase();
+  const qDigits = onlyDigits(q);
+  const filtered = clients.filter((c) => {
+    const cStatus = c.client_status ?? (c.status === "inativo" ? "inativo" : "ativo");
+    const fStatus = c.financial_status ?? (c.status === "inadimplente" ? "inadimplente" : "em_dia");
+    if (clientStatusFilter !== "todos" && cStatus !== clientStatusFilter) return false;
+    if (financialStatusFilter !== "todos" && fStatus !== financialStatusFilter) return false;
+    if (!q) return true;
+    const haystack = [c.name, c.company, c.email, c.phone, c.document]
+      .filter(Boolean)
+      .map((v) => String(v).toLowerCase())
+      .join(" ");
+    if (haystack.includes(q)) return true;
+    if (qDigits && [c.phone, c.document].some((v) => v && onlyDigits(v).includes(qDigits))) return true;
+    return false;
+  });
+
+  const summary = clients.reduce(
+    (acc, c) => {
+      const cStatus = c.client_status ?? (c.status === "inativo" ? "inativo" : "ativo");
+      const fStatus = c.financial_status ?? (c.status === "inadimplente" ? "inadimplente" : "em_dia");
+      if (cStatus === "ativo") acc.ativos += 1;
+      else acc.inativos += 1;
+      if (fStatus === "inadimplente") acc.inadimplentes += 1;
+      else acc.emDia += 1;
+      return acc;
+    },
+    { ativos: 0, inativos: 0, inadimplentes: 0, emDia: 0 },
+  );
 
   const handleSubmit = (data: FormState) => {
     const payload: Partial<ClientRow> = {
