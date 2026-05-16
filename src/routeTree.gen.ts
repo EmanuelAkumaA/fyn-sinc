@@ -15,8 +15,10 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppServicosRouteImport } from './routes/_app/servicos'
 import { Route as AppRecorrenciasRouteImport } from './routes/_app/recorrencias'
+import { Route as AppPlanosRouteImport } from './routes/_app/planos'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppBancosRouteImport } from './routes/_app/bancos'
 import { Route as AppAportesRouteImport } from './routes/_app/aportes'
@@ -51,6 +53,11 @@ const AppRecorrenciasRoute = AppRecorrenciasRouteImport.update({
   path: '/recorrencias',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlanosRoute = AppPlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -59,6 +66,11 @@ const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClientesRoute = AppClientesRouteImport.update({
@@ -89,8 +101,10 @@ export interface FileRoutesByFullPath {
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
+  '/configuracoes': typeof AppConfiguracoesRoute
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
+  '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
   '/servicos': typeof AppServicosRoute
   '/clientes/$id': typeof AppClientesIdRoute
@@ -102,8 +116,10 @@ export interface FileRoutesByTo {
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
+  '/configuracoes': typeof AppConfiguracoesRoute
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
+  '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
   '/servicos': typeof AppServicosRoute
   '/clientes/$id': typeof AppClientesIdRoute
@@ -117,8 +133,10 @@ export interface FileRoutesById {
   '/_app/aportes': typeof AppAportesRoute
   '/_app/bancos': typeof AppBancosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
+  '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
+  '/_app/planos': typeof AppPlanosRoute
   '/_app/recorrencias': typeof AppRecorrenciasRoute
   '/_app/servicos': typeof AppServicosRoute
   '/_app/clientes/$id': typeof AppClientesIdRoute
@@ -132,8 +150,10 @@ export interface FileRouteTypes {
     | '/aportes'
     | '/bancos'
     | '/clientes'
+    | '/configuracoes'
     | '/dashboard'
     | '/financeiro'
+    | '/planos'
     | '/recorrencias'
     | '/servicos'
     | '/clientes/$id'
@@ -145,8 +165,10 @@ export interface FileRouteTypes {
     | '/aportes'
     | '/bancos'
     | '/clientes'
+    | '/configuracoes'
     | '/dashboard'
     | '/financeiro'
+    | '/planos'
     | '/recorrencias'
     | '/servicos'
     | '/clientes/$id'
@@ -159,8 +181,10 @@ export interface FileRouteTypes {
     | '/_app/aportes'
     | '/_app/bancos'
     | '/_app/clientes'
+    | '/_app/configuracoes'
     | '/_app/dashboard'
     | '/_app/financeiro'
+    | '/_app/planos'
     | '/_app/recorrencias'
     | '/_app/servicos'
     | '/_app/clientes/$id'
@@ -217,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRecorrenciasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/planos': {
+      id: '/_app/planos'
+      path: '/planos'
+      fullPath: '/planos'
+      preLoaderRoute: typeof AppPlanosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/financeiro': {
       id: '/_app/financeiro'
       path: '/financeiro'
@@ -229,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clientes': {
@@ -278,8 +316,10 @@ interface AppRouteChildren {
   AppAportesRoute: typeof AppAportesRoute
   AppBancosRoute: typeof AppBancosRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppPlanosRoute: typeof AppPlanosRoute
   AppRecorrenciasRoute: typeof AppRecorrenciasRoute
   AppServicosRoute: typeof AppServicosRoute
 }
@@ -288,8 +328,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppAportesRoute: AppAportesRoute,
   AppBancosRoute: AppBancosRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
+  AppPlanosRoute: AppPlanosRoute,
   AppRecorrenciasRoute: AppRecorrenciasRoute,
   AppServicosRoute: AppServicosRoute,
 }
