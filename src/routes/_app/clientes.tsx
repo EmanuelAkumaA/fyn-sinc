@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Search, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,45 +8,116 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { PageHeader, EmptyState, StatusBadge } from "@/components/ui-helpers";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
+import { ClientCard } from "@/components/client-card";
+import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
   head: () => ({ meta: [{ title: "Clientes — Fyn Sinc" }] }),
 });
 
+type ClientRow = {
+  id: string;
+  name: string;
+  type: string;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  notes: string | null;
+  status: string;
+  logo_url: string | null;
+  brand_color: string | null;
+};
+
+type FormState = {
+  name: string;
+  type: string;
+  document: string;
+  email: string;
+  phone: string;
+  company: string;
+  notes: string;
+  logo_url: string;
+  brand_color: string;
+};
+
+const emptyForm: FormState = {
+  name: "",
+  type: "PJ",
+  document: "",
+  email: "",
+  phone: "",
+  company: "",
+  notes: "",
+  logo_url: "",
+  brand_color: "",
+};
+
 function ClientesPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ClientRow | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
       const { data, error } = await supabase.from("clients").select("*").order("name");
       if (error) throw error;
-      return data;
+      return data as unknown as ClientRow[];
     },
   });
 
+  const closeSheet = () => {
+    setOpen(false);
+    setEditing(null);
+  };
+
   const create = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Partial<ClientRow>) => {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Organização não encontrada");
-      const { error } = await supabase.from("clients").insert({ ...payload, organization_id: org });
+      const { error } = await supabase
+        .from("clients")
+        .insert({ ...payload, organization_id: org } as never);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Cliente criado");
       qc.invalidateQueries({ queryKey: ["clients"] });
-      setOpen(false);
+      closeSheet();
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const update = useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<ClientRow> }) => {
+      const { error } = await supabase.from("clients").update(payload as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente atualizado");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      closeSheet();
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSubmit = (data: FormState) => {
+    const payload: Partial<ClientRow> = {
+      ...data,
+      logo_url: data.logo_url.trim() || null,
+      brand_color: data.brand_color.trim() || null,
+    };
+    if (editing) update.mutate({ id: editing.id, payload });
+    else create.mutate(payload);
+  };
 
   return (
     <>
@@ -54,19 +125,29 @@ function ClientesPage() {
         title="Clientes"
         subtitle={`${clients.length} cadastrado(s)`}
         actions={
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button className="gap-2" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
-                <Plus className="h-4 w-4" /> Novo cliente
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md">
-              <SheetHeader><SheetTitle>Novo cliente</SheetTitle></SheetHeader>
-              <ClientForm onSubmit={(d) => create.mutate(d)} loading={create.isPending} />
-            </SheetContent>
-          </Sheet>
+          <Button
+            className="gap-2"
+            style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
+            onClick={() => { setEditing(null); setOpen(true); }}
+          >
+            <Plus className="h-4 w-4" /> Novo cliente
+          </Button>
         }
       />
+
+      <Sheet open={open} onOpenChange={(v) => (v ? setOpen(true) : closeSheet())}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? "Editar cliente" : "Novo cliente"}</SheetTitle>
+          </SheetHeader>
+          <ClientForm
+            initial={editing}
+            onSubmit={handleSubmit}
+            loading={create.isPending || update.isPending}
+            submitLabel={editing ? "Salvar alterações" : "Cadastrar cliente"}
+          />
+        </SheetContent>
+      </Sheet>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -84,24 +165,14 @@ function ClientesPage() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((c) => (
-            <Link
+            <ClientCard
               key={c.id}
-              to="/clientes/$id"
-              params={{ id: c.id }}
-              className="glass rounded-2xl p-4 flex items-center gap-4 hover:border-primary/40 transition"
-            >
-              <div className="h-11 w-11 rounded-xl bg-secondary/60 flex items-center justify-center font-display font-semibold">
-                {c.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{c.name}</div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <span>{c.type}</span>
-                  {c.email && <><span>·</span><span className="truncate">{c.email}</span></>}
-                </div>
-              </div>
-              <StatusBadge status={c.status} />
-            </Link>
+              client={c}
+              onEdit={(client) => {
+                setEditing(client as ClientRow);
+                setOpen(true);
+              }}
+            />
           ))}
         </div>
       )}
@@ -109,14 +180,54 @@ function ClientesPage() {
   );
 }
 
-function ClientForm({ onSubmit, loading }: { onSubmit: (data: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", type: "PJ", document: "", email: "", phone: "", company: "", notes: "" });
+function ClientForm({
+  initial,
+  onSubmit,
+  loading,
+  submitLabel,
+}: {
+  initial: ClientRow | null;
+  onSubmit: (data: FormState) => void;
+  loading: boolean;
+  submitLabel: string;
+}) {
+  const [form, setForm] = useState<FormState>(emptyForm);
+
+  useEffect(() => {
+    if (initial) {
+      setForm({
+        name: initial.name ?? "",
+        type: initial.type ?? "PJ",
+        document: initial.document ?? "",
+        email: initial.email ?? "",
+        phone: initial.phone ?? "",
+        company: initial.company ?? "",
+        notes: initial.notes ?? "",
+        logo_url: initial.logo_url ?? "",
+        brand_color: initial.brand_color ?? "",
+      });
+    } else {
+      setForm(emptyForm);
+    }
+  }, [initial]);
+
+  const colorForPicker = form.brand_color && isValidHex(form.brand_color) ? form.brand_color : DEFAULT_BRAND_COLOR;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (form.brand_color.trim() && !isValidHex(form.brand_color.trim())) {
+      toast.error("Cor da marca inválida. Use o formato HEX (ex.: #14B8A6).");
+      return;
+    }
+    onSubmit(form);
+  };
+
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); onSubmit(form); }}
-      className="space-y-4 mt-6"
-    >
-      <div className="space-y-2"><Label>Nome *</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+    <form onSubmit={handleSubmit} className="space-y-4 mt-6 pb-8">
+      <div className="space-y-2">
+        <Label>Nome *</Label>
+        <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label>Tipo</Label>
@@ -128,13 +239,93 @@ function ClientForm({ onSubmit, loading }: { onSubmit: (data: any) => void; load
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2"><Label>CPF/CNPJ</Label><Input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} /></div>
+        <div className="space-y-2">
+          <Label>CPF/CNPJ</Label>
+          <Input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} />
+        </div>
       </div>
-      <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-      <div className="space-y-2"><Label>Telefone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-      <div className="space-y-2"><Label>Empresa</Label><Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} /></div>
-      <Button type="submit" disabled={loading} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
-        {loading ? "Salvando..." : "Cadastrar cliente"}
+      <div className="space-y-2">
+        <Label>E-mail</Label>
+        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Telefone</Label>
+        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Empresa / Responsável</Label>
+        <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+      </div>
+
+      <div className="pt-2">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+          Identidade visual do cliente
+        </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Logo do cliente</Label>
+            <Input
+              type="url"
+              placeholder="https://exemplo.com/logo.png"
+              value={form.logo_url}
+              onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Use uma imagem quadrada ou horizontal simples para melhor resultado.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cor da marca</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colorForPicker}
+                onChange={(e) => setForm({ ...form, brand_color: e.target.value.toUpperCase() })}
+                className="h-10 w-12 rounded-md border border-input bg-transparent cursor-pointer"
+                aria-label="Seletor de cor"
+              />
+              <Input
+                placeholder="#14B8A6"
+                value={form.brand_color}
+                onChange={(e) => setForm({ ...form, brand_color: e.target.value })}
+                className="flex-1 font-mono"
+              />
+              <div
+                className="h-10 w-10 rounded-md border border-input shrink-0"
+                style={{ background: colorForPicker }}
+                aria-hidden
+              />
+            </div>
+          </div>
+
+          {form.name && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Pré-visualização</Label>
+              <ClientCard
+                client={{
+                  id: "preview",
+                  name: form.name,
+                  email: form.email || null,
+                  phone: form.phone || null,
+                  company: form.company || null,
+                  status: "ativo",
+                  logo_url: form.logo_url || null,
+                  brand_color: form.brand_color || null,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full"
+        style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
+      >
+        {loading ? "Salvando..." : submitLabel}
       </Button>
     </form>
   );
