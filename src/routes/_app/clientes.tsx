@@ -32,6 +32,8 @@ type ClientRow = {
   company: string | null;
   notes: string | null;
   status: string;
+  client_status: string;
+  financial_status: string;
   logo_url: string | null;
   brand_color: string | null;
 };
@@ -44,6 +46,8 @@ type FormState = {
   phone: string;
   company: string;
   notes: string;
+  client_status: string;
+  financial_status: string;
   logo_url: string;
   brand_color: string;
 };
@@ -56,6 +60,8 @@ const emptyForm: FormState = {
   phone: "",
   company: "",
   notes: "",
+  client_status: "ativo",
+  financial_status: "em_dia",
   logo_url: "",
   brand_color: "",
 };
