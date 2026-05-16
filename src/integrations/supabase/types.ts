@@ -61,10 +61,12 @@ export type Database = {
       clients: {
         Row: {
           brand_color: string | null
+          client_status: string
           company: string | null
           created_at: string
           document: string | null
           email: string | null
+          financial_status: string
           id: string
           logo_url: string | null
           name: string
@@ -77,10 +79,12 @@ export type Database = {
         }
         Insert: {
           brand_color?: string | null
+          client_status?: string
           company?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
+          financial_status?: string
           id?: string
           logo_url?: string | null
           name: string
@@ -93,10 +97,12 @@ export type Database = {
         }
         Update: {
           brand_color?: string | null
+          client_status?: string
           company?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
+          financial_status?: string
           id?: string
           logo_url?: string | null
           name?: string
