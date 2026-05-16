@@ -9,12 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TesteRouteImport } from './routes/teste'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
+import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppClientesRouteImport } from './routes/_app/clientes'
+import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
-const TesteRoute = TesteRouteImport.update({
-  id: '/teste',
-  path: '/teste',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -22,40 +37,115 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesIdRoute = AppClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppClientesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/teste': typeof TesteRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/clientes': typeof AppClientesRouteWithChildren
+  '/dashboard': typeof AppDashboardRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/teste': typeof TesteRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/clientes': typeof AppClientesRouteWithChildren
+  '/dashboard': typeof AppDashboardRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/teste': typeof TesteRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/_app/clientes': typeof AppClientesRouteWithChildren
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/financeiro': typeof AppFinanceiroRoute
+  '/_app/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/teste'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/clientes'
+    | '/dashboard'
+    | '/financeiro'
+    | '/clientes/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/teste'
-  id: '__root__' | '/' | '/teste'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/clientes'
+    | '/dashboard'
+    | '/financeiro'
+    | '/clientes/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/signup'
+    | '/_app/clientes'
+    | '/_app/dashboard'
+    | '/_app/financeiro'
+    | '/_app/clientes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  TesteRoute: typeof TesteRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/teste': {
-      id: '/teste'
-      path: '/teste'
-      fullPath: '/teste'
-      preLoaderRoute: typeof TesteRouteImport
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -65,12 +155,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/financeiro': {
+      id: '/_app/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes': {
+      id: '/_app/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes/$id': {
+      id: '/_app/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof AppClientesIdRouteImport
+      parentRoute: typeof AppClientesRoute
+    }
   }
 }
 
+interface AppClientesRouteChildren {
+  AppClientesIdRoute: typeof AppClientesIdRoute
+}
+
+const AppClientesRouteChildren: AppClientesRouteChildren = {
+  AppClientesIdRoute: AppClientesIdRoute,
+}
+
+const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
+  AppClientesRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppClientesRoute: typeof AppClientesRouteWithChildren
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppFinanceiroRoute: typeof AppFinanceiroRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppClientesRoute: AppClientesRouteWithChildren,
+  AppDashboardRoute: AppDashboardRoute,
+  AppFinanceiroRoute: AppFinanceiroRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  TesteRoute: TesteRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
