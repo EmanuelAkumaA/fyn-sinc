@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, type CSSProperties, type MouseEvent } from 
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Pencil, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StatusBadge } from "@/components/ui-helpers";
+import { ClientStatusBadge, FinancialStatusBadge } from "@/components/ui-helpers";
 import { ClientLogo } from "@/components/client-logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,9 @@ type ClientLike = {
   email?: string | null;
   phone?: string | null;
   company?: string | null;
-  status: string;
+  status?: string | null;
+  client_status?: string | null;
+  financial_status?: string | null;
   logo_url?: string | null;
   brand_color?: string | null;
 };
@@ -76,7 +78,10 @@ function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StatusBadge status={client.status} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ClientStatusBadge value={client.client_status ?? client.status} />
+            <FinancialStatusBadge value={client.financial_status} />
+          </div>
           {onEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={stopNav}>

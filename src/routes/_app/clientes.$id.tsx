@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileText, Mail, Phone } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileText, Mail, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge, EmptyState } from "@/components/ui-helpers";
+import { StatusBadge, EmptyState, ClientStatusBadge, FinancialStatusBadge } from "@/components/ui-helpers";
 import { formatBRL, formatDate } from "@/lib/fynsinc";
 import { ClientLogo } from "@/components/client-logo";
 import { getBrandColor, hexToRgba } from "@/lib/client-brand";
@@ -104,11 +104,21 @@ function ClienteDetalhe() {
                   )}
                 </div>
               </div>
-              <div className="shrink-0"><StatusBadge status={client.status} /></div>
+              <div className="shrink-0 flex flex-wrap items-center gap-1.5">
+                <ClientStatusBadge value={client.client_status ?? client.status} />
+                <FinancialStatusBadge value={client.financial_status} />
+              </div>
             </div>
           </header>
         );
       })()}
+
+      {(client.financial_status ?? (client.status === "inadimplente" ? "inadimplente" : "em_dia")) === "inadimplente" && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-[color:var(--destructive)]/30 bg-[color:var(--destructive)]/10 px-4 py-2.5 text-sm text-[color:var(--destructive)]">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Cliente com pendências financeiras.</span>
+        </div>
+      )}
 
       <Tabs defaultValue="overview">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start">

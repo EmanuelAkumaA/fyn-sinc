@@ -47,3 +47,21 @@ export function StatusBadge({ status }: { status: string }) {
   const cls = map[status] ?? "bg-muted text-muted-foreground";
   return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium capitalize", cls)}>{status.replace("_", " ")}</span>;
 }
+
+const BADGE_BASE = "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium";
+
+export function ClientStatusBadge({ value }: { value: string | null | undefined }) {
+  const v = value === "inativo" ? "inativo" : "ativo";
+  const cls = v === "ativo"
+    ? "bg-[color:var(--success)]/15 text-[color:var(--success)]"
+    : "bg-muted text-muted-foreground";
+  return <span className={cn(BADGE_BASE, cls)}>{v === "ativo" ? "Ativo" : "Inativo"}</span>;
+}
+
+export function FinancialStatusBadge({ value }: { value: string | null | undefined }) {
+  const v = value === "inadimplente" ? "inadimplente" : "em_dia";
+  const cls = v === "em_dia"
+    ? "bg-primary/15 text-primary"
+    : "bg-[color:var(--destructive)]/15 text-[color:var(--destructive)]";
+  return <span className={cn(BADGE_BASE, cls)}>{v === "em_dia" ? "Em dia" : "Inadimplente"}</span>;
+}

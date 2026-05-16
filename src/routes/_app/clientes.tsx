@@ -32,6 +32,8 @@ type ClientRow = {
   company: string | null;
   notes: string | null;
   status: string;
+  client_status: string;
+  financial_status: string;
   logo_url: string | null;
   brand_color: string | null;
 };
@@ -44,6 +46,8 @@ type FormState = {
   phone: string;
   company: string;
   notes: string;
+  client_status: string;
+  financial_status: string;
   logo_url: string;
   brand_color: string;
 };
@@ -56,6 +60,8 @@ const emptyForm: FormState = {
   phone: "",
   company: "",
   notes: "",
+  client_status: "ativo",
+  financial_status: "em_dia",
   logo_url: "",
   brand_color: "",
 };
@@ -63,6 +69,8 @@ const emptyForm: FormState = {
 function ClientesPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [clientStatusFilter, setClientStatusFilter] = useState<string>("todos");
+  const [financialStatusFilter, setFinancialStatusFilter] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRow | null>(null);
 
@@ -110,7 +118,36 @@ function ClientesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const onlyDigits = (s: string) => s.replace(/\D/g, "");
+  const q = search.trim().toLowerCase();
+  const qDigits = onlyDigits(q);
+  const filtered = clients.filter((c) => {
+    const cStatus = c.client_status ?? (c.status === "inativo" ? "inativo" : "ativo");
+    const fStatus = c.financial_status ?? (c.status === "inadimplente" ? "inadimplente" : "em_dia");
+    if (clientStatusFilter !== "todos" && cStatus !== clientStatusFilter) return false;
+    if (financialStatusFilter !== "todos" && fStatus !== financialStatusFilter) return false;
+    if (!q) return true;
+    const haystack = [c.name, c.company, c.email, c.phone, c.document]
+      .filter(Boolean)
+      .map((v) => String(v).toLowerCase())
+      .join(" ");
+    if (haystack.includes(q)) return true;
+    if (qDigits && [c.phone, c.document].some((v) => v && onlyDigits(v).includes(qDigits))) return true;
+    return false;
+  });
+
+  const summary = clients.reduce(
+    (acc, c) => {
+      const cStatus = c.client_status ?? (c.status === "inativo" ? "inativo" : "ativo");
+      const fStatus = c.financial_status ?? (c.status === "inadimplente" ? "inadimplente" : "em_dia");
+      if (cStatus === "ativo") acc.ativos += 1;
+      else acc.inativos += 1;
+      if (fStatus === "inadimplente") acc.inadimplentes += 1;
+      else acc.emDia += 1;
+      return acc;
+    },
+    { ativos: 0, inativos: 0, inadimplentes: 0, emDia: 0 },
+  );
 
   const handleSubmit = (data: FormState) => {
     const payload: Partial<ClientRow> = {
@@ -152,9 +189,39 @@ function ClientesPage() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente..." className="pl-9" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <SummaryCard label="Total" value={clients.length} />
+        <SummaryCard label="Ativos" value={summary.ativos} tone="success" />
+        <SummaryCard label="Inativos" value={summary.inativos} />
+        <SummaryCard label="Inadimplentes" value={summary.inadimplentes} tone="destructive" />
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, empresa, e-mail, telefone ou documento..."
+            className="pl-9"
+          />
+        </div>
+        <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
+          <SelectTrigger className="md:w-48"><SelectValue placeholder="Status do cliente" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="ativo">Ativos</SelectItem>
+            <SelectItem value="inativo">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={financialStatusFilter} onValueChange={setFinancialStatusFilter}>
+          <SelectTrigger className="md:w-52"><SelectValue placeholder="Situação financeira" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas as situações</SelectItem>
+            <SelectItem value="em_dia">Em dia</SelectItem>
+            <SelectItem value="inadimplente">Inadimplentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -212,6 +279,8 @@ function ClientForm({
         phone: initial.phone ? maskPhone(initial.phone) : "",
         company: initial.company ?? "",
         notes: initial.notes ?? "",
+        client_status: initial.client_status ?? (initial.status === "inativo" ? "inativo" : "ativo"),
+        financial_status: initial.financial_status ?? (initial.status === "inadimplente" ? "inadimplente" : "em_dia"),
         logo_url: initial.logo_url ?? "",
         brand_color: initial.brand_color ?? "",
       });
@@ -276,6 +345,28 @@ function ClientForm({
             maxLength={form.type === "PF" ? 14 : 18}
             placeholder={form.type === "PF" ? "000.000.000-00" : "00.000.000/0000-00"}
           />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Status do cliente</Label>
+          <Select value={form.client_status} onValueChange={(v) => setForm({ ...form, client_status: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Situação financeira</Label>
+          <Select value={form.financial_status} onValueChange={(v) => setForm({ ...form, financial_status: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="em_dia">Em dia</SelectItem>
+              <SelectItem value="inadimplente">Inadimplente</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="space-y-2">
@@ -377,7 +468,8 @@ function ClientForm({
                   email: form.email || null,
                   phone: form.phone || null,
                   company: form.company || null,
-                  status: "ativo",
+                  client_status: form.client_status,
+                  financial_status: form.financial_status,
                   logo_url: form.logo_url || null,
                   brand_color: form.brand_color || null,
                 }}
@@ -396,5 +488,17 @@ function ClientForm({
         {loading ? "Salvando..." : submitLabel}
       </Button>
     </form>
+  );
+}
+
+function SummaryCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "destructive" }) {
+  const cls =
+    tone === "success" ? "text-[color:var(--success)]" :
+    tone === "destructive" ? "text-[color:var(--destructive)]" : "";
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`font-display text-2xl font-bold mt-1 ${cls}`}>{value}</div>
+    </div>
   );
 }
