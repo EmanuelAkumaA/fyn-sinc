@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent } from "react";
+import { memo, useCallback, useMemo, type CSSProperties, type MouseEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Pencil, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
