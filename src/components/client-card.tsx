@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent } from "react";
+import { memo, useCallback, useMemo, type CSSProperties, type MouseEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Pencil, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,18 +31,20 @@ interface ClientCardProps {
   className?: string;
 }
 
-export function ClientCard({ client, onEdit, className }: ClientCardProps) {
-  const color = getBrandColor(client);
-  const style = {
-    "--client-color": color,
-    "--client-glow": hexToRgba(color, 0.28),
-    "--client-tint": hexToRgba(color, 0.06),
-  } as CSSProperties;
+function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
+  const style = useMemo<CSSProperties>(() => {
+    const color = getBrandColor(client);
+    return {
+      "--client-color": color,
+      "--client-glow": hexToRgba(color, 0.28),
+      "--client-tint": hexToRgba(color, 0.06),
+    } as CSSProperties;
+  }, [client.brand_color, client.logo_url, client.name]);
 
-  const stopNav = (e: MouseEvent) => {
+  const stopNav = useCallback((e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }, []);
 
   return (
     <Link
@@ -99,3 +101,6 @@ export function ClientCard({ client, onEdit, className }: ClientCardProps) {
     </Link>
   );
 }
+
+export const ClientCard = memo(ClientCardImpl);
+
