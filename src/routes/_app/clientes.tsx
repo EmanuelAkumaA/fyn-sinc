@@ -189,9 +189,39 @@ function ClientesPage() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente..." className="pl-9" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <SummaryCard label="Total" value={clients.length} />
+        <SummaryCard label="Ativos" value={summary.ativos} tone="success" />
+        <SummaryCard label="Inativos" value={summary.inativos} />
+        <SummaryCard label="Inadimplentes" value={summary.inadimplentes} tone="destructive" />
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, empresa, e-mail, telefone ou documento..."
+            className="pl-9"
+          />
+        </div>
+        <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
+          <SelectTrigger className="md:w-48"><SelectValue placeholder="Status do cliente" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="ativo">Ativos</SelectItem>
+            <SelectItem value="inativo">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={financialStatusFilter} onValueChange={setFinancialStatusFilter}>
+          <SelectTrigger className="md:w-52"><SelectValue placeholder="Situação financeira" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas as situações</SelectItem>
+            <SelectItem value="em_dia">Em dia</SelectItem>
+            <SelectItem value="inadimplente">Inadimplentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
