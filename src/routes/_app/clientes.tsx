@@ -194,6 +194,12 @@ function ClientForm({
   submitLabel: string;
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [brandColorTouched, setBrandColorTouched] = useState(false);
+
+  useEffect(() => {
+    getCurrentOrgId().then(setOrgId).catch(() => setOrgId(null));
+  }, []);
 
   useEffect(() => {
     if (initial) {
@@ -208,8 +214,10 @@ function ClientForm({
         logo_url: initial.logo_url ?? "",
         brand_color: initial.brand_color ?? "",
       });
+      setBrandColorTouched(Boolean(initial.brand_color));
     } else {
       setForm(emptyForm);
+      setBrandColorTouched(false);
     }
   }, [initial]);
 
