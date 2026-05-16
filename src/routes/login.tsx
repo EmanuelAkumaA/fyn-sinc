@@ -22,7 +22,7 @@ function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await (supabase.auth.signInWithPassword as any)({
       email,
       password,
       options: { remember },
