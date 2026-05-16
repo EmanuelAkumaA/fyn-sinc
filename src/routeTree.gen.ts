@@ -13,10 +13,12 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppServicosRouteImport } from './routes/_app/servicos'
 import { Route as AppRecorrenciasRouteImport } from './routes/_app/recorrencias'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
+import { Route as AppBancosRouteImport } from './routes/_app/bancos'
 import { Route as AppAportesRouteImport } from './routes/_app/aportes'
 import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
@@ -39,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppServicosRoute = AppServicosRouteImport.update({
+  id: '/servicos',
+  path: '/servicos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecorrenciasRoute = AppRecorrenciasRouteImport.update({
   id: '/recorrencias',
   path: '/recorrencias',
@@ -59,6 +66,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBancosRoute = AppBancosRouteImport.update({
+  id: '/bancos',
+  path: '/bancos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAportesRoute = AppAportesRouteImport.update({
   id: '/aportes',
   path: '/aportes',
@@ -75,10 +87,12 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/aportes': typeof AppAportesRoute
+  '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/recorrencias': typeof AppRecorrenciasRoute
+  '/servicos': typeof AppServicosRoute
   '/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRoutesByTo {
@@ -86,10 +100,12 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/aportes': typeof AppAportesRoute
+  '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/recorrencias': typeof AppRecorrenciasRoute
+  '/servicos': typeof AppServicosRoute
   '/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRoutesById {
@@ -99,10 +115,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/aportes': typeof AppAportesRoute
+  '/_app/bancos': typeof AppBancosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/recorrencias': typeof AppRecorrenciasRoute
+  '/_app/servicos': typeof AppServicosRoute
   '/_app/clientes/$id': typeof AppClientesIdRoute
 }
 export interface FileRouteTypes {
@@ -112,10 +130,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/aportes'
+    | '/bancos'
     | '/clientes'
     | '/dashboard'
     | '/financeiro'
     | '/recorrencias'
+    | '/servicos'
     | '/clientes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -123,10 +143,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/aportes'
+    | '/bancos'
     | '/clientes'
     | '/dashboard'
     | '/financeiro'
     | '/recorrencias'
+    | '/servicos'
     | '/clientes/$id'
   id:
     | '__root__'
@@ -135,10 +157,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/aportes'
+    | '/_app/bancos'
     | '/_app/clientes'
     | '/_app/dashboard'
     | '/_app/financeiro'
     | '/_app/recorrencias'
+    | '/_app/servicos'
     | '/_app/clientes/$id'
   fileRoutesById: FileRoutesById
 }
@@ -179,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/servicos': {
+      id: '/_app/servicos'
+      path: '/servicos'
+      fullPath: '/servicos'
+      preLoaderRoute: typeof AppServicosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/recorrencias': {
       id: '/_app/recorrencias'
       path: '/recorrencias'
@@ -205,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/clientes'
       preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/bancos': {
+      id: '/_app/bancos'
+      path: '/bancos'
+      fullPath: '/bancos'
+      preLoaderRoute: typeof AppBancosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/aportes': {
@@ -238,18 +276,22 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAportesRoute: typeof AppAportesRoute
+  AppBancosRoute: typeof AppBancosRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppRecorrenciasRoute: typeof AppRecorrenciasRoute
+  AppServicosRoute: typeof AppServicosRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAportesRoute: AppAportesRoute,
+  AppBancosRoute: AppBancosRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppRecorrenciasRoute: AppRecorrenciasRoute,
+  AppServicosRoute: AppServicosRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -263,3 +305,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
