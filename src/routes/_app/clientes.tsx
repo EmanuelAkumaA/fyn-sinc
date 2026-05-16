@@ -347,6 +347,28 @@ function ClientForm({
           />
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Status do cliente</Label>
+          <Select value={form.client_status} onValueChange={(v) => setForm({ ...form, client_status: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Situação financeira</Label>
+          <Select value={form.financial_status} onValueChange={(v) => setForm({ ...form, financial_status: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="em_dia">Em dia</SelectItem>
+              <SelectItem value="inadimplente">Inadimplente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="space-y-2">
         <Label>E-mail</Label>
         <Input
