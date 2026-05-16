@@ -1,10 +1,9 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Wallet, Repeat, ArrowLeftRight,
   Package, Briefcase, Building2, Settings, LogOut,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "@tanstack/react-router";
+import { signOutAndRedirect } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -24,8 +23,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
 
   async function logout() {
-    await supabase.auth.signOut();
-    navigate({ to: "/login" });
+    await signOutAndRedirect(navigate, { reason: "manual" });
   }
 
   return (

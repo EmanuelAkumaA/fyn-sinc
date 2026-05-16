@@ -1,9 +1,16 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
+import { clearSessionTimer, isSessionExpired } from "@/lib/session";
+import { useSessionTimeout } from "@/hooks/use-session-timeout";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
+    if (isSessionExpired()) {
+      try { await supabase.auth.signOut(); } catch { /* ignore */ }
+      clearSessionTimer();
+      throw redirect({ to: "/login" });
+    }
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/login" });
   },
@@ -11,6 +18,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  useSessionTimeout();
   return (
     <div className="min-h-screen flex bg-background">
       <AppSidebar />
