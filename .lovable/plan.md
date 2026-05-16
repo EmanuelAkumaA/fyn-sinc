@@ -1,60 +1,37 @@
-# Upload de logo + cor automática no cadastro de cliente
+# Corrigir desconexão ao dar refresh
 
-## Objetivo
-No modal "Novo cliente" / "Editar cliente", permitir enviar a logo direto do dispositivo (galeria/arquivos), salvar no Supabase Storage e extrair automaticamente a cor predominante da imagem para preencher o campo "Cor da marca" — mantendo o HEX editável manualmente a qualquer momento.
+## Causa raiz
 
-## Comportamento esperado
+O `beforeLoad` da rota `/_app` (em `src/routes/_app.tsx`) roda tanto no servidor (SSR) quanto no cliente. No servidor:
 
-1. Campo "Logo do cliente" passa a ter duas formas de uso:
-   - Botão **"Enviar imagem"** (abre seletor de arquivos / galeria no mobile, aceita PNG/JPG/WebP/SVG até ~2 MB).
-   - Campo de URL continua disponível (colar link externo) como alternativa.
-2. Ao escolher uma imagem:
-   - Upload imediato para o bucket `client-logos` do Supabase Storage, dentro da pasta `{organization_id}/{client_id_ou_temp}-{timestamp}.{ext}`.
-   - `logo_url` recebe a URL pública retornada.
-   - Pré-visualização da logo aparece acima do campo.
-   - A cor dominante da imagem é extraída no cliente e preenche `brand_color` **apenas se o campo estiver vazio ou não tiver sido editado manualmente** (sem sobrescrever escolha do usuário).
-3. Botão **"Recalcular cor"** ao lado do swatch — reextrai a cor a partir da logo atual (útil se o usuário trocou a imagem ou quer voltar à cor automática).
-4. Campo HEX e color picker continuam funcionando como hoje — edição manual sempre vence.
-5. Botão **"Remover"** limpa logo + reseta brand_color (opcional, só se houver logo).
+- `isSessionExpired()` retorna `false` (não há `localStorage`).
+- `supabase.auth.getSession()` retorna `null`, porque o cliente Supabase do navegador persiste a sessão em `localStorage` — que não existe no SSR.
+- Resultado: o `beforeLoad` lança `redirect({ to: "/login" })` em **todo refresh**, mesmo com o usuário logado.
 
-## Mudanças técnicas
+Esse é exatamente o sintoma relatado: ao dar F5 em qualquer página interna, o app cai no `/login`.
 
-### 1. Supabase Storage (migration)
-- Criar bucket público `client-logos` (`public = true`, limite 2 MB, mime types de imagem).
-- Policies em `storage.objects` para o bucket `client-logos`:
-  - `SELECT`: público (bucket já é público, mas policy explícita para autenticados também).
-  - `INSERT` / `UPDATE` / `DELETE`: apenas para `authenticated` cujo `(storage.foldername(name))[1]` seja uma `organization_id` da qual o usuário é membro (via função `is_org_member` já existente).
+## Correção
 
-### 2. Extração de cor
-- Adicionar dependência `colorthief` (puro JS, roda no navegador).
-- Util `src/lib/extract-brand-color.ts`:
-  - Recebe `File` ou URL, carrega num `<img>` (com `crossOrigin="anonymous"` quando URL), passa pelo ColorThief e devolve HEX em maiúsculas.
-  - Trata falhas (CORS, SVG) retornando `null` silenciosamente.
+Tornar a verificação de sessão **client-only**, mantendo a lógica de expiração de 1 hora e o logout manual já implementados.
 
-### 3. Componente de upload
-- Novo `src/components/client-logo-upload.tsx`:
-  - Props: `value` (url atual), `orgId`, `onChange(url, extractedColor?)`, `onRemove()`.
-  - Usa `<input type="file" accept="image/*" />` escondido + botão estilizado.
-  - Faz upload via `supabase.storage.from("client-logos").upload(...)` + `getPublicUrl`.
-  - Mostra preview, loading state, e botão "Recalcular cor".
+### 1. `src/routes/_app.tsx`
+- No `beforeLoad`, retornar cedo quando `typeof window === "undefined"` (SSR). Não redirecionar a partir do servidor.
+- Manter a checagem de `isSessionExpired()` + `supabase.auth.getSession()` apenas no cliente — comportamento atual fica preservado para navegação client-side.
+- Adicionar um pequeno guard no `AppLayout` (via `useEffect` + `useAuth`) que, após hidratar, redireciona para `/login` se realmente não houver sessão. Isso cobre o caso de o usuário abrir uma rota protegida sem login após a hidratação client.
 
-### 4. Modal de cliente (`src/routes/_app/clientes.tsx`)
-- Substituir o input atual de `logo_url` pelo novo componente, mantendo o input de URL como fallback (accordion "Usar URL externa" ou simples link "Colar URL no lugar").
-- Adicionar flag local `brandColorTouched` para não sobrescrever cor digitada pelo usuário.
-- Ao receber `extractedColor` do upload: se `!brandColorTouched` ou campo vazio → setar `brand_color`.
-- Ao usuário digitar/escolher cor manualmente → marcar `brandColorTouched = true`.
-- Botão "Recalcular cor" reseta `brandColorTouched` e re-extrai.
+### 2. `src/routes/index.tsx`
+- Mesmo problema: `beforeLoad` chama `supabase.auth.getSession()` no SSR, que sempre retorna `null`, mandando todo mundo para `/login`. Aplicar o mesmo early-return no SSR e deixar a decisão para o cliente (ou usar `useEffect` no componente).
 
-### 5. Limpeza opcional
-- Sem deleção automática de arquivos antigos no Storage nesta iteração (evita complexidade). Documentar para futuro.
+### 3. Sem mudanças em
+- `src/lib/session.ts` (timer de 1h continua funcionando).
+- `src/hooks/use-session-timeout.ts` (aviso de 5 min continua funcionando).
+- `src/routes/login.tsx` (login continua chamando `startSessionTimer`).
 
 ## Fora de escopo
-- Crop/edição da imagem.
-- Limpeza retroativa de logos órfãs.
-- Mudanças no schema da tabela `clients` (campos `logo_url` e `brand_color` já existem).
-- Aplicar mesma extração em contratos/transações.
+- Não trocar o storage de auth para cookies (manteria SSR, mas é mudança maior e o app é client-rendered de qualquer forma).
+- Não alterar o fluxo de logout/expiração — eles continuam idênticos.
 
-## Arquivos afetados
-- **Novo**: `src/lib/extract-brand-color.ts`, `src/components/client-logo-upload.tsx`, migration do bucket + policies.
-- **Editado**: `src/routes/_app/clientes.tsx`.
-- **Dependência**: `bun add colorthief`.
+## Resultado esperado
+- F5 em `/dashboard`, `/clientes`, etc. mantém o usuário logado.
+- Sessão ainda expira automaticamente após 1 hora com aviso aos 5 min restantes.
+- Logout manual e expiração continuam redirecionando para `/login`.
