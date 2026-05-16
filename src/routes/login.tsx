@@ -53,6 +53,10 @@ function LoginPage() {
             <Label htmlFor="password">Senha</Label>
             <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
+            <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">Lembrar conexão</Label>
+          </div>
           <Button type="submit" disabled={loading} className="w-full h-11 text-base font-medium" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>
