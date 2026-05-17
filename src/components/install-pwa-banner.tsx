@@ -45,11 +45,24 @@ function recentlyDismissed(): boolean {
   }
 }
 
-export function useInstallPwa() {
+type InstallPwaContextValue = {
+  canInstall: boolean;
+  isIOS: boolean;
+  promptInstall: () => Promise<void>;
+  showInstructions: boolean;
+  setShowInstructions: (v: boolean) => void;
+  dismissed: boolean;
+  dismiss: () => void;
+};
+
+const InstallPwaContext = createContext<InstallPwaContextValue | null>(null);
+
+export function InstallPwaProvider({ children }: { children: ReactNode }) {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -61,6 +74,7 @@ export function useInstallPwa() {
       setInstalled(true);
       return;
     }
+    setDismissed(recentlyDismissed());
 
     const onBIP = (e: Event) => {
       e.preventDefault();
@@ -83,7 +97,7 @@ export function useInstallPwa() {
     };
   }, []);
 
-  const promptInstall = async () => {
+  const promptInstall = useCallback(async () => {
     if (deferred) {
       try {
         await deferred.prompt();
@@ -97,11 +111,37 @@ export function useInstallPwa() {
       return;
     }
     if (isIOS) setShowInstructions(true);
-  };
+  }, [deferred, isIOS]);
+
+  const dismiss = useCallback(() => {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
+    setDismissed(true);
+  }, []);
 
   const canInstall = !installed && (deferred !== null || isIOS);
 
-  return { canInstall, isIOS, promptInstall, showInstructions, setShowInstructions };
+  const value = useMemo<InstallPwaContextValue>(() => ({
+    canInstall, isIOS, promptInstall, showInstructions, setShowInstructions, dismissed, dismiss,
+  }), [canInstall, isIOS, promptInstall, showInstructions, dismissed, dismiss]);
+
+  return <InstallPwaContext.Provider value={value}>{children}</InstallPwaContext.Provider>;
+}
+
+export function useInstallPwa(): InstallPwaContextValue {
+  const ctx = useContext(InstallPwaContext);
+  if (!ctx) {
+    // Safe no-op fallback if provider is missing (e.g. SSR / isolated tests)
+    return {
+      canInstall: false,
+      isIOS: false,
+      promptInstall: async () => { /* noop */ },
+      showInstructions: false,
+      setShowInstructions: () => { /* noop */ },
+      dismissed: true,
+      dismiss: () => { /* noop */ },
+    };
+  }
+  return ctx;
 }
 
 export function InstallPwaBanner() {
