@@ -194,6 +194,7 @@ function ClientesPage() {
             <ClientCard
               key={c.id}
               client={c}
+              onOpen={(client) => setViewingId(client.id)}
               onEdit={(client) => {
                 setEditing(client as ClientRow);
                 setOpen(true);
@@ -202,6 +203,12 @@ function ClientesPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!viewingId} onOpenChange={(v) => !v && setViewingId(null)}>
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-6">
+          {viewingId && <ClientDossier clientId={viewingId} />}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
