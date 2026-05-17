@@ -305,34 +305,27 @@ function ClienteDetalhe({ id }: { id: string }) {
         </div>
       )}
 
-      <MetricsGrid summary={summary} />
+      <MainMetrics summary={summary} />
+      <ClientSummaryBlock summary={summary} tx={tx} recurring={recurring} financialStatus={client.financial_status ?? client.status} />
 
       <Tabs defaultValue="overview" className="mt-6">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
           <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
           <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
-          <TabsTrigger value="mensalidades" className="whitespace-nowrap">Mensalidades</TabsTrigger>
-          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes/Repasses</TabsTrigger>
-          <TabsTrigger value="planos" className="whitespace-nowrap">Planos/Ferramentas</TabsTrigger>
+          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes</TabsTrigger>
           <TabsTrigger value="arquivos" className="whitespace-nowrap">Arquivos</TabsTrigger>
           <TabsTrigger value="timeline" className="whitespace-nowrap">Timeline</TabsTrigger>
           <TabsTrigger value="observacoes" className="whitespace-nowrap">Observações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab summary={summary} tx={tx} recurring={recurring} inadimplente={inadimplente} />
+          <OverviewTab tx={tx} recurring={recurring} inadimplente={inadimplente} />
         </TabsContent>
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
         </TabsContent>
-        <TabsContent value="mensalidades">
-          <MensalidadesTab recurring={recurring} clientId={id} />
-        </TabsContent>
         <TabsContent value="aportes">
           <AportesTab tx={tx} summary={summary} />
-        </TabsContent>
-        <TabsContent value="planos">
-          <PlanosTab plans={plans} />
         </TabsContent>
         <TabsContent value="arquivos">
           <ArquivosTab clientId={id} orgId={(client as ClientRow & { organization_id?: string }).organization_id ?? null} docs={docs} tx={tx} />
