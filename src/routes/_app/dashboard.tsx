@@ -128,15 +128,25 @@ function DashboardPage() {
             <MetricCard label="Saldo em bancos" value={formatBRL(saldoBancos)} icon={Banknote} />
           </section>
 
-          <h2 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3 mt-6">Operacional</h2>
-          <section className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6">
-            <MetricCard label="Repasses recebidos" value={formatBRL(repassesRecebidos)} icon={ArrowDownLeft} />
-            <MetricCard label="Saldo de repasse" value={formatBRL(saldoRepasse)} hint="disponível dos clientes" tone="primary" icon={Wallet} />
-            <MetricCard label="Aportes utilizados" value={formatBRL(usoRepasse)} icon={ArrowUpRight} />
-            <MetricCard label="Comissões" value={formatBRL(comissoes)} tone="success" icon={Award} />
-            <MetricCard label="Cashbacks" value={formatBRL(cashbacks)} tone="success" icon={Percent} />
-            <MetricCard label="Taxas pagas" value={formatBRL(taxas)} tone="destructive" icon={TrendingDown} />
-          </section>
+          <button
+            type="button"
+            onClick={() => setOpenOp((v) => !v)}
+            aria-expanded={openOp}
+            className="flex items-center gap-2 font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors mb-3 mt-6"
+          >
+            Operacional
+            <ChevronDown className={`w-4 h-4 transition-transform ${openOp ? "rotate-180" : ""}`} />
+          </button>
+          {openOp && (
+            <section className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 animate-in fade-in slide-in-from-top-1 duration-200">
+              <MetricCard label="Repasses recebidos" value={formatBRL(repassesRecebidos)} icon={ArrowDownLeft} />
+              <MetricCard label="Saldo de repasse" value={formatBRL(saldoRepasse)} hint="disponível dos clientes" tone="primary" icon={Wallet} />
+              <MetricCard label="Aportes utilizados" value={formatBRL(usoRepasse)} icon={ArrowUpRight} />
+              <MetricCard label="Comissões" value={formatBRL(comissoes)} tone="success" icon={Award} />
+              <MetricCard label="Cashbacks" value={formatBRL(cashbacks)} tone="success" icon={Percent} />
+              <MetricCard label="Taxas pagas" value={formatBRL(taxas)} tone="destructive" icon={TrendingDown} />
+            </section>
+          )}
 
           <section className="grid lg:grid-cols-2 gap-4 mb-6">
             <div className="glass rounded-2xl p-5">
