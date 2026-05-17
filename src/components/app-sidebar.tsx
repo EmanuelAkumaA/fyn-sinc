@@ -29,31 +29,33 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0">
-      <div className="px-5 pt-5 pb-1 flex items-center">
-        <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
-      </div>
+      <div className="flex-1 flex flex-col justify-center min-h-0">
+        <div className="px-5 pt-5 pb-1 flex items-center justify-center">
+          <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
+        </div>
 
-      <nav className="flex-1 px-3 pt-0 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ to, label, icon: Icon }) => {
-          const active = path === to || path.startsWith(to + "/");
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition",
-                active
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-              )}
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {label}
-              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
-            </Link>
-          );
-        })}
-      </nav>
+        <nav className="px-3 pt-0 space-y-0.5 overflow-y-auto">
+          {NAV.map(({ to, label, icon: Icon }) => {
+            const active = path === to || path.startsWith(to + "/");
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition",
+                  active
+                    ? "bg-sidebar-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                {label}
+                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
       <button
         onClick={logout}
