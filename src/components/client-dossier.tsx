@@ -308,15 +308,15 @@ function ClienteDetalhe({ id }: { id: string }) {
       <MetricsGrid summary={summary} />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start">
-          <TabsTrigger value="overview">Visão geral</TabsTrigger>
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          <TabsTrigger value="mensalidades">Mensalidades</TabsTrigger>
-          <TabsTrigger value="aportes">Aportes/Repasses</TabsTrigger>
-          <TabsTrigger value="planos">Planos/Ferramentas</TabsTrigger>
-          <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="observacoes">Observações</TabsTrigger>
+        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
+          <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
+          <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
+          <TabsTrigger value="mensalidades" className="whitespace-nowrap">Mensalidades</TabsTrigger>
+          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes/Repasses</TabsTrigger>
+          <TabsTrigger value="planos" className="whitespace-nowrap">Planos/Ferramentas</TabsTrigger>
+          <TabsTrigger value="arquivos" className="whitespace-nowrap">Arquivos</TabsTrigger>
+          <TabsTrigger value="timeline" className="whitespace-nowrap">Timeline</TabsTrigger>
+          <TabsTrigger value="observacoes" className="whitespace-nowrap">Observações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -352,31 +352,56 @@ function ClienteDetalhe({ id }: { id: string }) {
 
 function MetricsGrid({ summary }: { summary: Summary | null | undefined }) {
   const s = summary ?? ({} as Partial<Summary>);
-  const cards: { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> }[] = [
+  const [showAll, setShowAll] = useState(false);
+
+  type Card = { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }>; secondary?: { label: string; value: number } };
+
+  const row1: Card[] = [
     { label: "Total recebido", value: s.total_received ?? 0, tone: "success", icon: TrendingUp },
     { label: "A receber", value: s.total_receivable ?? 0, icon: CalendarClock },
     { label: "Em atraso", value: s.total_overdue ?? 0, tone: "destructive", icon: AlertTriangle },
+    { label: "Lucro líquido", value: s.client_net_profit ?? 0, tone: (s.client_net_profit ?? 0) >= 0 ? "success" : "destructive", icon: Banknote },
+  ];
+  const row2: Card[] = [
     { label: "Mensalidade ativa", value: s.active_recurring_amount ?? 0, tone: "primary", icon: Repeat },
     { label: "Recorrência prevista no mês", value: s.expected_recurring_month ?? 0, icon: CalendarClock },
     { label: "Avulsos pendentes", value: s.pending_one_time_amount ?? 0, icon: Clock },
+    { label: "Taxas pagas", value: s.total_fees ?? 0, tone: "destructive", icon: Receipt },
+  ];
+  const row3: Card[] = [
+    { label: "Saldo de repasse", value: s.repasse_balance ?? 0, tone: "primary", icon: Wallet },
     { label: "Repasses recebidos", value: s.total_repasse_received ?? 0, icon: ArrowDownCircle },
     { label: "Repasses utilizados", value: s.total_repasse_used ?? 0, icon: ArrowUpCircle },
-    { label: "Saldo de repasse", value: s.repasse_balance ?? 0, tone: "primary", icon: Wallet },
-    { label: "Comissões geradas", value: s.total_commissions ?? 0, tone: "success", icon: Gift },
-    { label: "Cashbacks gerados", value: s.total_cashbacks ?? 0, tone: "success", icon: Gift },
-    { label: "Taxas pagas", value: s.total_fees ?? 0, tone: "destructive", icon: Receipt },
-    { label: "Lucro líquido", value: s.client_net_profit ?? 0, tone: (s.client_net_profit ?? 0) >= 0 ? "success" : "destructive", icon: Banknote },
+    { label: "Comissões / Cashbacks", value: s.total_commissions ?? 0, tone: "success", icon: Gift, secondary: { label: "Cashbacks", value: s.total_cashbacks ?? 0 } },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-      {cards.map((c) => <MetricMini key={c.label} {...c} />)}
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {row1.map((c) => <MetricMini key={c.label} {...c} />)}
+      </div>
+      <div className={cn("space-y-3", !showAll && "hidden md:block")}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {row2.map((c) => <MetricMini key={c.label} {...c} />)}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {row3.map((c) => <MetricMini key={c.label} {...c} />)}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowAll((v) => !v)}
+        className="md:hidden w-full text-xs font-medium text-muted-foreground hover:text-foreground py-2"
+      >
+        {showAll ? "Ocultar métricas extras" : "Ver todas as métricas"}
+      </button>
     </div>
   );
 }
 
 type Tone = "success" | "destructive" | "primary";
 
-function MetricMini({ label, value, tone, icon: Icon }: { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> }) {
+function MetricMini({ label, value, tone, icon: Icon, secondary }: { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }>; secondary?: { label: string; value: number } }) {
   const toneCls =
     tone === "success" ? "text-[color:var(--success)]" :
     tone === "destructive" ? "text-[color:var(--destructive)]" :
@@ -392,9 +417,15 @@ function MetricMini({ label, value, tone, icon: Icon }: { label: string; value: 
       <div className={cn("font-display text-xl md:text-2xl font-bold mt-1.5 tracking-tight", toneCls)}>
         {formatBRL(value)}
       </div>
+      {secondary && (
+        <div className="mt-1 text-[11px] text-muted-foreground">
+          {secondary.label}: <span className="font-semibold text-foreground">{formatBRL(secondary.value)}</span>
+        </div>
+      )}
     </div>
   );
 }
+
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
