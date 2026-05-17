@@ -566,13 +566,13 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus, range, pe
   ];
 
   return (
-    <div className="glass rounded-2xl p-4 md:p-5 mt-3">
+    <div className="glass rounded-2xl p-3 md:p-5 mt-3">
       <h3 className="font-display font-semibold mb-3">Resumo do cliente</h3>
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 md:gap-y-2 text-sm">
         {items.map((it) => (
-          <li key={it.label} className="flex items-center justify-between gap-3 py-1 border-b border-border/30 last:border-0 md:[&:nth-last-child(2)]:border-0">
+          <li key={it.label} className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5 md:gap-3 py-1.5 border-b border-border/30 last:border-0 md:[&:nth-last-child(2)]:border-0">
             <span className="text-muted-foreground text-xs uppercase tracking-wider">{it.label}</span>
-            <span className="font-medium text-right min-w-0 truncate">{it.value}</span>
+            <span className="font-medium text-left md:text-right break-words min-w-0">{it.value}</span>
           </li>
         ))}
       </ul>
