@@ -127,7 +127,7 @@ function RequestAccessDialog({
 function Logo({ className }: { className?: string }) {
   return (
     <Link to="/" className={cn("flex items-center", className)} aria-label="Fyn Sinc">
-      <img src={logoFull} alt="Fyn Sinc" className="h-9 w-auto sm:h-10" />
+      <img src={logoFull} alt="Fyn Sinc" className="h-11 w-auto sm:h-12" />
     </Link>
   );
 }
