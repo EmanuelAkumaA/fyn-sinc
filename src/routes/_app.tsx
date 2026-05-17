@@ -1,16 +1,29 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
 import { clearSessionTimer, isSessionExpired } from "@/lib/session";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
+import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
+import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
+
+function isOrgBlocked(org: MyOrg): boolean {
+  if (["expired", "suspended", "canceled"].includes(org.status)) return true;
+  if (org.status === "trial" && org.trial_ends_at) {
+    return new Date(org.trial_ends_at).getTime() < Date.now();
+  }
+  return false;
+}
+
 function AppLayout() {
   useSessionTimeout();
   const navigate = useNavigate();
+  const fetchOrgs = useServerFn(listMyOrganizations);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -29,6 +42,21 @@ function AppLayout() {
         navigate({ to: "/login" });
         return;
       }
+
+      // Trial / status gating
+      try {
+        const res = await fetchOrgs();
+        if (!active) return;
+        if (!res.isSuperAdmin) {
+          const currentId = getCurrentOrgIdLocal();
+          const current = res.orgs.find((o) => o.id === currentId) ?? res.orgs[0];
+          if (current && isOrgBlocked(current)) {
+            navigate({ to: "/trial-expired" });
+            return;
+          }
+        }
+      } catch { /* ignore – allow app to render */ }
+
       setReady(true);
     };
 
@@ -51,7 +79,7 @@ function AppLayout() {
       active = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, fetchOrgs]);
 
   if (!ready) return null;
 

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrialExpiredRouteImport } from './routes/trial-expired'
 import { Route as TrialRouteImport } from './routes/trial'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SelectOrgRouteImport } from './routes/select-org'
@@ -32,6 +33,11 @@ import { Route as AppAportesRouteImport } from './routes/_app/aportes'
 import { Route as AdminOrganizationsIdRouteImport } from './routes/admin.organizations.$id'
 import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
+const TrialExpiredRoute = TrialExpiredRouteImport.update({
+  id: '/trial-expired',
+  path: '/trial-expired',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrialRoute = TrialRouteImport.update({
   id: '/trial',
   path: '/trial',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
   '/trial': typeof TrialRoute
+  '/trial-expired': typeof TrialExpiredRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
   '/trial': typeof TrialRoute
+  '/trial-expired': typeof TrialExpiredRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
   '/trial': typeof TrialRoute
+  '/trial-expired': typeof TrialExpiredRoute
   '/_app/aportes': typeof AppAportesRoute
   '/_app/bancos': typeof AppBancosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/signup'
     | '/trial'
+    | '/trial-expired'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/signup'
     | '/trial'
+    | '/trial-expired'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/signup'
     | '/trial'
+    | '/trial-expired'
     | '/_app/aportes'
     | '/_app/bancos'
     | '/_app/clientes'
@@ -292,10 +304,18 @@ export interface RootRouteChildren {
   SelectOrgRoute: typeof SelectOrgRoute
   SignupRoute: typeof SignupRoute
   TrialRoute: typeof TrialRoute
+  TrialExpiredRoute: typeof TrialExpiredRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trial-expired': {
+      id: '/trial-expired'
+      path: '/trial-expired'
+      fullPath: '/trial-expired'
+      preLoaderRoute: typeof TrialExpiredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trial': {
       id: '/trial'
       path: '/trial'
@@ -526,6 +546,7 @@ const rootRouteChildren: RootRouteChildren = {
   SelectOrgRoute: SelectOrgRoute,
   SignupRoute: SignupRoute,
   TrialRoute: TrialRoute,
+  TrialExpiredRoute: TrialExpiredRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
