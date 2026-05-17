@@ -310,8 +310,15 @@ function ClienteDetalhe({ id }: { id: string }) {
         </div>
       )}
 
-      <MainMetrics summary={summary} />
-      <ClientSummaryBlock summary={summary} tx={tx} recurring={recurring} financialStatus={client.financial_status ?? client.status} />
+      <MainMetrics totals={periodTotals} repasseBalance={summary?.repasse_balance ?? 0} />
+      <ClientSummaryBlock
+        summary={summary}
+        tx={tx}
+        recurring={recurring}
+        financialStatus={client.financial_status ?? client.status}
+        range={range}
+        period={period}
+      />
 
       <Tabs defaultValue="overview" className="mt-6">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
