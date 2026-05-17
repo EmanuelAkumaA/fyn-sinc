@@ -321,7 +321,7 @@ function ClienteDetalhe({ id }: { id: string }) {
       />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <div className="w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] mb-4 -mx-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none]">
+        <ScrollableTabsBar>
           <TabsList className="inline-flex w-max min-w-full bg-secondary/40 h-auto p-1 gap-0.5">
             <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap min-h-9 px-3">Visão geral</TabsTrigger>
             <TabsTrigger value="financeiro" className="shrink-0 whitespace-nowrap min-h-9 px-3">Financeiro</TabsTrigger>
@@ -330,7 +330,7 @@ function ClienteDetalhe({ id }: { id: string }) {
             <TabsTrigger value="timeline" className="shrink-0 whitespace-nowrap min-h-9 px-3">Timeline</TabsTrigger>
             <TabsTrigger value="observacoes" className="shrink-0 whitespace-nowrap min-h-9 px-3">Observações</TabsTrigger>
           </TabsList>
-        </div>
+        </ScrollableTabsBar>
 
         <TabsContent value="overview">
           <OverviewTab
