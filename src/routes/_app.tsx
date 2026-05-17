@@ -8,11 +8,6 @@ import { useSessionTimeout } from "@/hooks/use-session-timeout";
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
-
-export const Route = createFileRoute("/_app")({
-  component: AppLayout,
-});
-
 function AppLayout() {
   useSessionTimeout();
   const navigate = useNavigate();
