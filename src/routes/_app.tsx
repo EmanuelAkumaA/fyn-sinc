@@ -79,7 +79,7 @@ function AppLayout() {
       active = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, fetchOrgs]);
 
   if (!ready) return null;
 
