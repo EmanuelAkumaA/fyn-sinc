@@ -658,7 +658,7 @@ function AccessSection() {
             </p>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <Button asChild>
-                <Link to="/login">Entrar no App <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                <a href="/login">Entrar no App <ArrowRight className="ml-1.5 h-4 w-4" /></a>
               </Button>
               <RequestAccessDialog
                 trigger={<Button variant="outline">Solicitar acesso</Button>}

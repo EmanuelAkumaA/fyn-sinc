@@ -1,49 +1,62 @@
-# Bloqueio backend de orgs vencidas + acesso direto ao Admin
+# Corrigir o roteamento "Acessar App" vs "Acessar Admin"
 
-## Contexto
+## O que está acontecendo hoje
 
-Hoje as ações financeiras (clients, banks, services, recurring_contracts, third_party_plans, financial_transactions, client_documents) acontecem direto do navegador via `supabase-js` com RLS. A guarda de trial vencido vive só no frontend (`_app.tsx` → `/trial-expired`), o que o usuário consegue burlar limpando localStorage ou batendo na API. Precisamos da validação **no backend** — e em Supabase isso significa **RLS no banco**, que é o único ponto que o cliente não contorna.
+```
+"Entrar no App"   → <Link to="/login">                       → /login    → /dashboard
+"Acessar Admin"   → <a   href="/login?next=/admin">          → /login?next=/admin → /admin (beforeLoad)
+                                                                                  → super_admin? render
+                                                                                  → senão: redirect /dashboard (silencioso)
+```
 
-Também precisa ligar o botão "Acessar Admin" da landing ao fluxo de login do admin.
+Três falhas reais no fluxo:
 
-## 1. Backend: bloqueio por status da organização
+1. **Botão `/admin` cai no app financeiro** quando o usuário logado **não é `super_admin`** — o `beforeLoad` do `/admin` redireciona para `/dashboard` sem aviso, então parece que o botão "Acessar Admin" leva ao app.
+2. **Sessão já ativa**: se o usuário já está logado e clica em "Acessar Admin", ele cai em `/login`, vê o form, e ao logar de novo o `next` é respeitado. Mas se ele simplesmente recarregar o navegador estando logado, o `/login` não auto-redireciona; o ideal é honrar `next` automaticamente.
+3. **Sessão expirada dentro do admin**: o `beforeLoad` do `/admin` faz `redirect({ to: "/login" })` **sem preservar `next=/admin`**, então depois de relogar o usuário cai em `/dashboard`.
 
-### 1a. Função `is_org_active(_org_id uuid)`
+## Plano
 
-`SECURITY DEFINER`, `STABLE`, retorna `true` quando a org pode operar:
+### 1. `/login` — auto-redirect quando já autenticado
 
-- `status = 'active'` → true
-- `status IN ('suspended','canceled','expired')` → false
-- `status = 'trial'` → true se `trial_ends_at IS NULL OR trial_ends_at > now()`, caso contrário false
-- super_admin (`is_super_admin(auth.uid())`) sempre true (bypass para Kuma Tech operar suporte)
+No `useEffect` do `LoginPage`, ao montar:
+- chamar `supabase.auth.getSession()`
+- se existir sessão, ler `next` (já temos `readNextParam()`) e fazer `window.location.assign(next ?? "/dashboard")`
 
-### 1b. Endurecer RLS de escrita
+Assim, clicar em "Acessar Admin" estando logado vai direto pro destino, sem passar pelo form.
 
-Para cada tabela financeira/operacional listada acima, recriar as policies de **INSERT/UPDATE/DELETE** somando a checagem `is_org_active(organization_id)` ao `is_org_member(...)` atual. SELECT continua liberado (usuário precisa ver dados históricos na tela `/trial-expired` e em consulta).
+### 2. `/admin` — preservar `next` no redirect de login
 
-Tabelas afetadas: `clients`, `banks`, `services`, `recurring_contracts`, `third_party_plans`, `financial_transactions`, `client_documents`.
+Trocar:
+```ts
+if (!data.session) throw redirect({ to: "/login" });
+```
+por uma redirect que preserve `next=/admin`. Como já uso querystring crua (sem `validateSearch` no login para evitar romper outros `<Link to="/login">`), faço a navegação por URL completa:
+```ts
+if (!data.session) {
+  window.location.assign("/login?next=/admin");
+  throw redirect({ to: "/login" }); // fallback de tipo
+}
+```
 
-A policy `super_admin all <table>` permanece inalterada.
+### 3. `/admin` — avisar quando o usuário não é super_admin
 
-### 1c. Server functions de trial/admin
+Em vez de redirecionar silenciosamente para `/dashboard`, sinalizar via `sessionStorage` (`fynsinc:flash`) com mensagem "Acesso restrito ao super admin", e o `_app.tsx` lê esse flag uma vez e chama `toast.error` ao montar o dashboard. Isso elimina a confusão de "cliquei em Admin e fui pro App".
 
-`requestTrial` e funções admin já são server-side com middleware próprio — nenhuma mudança ali. O bloqueio no banco fecha a porta também para qualquer server function futura que faça insert/update mascarado como o usuário.
+### 4. Landing — uniformizar os dois botões
 
-### Mensagem ao usuário
+- "Entrar no App" → `<a href="/login">` (sem `next`, default `/dashboard`)
+- "Acessar Admin" → continua `<a href="/login?next=/admin">`
 
-Quando o RLS bloqueia, o supabase-js devolve erro `new row violates row-level security policy`. O frontend continua redirecionando para `/trial-expired` antes disso, então o usuário comum só vê o erro se tentar burlar — comportamento desejado.
-
-## 2. Landing: botão "Acessar Admin"
-
-Em `src/components/landing/LandingPage.tsx` (linha 678) o link já aponta para `/admin`. O fluxo da rota `/admin` (`beforeLoad`) já:
-
-1. Sem sessão → redireciona para `/login`
-2. Com sessão mas sem `super_admin` → redireciona para `/dashboard`
-
-Ou seja, o link funcional já existe. Para ficar explícito como pediu ("manda pra área de login do painel admin"), trocar o `href="/admin"` por um `<Link to="/login">` com um indicador de destino (`search: { next: "/admin" }`), e no `login.tsx` após autenticação respeitar `Route.useSearch().next` antes do fallback `/dashboard`. Assim quem clica em "Acessar Admin" cai no login e, após logar, vai direto pro `/admin` (que então faz a checagem de super_admin).
+Manter `<a>` cru nos dois para evitar o problema de `Link` exigir `search` quando alguma rota declara `validateSearch`.
 
 ## Arquivos alterados
 
-- **Migration nova** — função `is_org_active` + recriação das policies de write das 7 tabelas
-- `src/components/landing/LandingPage.tsx` — botão "Acessar Admin" vira `<Link to="/login" search={{ next: "/admin" }}>`
-- `src/routes/login.tsx` — ler `next` do search, validar (`startsWith("/")`), e usar como destino após login
+- `src/routes/login.tsx` — auto-redirect quando já há sessão, respeitando `next`.
+- `src/routes/admin.tsx` — `beforeLoad` redireciona para `/login?next=/admin` (e sinaliza flash quando o usuário logado não é super_admin).
+- `src/routes/_app/dashboard.tsx` — ler e consumir o flash em `sessionStorage` para mostrar toast.
+- `src/components/landing/LandingPage.tsx` — sem mudança no fluxo (CTAs já corretos), só verificação final.
+
+## Pergunta para o usuário
+
+Antes de implementar a parte do toast, preciso confirmar uma coisa: o usuário que você está usando para testar "Acessar Admin" é o `kumatech4@gmail.com` (único `super_admin` cadastrado), ou é uma conta comum criada pelo trial? Se for conta comum, o comportamento atual de não entrar no `/admin` é **correto por segurança** — o que falta é só o aviso visível ("acesso restrito"). Se for o `kumatech4` e mesmo assim cai no dashboard, é um bug real de sessão/role que vou caçar com logs.
