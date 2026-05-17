@@ -42,7 +42,7 @@ export function AppSidebar() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition",
+                  "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition",
                   active
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
