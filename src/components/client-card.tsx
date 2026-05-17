@@ -49,11 +49,11 @@ function ClientCardImpl({ client, onEdit, onOpen, className }: ClientCardProps) 
   }, []);
 
   return (
-    <Link
-      to="/clientes/$id"
-      params={{ id: client.id }}
+    <button
+      type="button"
+      onClick={() => onOpen?.(client)}
       style={style}
-      className={cn("client-card group relative block", className)}
+      className={cn("client-card group relative block w-full text-left", className)}
     >
       <div className="flex items-center gap-4 p-4 md:p-5">
         <ClientLogo client={client} size="md" className="client-card__logo" />
