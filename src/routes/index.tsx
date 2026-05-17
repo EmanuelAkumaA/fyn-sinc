@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import LandingPage from "@/components/landing/LandingPage";
 
 export const Route = createFileRoute("/")({
@@ -23,6 +23,3 @@ export const Route = createFileRoute("/")({
   }),
   component: LandingPage,
 });
-
-// Re-export so the bundler keeps the link helper available if reused
-export { Link };
