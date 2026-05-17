@@ -207,6 +207,11 @@ function ClienteDetalhe({ id }: { id: string }) {
   });
 
   const [editOpen, setEditOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
+  const periodTotals = useMemo(() => computePeriodTotals(tx, range.start, range.end), [tx, range]);
 
   const updateClient = useMutation({
     mutationFn: async (data: ClientFormState) => {
