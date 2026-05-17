@@ -675,9 +675,9 @@ function AccessSection() {
             </p>
             <div className="mt-6">
               <Button asChild variant="outline">
-                <Link to="/login" search={{ next: "/admin" }}>
+                <a href="/login?next=/admin">
                   Acessar Admin <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Link>
+                </a>
               </Button>
             </div>
           </Card>
