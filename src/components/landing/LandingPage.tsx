@@ -72,55 +72,13 @@ const NAV = [
 function RequestAccessDialog({
   trigger,
 }: {
-  trigger: React.ReactNode;
+  trigger: React.ReactElement<{ asChild?: boolean }>;
 }) {
-  const [open, setOpen] = useState(false);
+  // Botão "Solicitar acesso" agora direciona para o fluxo de trial de 15 dias.
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[460px]">
-        <DialogHeader>
-          <DialogTitle className="font-display">Solicitar acesso</DialogTitle>
-          <DialogDescription>
-            Conte um pouco sobre sua operação. Entraremos em contato em breve.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            toast.success("Recebemos sua solicitação. Em breve falaremos com você.");
-            setOpen(false);
-          }}
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="ra-nome">Seu nome</Label>
-            <Input id="ra-nome" required placeholder="Como podemos te chamar?" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="ra-empresa">Empresa</Label>
-            <Input id="ra-empresa" required placeholder="Nome da empresa" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="ra-email">E-mail</Label>
-            <Input id="ra-email" type="email" required placeholder="voce@empresa.com" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="ra-msg">Operação (opcional)</Label>
-            <Textarea
-              id="ra-msg"
-              placeholder="Tipo de serviço, quantidade de clientes, principais dores…"
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="submit" className="w-full sm:w-auto">
-              Enviar solicitação
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <Link to="/trial" className="contents">
+      {trigger}
+    </Link>
   );
 }
 
