@@ -259,11 +259,11 @@ function ClienteDetalhe({ id }: { id: string }) {
   return (
     <>
 
-      <header className="client-header p-4 md:p-6 mb-6" style={style}>
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+      <header className="client-header p-4 sm:p-5 lg:p-6 mb-4 sm:mb-6" style={style}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <ClientLogo client={client} size="lg" glow />
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl md:text-3xl font-bold truncate">{client.name}</h1>
+            <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-bold truncate">{client.name}</h1>
             <p className="text-sm text-muted-foreground break-words">
               {client.type}{client.document && ` · ${client.document}`}
               {client.company && ` · ${client.company}`}
@@ -277,12 +277,12 @@ function ClienteDetalhe({ id }: { id: string }) {
               )}
             </div>
           </div>
-          <div className="w-full md:w-auto md:shrink-0 flex flex-col md:items-end gap-2">
+          <div className="w-full sm:w-auto sm:shrink-0 flex flex-col sm:items-end gap-2">
             <div className="flex flex-wrap items-center gap-1.5">
               <ClientStatusBadge value={client.client_status ?? client.status} />
               <FinancialStatusBadge value={client.financial_status} />
             </div>
-            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5 w-full md:w-auto">
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5 w-full sm:w-auto">
               <Pencil className="h-3.5 w-3.5" /> Editar cliente
             </Button>
           </div>
@@ -321,7 +321,7 @@ function ClienteDetalhe({ id }: { id: string }) {
       />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap max-w-full">
+        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap max-w-full -mx-1 px-1 min-h-11">
           <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
           <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
           <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes</TabsTrigger>
@@ -474,7 +474,7 @@ function MainMetrics({ totals, repasseBalance }: { totals: PeriodTotals; repasse
     { label: "Saldo de aporte", value: repasseBalance, tone: "primary", icon: Wallet },
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {cards.map((c) => <MetricBig key={c.label} {...c} />)}
     </div>
   );
@@ -486,14 +486,14 @@ function MetricBig({ label, value, tone, icon: Icon }: { label: string; value: n
     tone === "destructive" ? "text-[color:var(--destructive)]" :
     tone === "primary" ? "text-primary" : "";
   return (
-    <div className="glass rounded-2xl p-3 md:p-5 min-w-0">
+    <div className="glass rounded-2xl p-3 sm:p-4 lg:p-5 min-w-0">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</span>
-        <div className="h-8 w-8 md:h-9 md:w-9 shrink-0 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
+        <div className="h-8 w-8 lg:h-9 lg:w-9 shrink-0 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className={cn("font-display text-lg md:text-3xl font-bold mt-2 tracking-tight truncate", toneCls)}>
+      <div className={cn("font-display text-base sm:text-xl lg:text-3xl font-bold mt-2 tracking-tight truncate", toneCls)}>
         {formatBRL(value)}
       </div>
     </div>
@@ -566,13 +566,13 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus, range, pe
   ];
 
   return (
-    <div className="glass rounded-2xl p-3 md:p-5 mt-3">
+    <div className="glass rounded-2xl p-3 sm:p-4 lg:p-5 mt-3">
       <h3 className="font-display font-semibold mb-3">Resumo do cliente</h3>
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 md:gap-y-2 text-sm">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 sm:gap-y-2 text-sm">
         {items.map((it) => (
-          <li key={it.label} className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5 md:gap-3 py-1.5 border-b border-border/30 last:border-0 md:[&:nth-last-child(2)]:border-0">
+          <li key={it.label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-3 py-1.5 border-b border-border/30 last:border-0 sm:[&:nth-last-child(2)]:border-0">
             <span className="text-muted-foreground text-xs uppercase tracking-wider">{it.label}</span>
-            <span className="font-medium text-left md:text-right break-words min-w-0">{it.value}</span>
+            <span className="font-medium text-left sm:text-right break-words min-w-0">{it.value}</span>
           </li>
         ))}
       </ul>
@@ -606,9 +606,9 @@ function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customSta
 
   return (
     <div className="space-y-3">
-      <div className="glass rounded-2xl p-3 flex flex-col md:flex-row md:items-center gap-2">
+      <div className="glass rounded-2xl p-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         <div className="flex items-center gap-2 flex-1 flex-wrap min-w-0">
-          <Filter className="h-4 w-4 text-muted-foreground ml-1 shrink-0" />
+          <Filter className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
           <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
             <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -620,18 +620,18 @@ function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customSta
           {period === "custom" && (
             <>
               <Input type="date" className="w-full sm:w-40" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
-              <span className="text-xs text-muted-foreground">até</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">até</span>
               <Input type="date" className="w-full sm:w-40" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
             </>
           )}
-          <span className="text-xs text-muted-foreground ml-1 hidden md:inline">{formatRange(range)}</span>
+          <span className="text-xs text-muted-foreground ml-1 hidden lg:inline">{formatRange(range)}</span>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5 w-full md:w-auto" onClick={() => setCompareOpen(true)}>
+        <Button size="sm" variant="outline" className="gap-1.5 w-full sm:w-auto sm:ml-auto" onClick={() => setCompareOpen(true)}>
           <TrendingUp className="h-3.5 w-3.5" /> Comparar período
         </Button>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-3">
+      <div className="grid md:grid-cols-2 gap-3">
         <Card title="Próximos vencimentos">
           {upcoming.length === 0 ? <Empty>Sem vencimentos próximos.</Empty> : (
             <ul className="divide-y divide-border/50">
