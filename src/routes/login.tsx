@@ -16,8 +16,16 @@ export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Entrar — Fyn Sinc" }] }),
 });
 
+function readNextParam(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const n = new URLSearchParams(window.location.search).get("next");
+  if (!n || !n.startsWith("/") || n.startsWith("//")) return undefined;
+  return n;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
+  const next = readNextParam();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -45,7 +53,7 @@ function LoginPage() {
     }
     startSessionTimer();
     toast.success("Bem-vindo de volta");
-    navigate({ to: "/dashboard" });
+    navigate({ to: (next ?? "/dashboard") as "/dashboard" });
   }
 
   return (
