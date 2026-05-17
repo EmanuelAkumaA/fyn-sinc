@@ -33,7 +33,7 @@ interface ClientCardProps {
   className?: string;
 }
 
-function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
+function ClientCardImpl({ client, onEdit, onOpen, className }: ClientCardProps) {
   const style = useMemo<CSSProperties>(() => {
     const color = getBrandColor(client);
     return {
