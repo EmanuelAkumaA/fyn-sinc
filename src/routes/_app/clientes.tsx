@@ -1,70 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Search, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
-import { ClientLogoUpload } from "@/components/client-logo-upload";
-import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
-import { maskDocument, maskPhone, isValidDocument, isValidPhone, isValidEmail } from "@/lib/masks";
-
+import { ClientForm, type ClientRow, type ClientFormState } from "@/components/client-form";
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
   head: () => ({ meta: [{ title: "Clientes — Fyn Sinc" }] }),
 });
 
-type ClientRow = {
-  id: string;
-  name: string;
-  type: string;
-  document: string | null;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  notes: string | null;
-  status: string;
-  client_status: string;
-  financial_status: string;
-  logo_url: string | null;
-  brand_color: string | null;
-};
-
-type FormState = {
-  name: string;
-  type: string;
-  document: string;
-  email: string;
-  phone: string;
-  company: string;
-  notes: string;
-  client_status: string;
-  financial_status: string;
-  logo_url: string;
-  brand_color: string;
-};
-
-const emptyForm: FormState = {
-  name: "",
-  type: "PJ",
-  document: "",
-  email: "",
-  phone: "",
-  company: "",
-  notes: "",
-  client_status: "ativo",
-  financial_status: "em_dia",
-  logo_url: "",
-  brand_color: "",
-};
 
 function ClientesPage() {
   const qc = useQueryClient();
