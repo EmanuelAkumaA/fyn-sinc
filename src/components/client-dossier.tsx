@@ -321,7 +321,7 @@ function ClienteDetalhe({ id }: { id: string }) {
       />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
+        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap max-w-full">
           <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
           <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
           <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes</TabsTrigger>
