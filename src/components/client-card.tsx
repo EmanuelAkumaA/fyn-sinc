@@ -103,7 +103,7 @@ function ClientCardImpl({ client, onEdit, onOpen, className }: ClientCardProps) 
           )}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
