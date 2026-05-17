@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { InstallPwaBanner } from "@/components/install-pwa-banner";
+import { InstallPwaBanner, InstallPwaProvider } from "@/components/install-pwa-banner";
 import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
@@ -111,10 +111,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSync />
-      <Outlet />
-      <InstallPwaBanner />
-      <Toaster />
+      <InstallPwaProvider>
+        <AuthSync />
+        <Outlet />
+        <InstallPwaBanner />
+        <Toaster />
+      </InstallPwaProvider>
     </QueryClientProvider>
   );
 }
