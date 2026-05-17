@@ -1,65 +1,40 @@
-# Landing page pública do Fyn Sinc
+## Mudanças em `src/components/landing/LandingPage.tsx`
 
-## Objetivo
-Criar a página comercial em `/` apresentando o Fyn Sinc como sistema financeiro operacional para empresas de serviço, mantendo a identidade visual dark já existente (tokens em `src/styles.css`), sem alterar o sistema interno (rotas `_app/*`, auth, módulos).
+### 1. Logo no menu (header e mobile sheet)
+Substituir o quadrado com `Sparkles` + texto "Fyn Sinc" pela logo da marca.
 
-## Mudança de rota raiz
-Hoje `src/routes/index.tsx` redireciona `/` para `/dashboard` ou `/login`. Vou:
-- Substituir `index.tsx` pela landing pública (a landing fica em `/`).
-- Mover o redirect autenticado para `/_app` (já é layout autenticado) ou usar `/app` como atalho visual. O acesso ao sistema continua via `/login` → `/dashboard` (intocado).
-- Botão "Entrar no App" → link para `/login`.
-- Botão "Acessar Admin" → link visual para `/admin` (rota ainda não existe; apenas âncora visual, sem criar rota).
-- Botão "Solicitar acesso" → rola até seção CTA / abre modal simples de interesse (apenas UI, sem backend).
+- Importar o asset: `import logoFull from "@/assets/logo-full.svg";` (já existe em `src/assets/`).
+- Reescrever `Logo`:
+  ```tsx
+  function Logo({ className }: { className?: string }) {
+    return (
+      <Link to="/" className={cn("flex items-center", className)} aria-label="Fyn Sinc">
+        <img src={logoFull} alt="Fyn Sinc" className="h-9 w-auto sm:h-10" />
+      </Link>
+    );
+  }
+  ```
+- Header e SheetHeader já chamam `<Logo />`, então herdam automaticamente. O Footer também (mantém visual consistente).
+- Remover import `Sparkles` apenas se não for mais usado — ele continua em uso na Hero (linha 291) e em `DifferentialsSection` (655), portanto **mantém**.
 
-## Estrutura de arquivos
-- `src/routes/index.tsx` — página pública (compõe as seções).
-- `src/components/landing/Header.tsx` — header fixo com nav e menu mobile (Sheet).
-- `src/components/landing/Hero.tsx` — título, subtítulo, CTAs e mockup do dashboard (cards componentizados, sem imagem).
-- `src/components/landing/ProblemSection.tsx` — grid de dores.
-- `src/components/landing/TransformationSection.tsx` — comparativo Antes × Depois em duas colunas.
-- `src/components/landing/HowItWorksSection.tsx` — 4 passos numerados.
-- `src/components/landing/FeaturesSection.tsx` — grid de 10 cards de módulos com ícones lucide.
-- `src/components/landing/ComparisonSection.tsx` — cards mês atual/anterior + gráfico simples (Recharts já no projeto? se não, SVG inline ou divs com altura proporcional para evitar dependência).
-- `src/components/landing/AudienceSection.tsx` — cards "Para quem é".
-- `src/components/landing/DifferentialsSection.tsx` — cards de diferenciais.
-- `src/components/landing/AccessSection.tsx` — dois cards (App / Admin) + Solicitar acesso.
-- `src/components/landing/FinalCTA.tsx` — bloco CTA final.
-- `src/components/landing/Footer.tsx` — rodapé.
-- `src/components/landing/RequestAccessDialog.tsx` — modal simples (nome, empresa, e-mail) sem submit real (apenas toast de confirmação).
+### 2. Nova seção FAQ (Perguntas frequentes)
+Foco em respostas objetivas sobre **repasses**, **lucro real** e **onboarding**.
 
-Reuso de UI: `Button`, `Card`, `Dialog`/`Sheet`, `Input` do `src/components/ui/*` já existentes (shadcn). Ícones: `lucide-react`.
+- Adicionar item no `NAV`: `{ href: "#faq", label: "FAQ" }` (depois de "Acesso").
+- Criar componente `FAQSection` usando `Accordion` do shadcn (`@/components/ui/accordion`) — já é padrão shadcn. Se não existir no projeto, cair em `<details>`/`<summary>` nativos estilizados com Tailwind para evitar nova dependência.
+- Estrutura: título com `SectionTitle` (kicker "FAQ", título "Perguntas frequentes"), grid de 1 coluna, max-w-3xl centralizado, fundo `bg-card/40` em cada item, bordas suaves.
+- Conteúdo (pt-BR, respostas curtas, 1–3 frases):
+  1. **Como o Fyn Sinc trata repasses de clientes?** — Repasses entram como movimentação separada da receita própria; o sistema calcula automaticamente o que é seu e o que pertence ao cliente, sem inflar o faturamento.
+  2. **O que é "lucro real" no Fyn Sinc?** — É o resultado após descontar custos, comissões, taxas, cashback e repasses da receita própria. Você vê por cliente e no consolidado.
+  3. **Repasse conta como minha receita?** — Não. Ele aparece como entrada/saída espelhada e não soma ao lucro — evita a ilusão de faturamento.
+  4. **Como funciona o onboarding?** — Você cadastra clientes, planos, serviços, taxas e bancos; importa ou lança as primeiras movimentações; e o painel já mostra receita, repasses e lucro real do mês.
+  5. **Quanto tempo leva para começar a usar?** — Operação básica no mesmo dia. Histórico e recorrências configurados conforme o volume de clientes.
+  6. **Preciso integrar com banco ou ERP?** — Não é obrigatório. O Fyn Sinc funciona de forma independente; integrações futuras são opcionais.
+  7. **Suporta comissões, cashback e taxas variáveis por cliente?** — Sim, todos são parâmetros por cliente/plano e entram automaticamente no cálculo do lucro real.
 
-## Design system
-- Usar exclusivamente tokens semânticos (`bg-background`, `text-foreground`, `text-primary`, `border-border`, `bg-card`, etc.).
-- Glass: reaproveitar classe `.glass` e `--gradient-surface` já em `styles.css`.
-- Acentos: `--primary` (verde petróleo) como cor principal; tom ciano via `--chart-1`/gradiente para apoio.
-- Tipografia: títulos com `font-display` (Sora), corpo Inter (default).
-- Adicionar, se necessário, utilitários extras em `styles.css` (ex.: gradiente de texto hero) usando tokens existentes — sem novas cores hardcoded.
+- Inserir `<FAQSection />` em `LandingPage` entre `<AccessSection />` e `<FinalCTA />`.
+- Acessibilidade: `<h2>` único na seção; cada pergunta vira `<h3>` dentro do trigger.
 
-## Responsividade
-- Mobile-first; grids com `grid-cols-1 md:grid-cols-2 lg:grid-cols-3/4`.
-- Header: nav horizontal em `md+`, `Sheet` lateral no mobile com mesmos links.
-- Hero: stack vertical no mobile, 2 colunas (texto + mockup) em `lg+`.
-- Tipografia escalonada (`text-4xl md:text-5xl lg:text-6xl`).
-
-## SEO / head
-- `head()` na rota `/` com `title`, `description`, `og:title`, `og:description` específicos do Fyn Sinc, em pt-BR.
-- Um `<h1>` único na Hero; demais seções com `<h2>`.
-
-## Animações
-- Transições suaves Tailwind (`transition`, `hover:`), `animate-in`/`fade-in` via `tw-animate-css` já importado.
-- Sem dependências novas. Sem Motion/GSAP.
-
-## Mockup do dashboard (Hero)
-Composição de cards (sem dados reais): "Receita própria", "Repasses", "Lucro líquido", "Recorrências ativas", "Clientes" com números fictícios e mini-sparkline em SVG inline.
-
-## Seção comparativa
-Cards (mês atual/anterior/Δ%) + gráfico de barras simples feito com divs (altura proporcional) para não introduzir dependência. Se Recharts já estiver instalado, posso usar; caso contrário, mantém SVG/divs.
-
-## Fora de escopo
-- Auth real, backend do "Solicitar acesso", rota `/admin`, alterações em `_app/*`, novos módulos.
-- Tradução; tudo em pt-BR.
-
-## Riscos / pontos de atenção
-- Trocar o comportamento de `/` afeta usuários logados que esperavam ir direto pro dashboard. Mitigação: header com botão "Entrar" sempre visível apontando para `/login` (que já redireciona logados). Posso, opcionalmente, manter detecção de sessão e mostrar "Ir para o painel" se houver sessão — confirmo na implementação.
-- Verificar se `Sheet` e `Dialog` já existem em `src/components/ui/` (shadcn padrão). Se faltarem, adiciono via shadcn na build.
+### Fora de escopo
+- Não alterar outras seções, tokens, rotas ou auth.
+- Sem backend, sem novas dependências (Accordion é shadcn já padrão; fallback nativo se faltar).
