@@ -41,7 +41,7 @@ function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center">
           <img src={logoUrl} alt="Fyn Sinc" className="h-48 object-contain -mb-14" />
-          <p className="text-muted-foreground text-sm">Comece a organizar o financeiro da sua empresa</p>
+          <p className="text-white/90 text-sm font-medium tracking-wide drop-shadow-sm">Comece a organizar o financeiro da sua empresa</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-4">
