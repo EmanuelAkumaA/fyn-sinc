@@ -1,9 +1,10 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Wallet, Repeat, ArrowLeftRight,
-  Package, Briefcase, Building2, Settings, LogOut,
+  Package, Briefcase, Building2, Settings, LogOut, Download,
 } from "lucide-react";
 import { signOutAndRedirect } from "@/lib/session";
+import { useInstallPwa } from "@/components/install-pwa-banner";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo-full.svg";
 
