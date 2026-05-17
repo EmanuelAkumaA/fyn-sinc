@@ -9,10 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrialRouteImport } from './routes/trial'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SelectOrgRouteImport } from './routes/select-org'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminTrialsRouteImport } from './routes/admin.trials'
+import { Route as AdminOrganizationsRouteImport } from './routes/admin.organizations'
 import { Route as AppServicosRouteImport } from './routes/_app/servicos'
 import { Route as AppRecorrenciasRouteImport } from './routes/_app/recorrencias'
 import { Route as AppPlanosRouteImport } from './routes/_app/planos'
@@ -22,16 +29,32 @@ import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoe
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppBancosRouteImport } from './routes/_app/bancos'
 import { Route as AppAportesRouteImport } from './routes/_app/aportes'
+import { Route as AdminOrganizationsIdRouteImport } from './routes/admin.organizations.$id'
 import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
+const TrialRoute = TrialRouteImport.update({
+  id: '/trial',
+  path: '/trial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SelectOrgRoute = SelectOrgRouteImport.update({
+  id: '/select-org',
+  path: '/select-org',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -42,6 +65,26 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTrialsRoute = AdminTrialsRouteImport.update({
+  id: '/trials',
+  path: '/trials',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrganizationsRoute = AdminOrganizationsRouteImport.update({
+  id: '/organizations',
+  path: '/organizations',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AppServicosRoute = AppServicosRouteImport.update({
   id: '/servicos',
@@ -88,6 +131,11 @@ const AppAportesRoute = AppAportesRouteImport.update({
   path: '/aportes',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminOrganizationsIdRoute = AdminOrganizationsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminOrganizationsRoute,
+} as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -96,8 +144,11 @@ const AppClientesIdRoute = AppClientesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -107,12 +158,19 @@ export interface FileRoutesByFullPath {
   '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
   '/servicos': typeof AppServicosRoute
+  '/admin/organizations': typeof AdminOrganizationsRouteWithChildren
+  '/admin/trials': typeof AdminTrialsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin/': typeof AdminIndexRoute
   '/clientes/$id': typeof AppClientesIdRoute
+  '/admin/organizations/$id': typeof AdminOrganizationsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -122,14 +180,22 @@ export interface FileRoutesByTo {
   '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
   '/servicos': typeof AppServicosRoute
+  '/admin/organizations': typeof AdminOrganizationsRouteWithChildren
+  '/admin/trials': typeof AdminTrialsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin': typeof AdminIndexRoute
   '/clientes/$id': typeof AppClientesIdRoute
+  '/admin/organizations/$id': typeof AdminOrganizationsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/_app/aportes': typeof AppAportesRoute
   '/_app/bancos': typeof AppBancosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
@@ -139,14 +205,22 @@ export interface FileRoutesById {
   '/_app/planos': typeof AppPlanosRoute
   '/_app/recorrencias': typeof AppRecorrenciasRoute
   '/_app/servicos': typeof AppServicosRoute
+  '/admin/organizations': typeof AdminOrganizationsRouteWithChildren
+  '/admin/trials': typeof AdminTrialsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin/': typeof AdminIndexRoute
   '/_app/clientes/$id': typeof AppClientesIdRoute
+  '/admin/organizations/$id': typeof AdminOrganizationsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -156,12 +230,19 @@ export interface FileRouteTypes {
     | '/planos'
     | '/recorrencias'
     | '/servicos'
+    | '/admin/organizations'
+    | '/admin/trials'
+    | '/admin/users'
+    | '/admin/'
     | '/clientes/$id'
+    | '/admin/organizations/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -171,13 +252,21 @@ export interface FileRouteTypes {
     | '/planos'
     | '/recorrencias'
     | '/servicos'
+    | '/admin/organizations'
+    | '/admin/trials'
+    | '/admin/users'
+    | '/admin'
     | '/clientes/$id'
+    | '/admin/organizations/$id'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/admin'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/_app/aportes'
     | '/_app/bancos'
     | '/_app/clientes'
@@ -187,18 +276,33 @@ export interface FileRouteTypes {
     | '/_app/planos'
     | '/_app/recorrencias'
     | '/_app/servicos'
+    | '/admin/organizations'
+    | '/admin/trials'
+    | '/admin/users'
+    | '/admin/'
     | '/_app/clientes/$id'
+    | '/admin/organizations/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SelectOrgRoute: typeof SelectOrgRoute
   SignupRoute: typeof SignupRoute
+  TrialRoute: typeof TrialRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trial': {
+      id: '/trial'
+      path: '/trial'
+      fullPath: '/trial'
+      preLoaderRoute: typeof TrialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -206,11 +310,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/select-org': {
+      id: '/select-org'
+      path: '/select-org'
+      fullPath: '/select-org'
+      preLoaderRoute: typeof SelectOrgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -226,6 +344,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/trials': {
+      id: '/admin/trials'
+      path: '/trials'
+      fullPath: '/admin/trials'
+      preLoaderRoute: typeof AdminTrialsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/organizations': {
+      id: '/admin/organizations'
+      path: '/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AdminOrganizationsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/_app/servicos': {
       id: '/_app/servicos'
@@ -290,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAportesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/organizations/$id': {
+      id: '/admin/organizations/$id'
+      path: '/$id'
+      fullPath: '/admin/organizations/$id'
+      preLoaderRoute: typeof AdminOrganizationsIdRouteImport
+      parentRoute: typeof AdminOrganizationsRoute
+    }
     '/_app/clientes/$id': {
       id: '/_app/clientes/$id'
       path: '/$id'
@@ -338,11 +491,41 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface AdminOrganizationsRouteChildren {
+  AdminOrganizationsIdRoute: typeof AdminOrganizationsIdRoute
+}
+
+const AdminOrganizationsRouteChildren: AdminOrganizationsRouteChildren = {
+  AdminOrganizationsIdRoute: AdminOrganizationsIdRoute,
+}
+
+const AdminOrganizationsRouteWithChildren =
+  AdminOrganizationsRoute._addFileChildren(AdminOrganizationsRouteChildren)
+
+interface AdminRouteChildren {
+  AdminOrganizationsRoute: typeof AdminOrganizationsRouteWithChildren
+  AdminTrialsRoute: typeof AdminTrialsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminOrganizationsRoute: AdminOrganizationsRouteWithChildren,
+  AdminTrialsRoute: AdminTrialsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SelectOrgRoute: SelectOrgRoute,
   SignupRoute: SignupRoute,
+  TrialRoute: TrialRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
