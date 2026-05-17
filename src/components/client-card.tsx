@@ -29,6 +29,7 @@ type ClientLike = {
 interface ClientCardProps {
   client: ClientLike;
   onEdit?: (client: ClientLike) => void;
+  onOpen?: (client: ClientLike) => void;
   className?: string;
 }
 
