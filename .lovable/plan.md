@@ -1,21 +1,27 @@
-## Plano: Colapsar seção "Operacional" no Dashboard
+## Plano: Ocultar scrollbars globalmente (mantendo scroll funcional)
 
-Tornar o cabeçalho **Operacional** clicável, atuando como um dropdown/accordion que mostra ou esconde os 6 cards da seção. Clique novamente fecha.
+Adicionar uma regra CSS global em `src/styles.css` para esconder as scrollbars em todos os navegadores, preservando a rolagem normal (mouse wheel, trackpad, teclado, touch).
 
-### Alterações
+### Alteração
 
-Arquivo único: `src/routes/_app/dashboard.tsx`
+Arquivo único: `src/styles.css` — adicionar ao final:
 
-1. Adicionar um estado local `const [openOp, setOpenOp] = useState(false)` (fechado por padrão para deixar a tela mais limpa — pode ser ajustado).
-2. Transformar o `<h2>Operacional</h2>` (linha 129) em um `<button>` com:
-   - mesmo estilo visual atual (uppercase, tracking, muted-foreground)
-   - ícone `ChevronDown` (do lucide, já usado no projeto) que gira 180° quando aberto via `transition-transform`
-   - `onClick={() => setOpenOp(v => !v)}`
-   - `aria-expanded={openOp}`
-3. Renderizar o `<section>` dos 6 cards (linhas 130–137) condicionalmente quando `openOp` for `true`, com uma leve transição (`animate-in fade-in slide-in-from-top-1`) para ficar suave.
+```css
+/* Hide scrollbars globally, keep scrolling functional */
+* {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge legado */
+}
+*::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari, Edge */
+}
+```
 
 ### Fora de escopo
 
-- Seção principal de cards (Receita própria, Despesas, etc.) permanece sempre visível.
-- Gráficos e demais blocos do dashboard não mudam.
-- Sem alterações em estilos globais, tokens, dados, queries ou outros módulos.
+- Nenhuma alteração em componentes, layouts ou lógica.
+- Sem mudança no comportamento de rolagem — apenas o indicador visual some.
+
+### Observação
+
+Se mais tarde você quiser **mostrar** scrollbars em alguma área específica (ex: tabela longa), basta criar uma classe utilitária `.show-scrollbar` que reverta as regras naquele container. Posso adicionar isso se precisar.

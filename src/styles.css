@@ -177,3 +177,12 @@
     backdrop-filter: blur(12px);
   }
 }
+
+/* Hide scrollbars globally, keep scrolling functional */
+* {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge legado */
+}
+*::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari, Edge */
+}
