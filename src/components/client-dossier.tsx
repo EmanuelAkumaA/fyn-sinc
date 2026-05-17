@@ -515,14 +515,6 @@ function OverviewTab({ tx, recurring, inadimplente }: {
         )}
       </Card>
 
-      <Card title="Resumo rápido">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Stat label="Saldo repasse" value={formatBRL(summary?.repasse_balance ?? 0)} tone="primary" />
-          <Stat label="Em atraso" value={formatBRL(summary?.total_overdue ?? 0)} tone={inadimplente ? "destructive" : undefined} />
-          <Stat label="Lucro líquido" value={formatBRL(summary?.client_net_profit ?? 0)} tone="success" />
-          <Stat label="Mensalidade" value={formatBRL(summary?.active_recurring_amount ?? 0)} />
-        </div>
-      </Card>
     </div>
   );
 }
