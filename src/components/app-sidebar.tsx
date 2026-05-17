@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { signOutAndRedirect } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import logoUrl from "@/assets/logo.svg";
+import logoUrl from "@/assets/logo-full.svg";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,14 +29,8 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0">
-      <div className="px-5 py-5 flex items-center gap-3">
-        <div className="h-10 w-10 flex items-center justify-center">
-          <img src={logoUrl} alt="Fyn Sinc" className="h-10 w-10 object-contain" />
-        </div>
-        <div>
-          <div className="font-display font-bold leading-tight">Fyn Sinc</div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Financeiro</div>
-        </div>
+      <div className="px-5 py-5 flex items-center">
+        <img src={logoUrl} alt="Fyn Sinc" className="h-10 object-contain" />
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
