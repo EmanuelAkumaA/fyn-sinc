@@ -13,6 +13,11 @@ const REMEMBER_EMAIL_KEY = "fynsinc:remembered_email";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    next: typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
+      ? search.next
+      : undefined,
+  }),
   head: () => ({ meta: [{ title: "Entrar — Fyn Sinc" }] }),
 });
 
