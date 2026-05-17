@@ -40,7 +40,7 @@ function SignupPage() {
     <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src={logoUrl} alt="Fyn Sinc" className="h-20 object-contain mb-3" />
+          <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain mb-3" />
           <p className="text-muted-foreground text-sm">Comece a organizar o financeiro da sua empresa</p>
         </div>
 
