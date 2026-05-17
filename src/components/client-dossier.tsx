@@ -486,14 +486,14 @@ function MetricBig({ label, value, tone, icon: Icon }: { label: string; value: n
     tone === "destructive" ? "text-[color:var(--destructive)]" :
     tone === "primary" ? "text-primary" : "";
   return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
+    <div className="glass rounded-2xl p-3 md:p-5 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</span>
+        <div className="h-8 w-8 md:h-9 md:w-9 shrink-0 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className={cn("font-display text-2xl md:text-3xl font-bold mt-2 tracking-tight", toneCls)}>
+      <div className={cn("font-display text-lg md:text-3xl font-bold mt-2 tracking-tight truncate", toneCls)}>
         {formatBRL(value)}
       </div>
     </div>
