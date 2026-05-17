@@ -38,7 +38,13 @@ function LoginPage() {
       setEmail(saved);
       setRemember(true);
     }
-  }, []);
+    // Se já houver sessão ativa, honrar ?next= imediatamente.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        window.location.assign(next ?? "/dashboard");
+      }
+    });
+  }, [next]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
