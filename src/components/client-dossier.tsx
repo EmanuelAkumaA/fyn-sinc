@@ -1,9 +1,8 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  AlertTriangle, ArrowDownCircle, ArrowLeft, ArrowUpCircle, Banknote,
+  AlertTriangle, ArrowDownCircle, ArrowUpCircle, Banknote,
   CalendarClock, Clock, Download, FileText, Filter, Gift, Mail, Pencil, Phone,
   Plus, Receipt, Repeat, ShoppingBag, Trash2, TrendingUp, Upload, Wallet,
 } from "lucide-react";
