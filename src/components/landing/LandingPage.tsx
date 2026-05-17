@@ -831,9 +831,9 @@ function FAQSection() {
     <section id="faq" className="border-t border-border/60 py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <SectionTitle
-          kicker="FAQ"
+          eyebrow="FAQ"
           title="Perguntas frequentes"
-          subtitle="Respostas objetivas sobre repasses, lucro real e onboarding."
+          description="Respostas objetivas sobre repasses, lucro real e onboarding."
         />
         <Accordion type="single" collapsible className="mt-10 space-y-3">
           {FAQ_ITEMS.map((item, i) => (
