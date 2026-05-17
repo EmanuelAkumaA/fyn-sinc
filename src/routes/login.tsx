@@ -52,7 +52,7 @@ function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src={logoUrl} alt="Fyn Sinc" className="h-48 object-contain -mb-8" />
+          <img src={logoUrl} alt="Fyn Sinc" className="h-48 object-contain -mb-14" />
           <p className="text-muted-foreground text-sm">Clareza, controle e resultado</p>
         </div>
 
