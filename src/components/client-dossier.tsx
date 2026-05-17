@@ -259,12 +259,12 @@ function ClienteDetalhe({ id }: { id: string }) {
   return (
     <>
 
-      <header className="client-header p-5 md:p-6 mb-6" style={style}>
+      <header className="client-header p-4 md:p-6 mb-6" style={style}>
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <ClientLogo client={client} size="lg" glow />
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-2xl md:text-3xl font-bold truncate">{client.name}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="font-display text-xl md:text-3xl font-bold truncate">{client.name}</h1>
+            <p className="text-sm text-muted-foreground break-words">
               {client.type}{client.document && ` · ${client.document}`}
               {client.company && ` · ${client.company}`}
             </p>
@@ -273,16 +273,16 @@ function ClienteDetalhe({ id }: { id: string }) {
                 <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {client.phone}</span>
               )}
               {client.email && (
-                <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {client.email}</span>
+                <span className="inline-flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /> <span className="break-all">{client.email}</span></span>
               )}
             </div>
           </div>
-          <div className="shrink-0 flex flex-col md:items-end gap-2">
+          <div className="w-full md:w-auto md:shrink-0 flex flex-col md:items-end gap-2">
             <div className="flex flex-wrap items-center gap-1.5">
               <ClientStatusBadge value={client.client_status ?? client.status} />
               <FinancialStatusBadge value={client.financial_status} />
             </div>
-            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5 w-full md:w-auto">
               <Pencil className="h-3.5 w-3.5" /> Editar cliente
             </Button>
           </div>
