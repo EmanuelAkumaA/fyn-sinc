@@ -23,7 +23,7 @@ const NAV = [
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const { canInstall, promptInstall } = useInstallPwa();
+  const { promptInstall } = useInstallPwa();
 
   async function logout() {
     await signOutAndRedirect(navigate, { reason: "manual" });
