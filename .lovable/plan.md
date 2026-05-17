@@ -1,89 +1,112 @@
 ## Objetivo
 
-Simplificar o detalhe do cliente (`ClientDossier`) para virar um dossiê objetivo: header, 4 cards principais grandes, resumo compacto e 6 abas. Sem mexer em nada fora do dossiê do cliente.
+Refinar o detalhe do cliente (`ClientDossier`) com: 4 cards principais renomeados, filtro de período na Visão geral, comparação com período anterior e textos vazios mais claros. Sem voltar a aba para o estado "cheio de cards".
 
 ## Escopo
 
-Arquivo único a alterar: `src/components/client-dossier.tsx`.
-- Nenhuma mudança em rotas, schema, RLS, views (`v_client_financial_summary` permanece como está), bancos, dashboard, financeiro global, recorrências globais, aportes globais, configurações, auth.
-- Nenhuma migração SQL.
+Arquivo único: `src/components/client-dossier.tsx`.
+Sem mudanças em schema, RLS, views, dashboard, financeiro global, recorrências globais, aportes globais, bancos, configurações, auth, planos globais, admin, assinaturas.
+Sem migrações SQL — toda a lógica de período e comparação é calculada no frontend a partir das queries existentes (`client-transactions`, `client-recurring`, `client-summary`).
 
 ## Mudanças
 
-### 1. Header (manter)
-Manter o `<header className="client-header">` como está hoje (logo, nome, PF/PJ, documento, empresa, telefone, e-mail, badges de status e botão Editar). Sem alterações visuais.
+### 1. Renomear card principal
+- "A pagar" → **"Total a receber"** (em `MainMetrics`). Mantém ícone, tom default (branco/ciano via `text-foreground`) e ordem: Já pagou · Total a receber · Em atraso · Saldo de aporte.
+- Tons: success / default / destructive / primary (já como hoje).
+- `MainMetrics` passa a receber também `periodTotals` (calculado no `OverviewTab`) para sobrescrever `total_received`, `total_receivable` e `total_overdue` quando houver filtro. `Saldo de aporte` continua vindo de `summary.repasse_balance` (posição acumulada).
 
-### 2. 4 Cards principais (substituir `MetricsGrid`)
-Substituir a `MetricsGrid` atual (3 fileiras de 4 cards + botão "Ver todas") por um único grid com **4 cards grandes**:
+### 2. Filtro de período (Visão geral)
+Adicionar header na aba "Visão geral" com:
+- `Select` de período: **Hoje · Semana · Mês · Ano · Todo o histórico · Personalizado**.
+- Quando "Personalizado", mostrar 2 `Input type="date"` (início / fim).
+- Padrão: **Mês atual**.
+- Estado local no `ClienteDetalhe` (subir o estado pra cima de `MainMetrics`, porque os 4 cards e o `ClientSummaryBlock` também precisam reagir ao período).
+  - `period: "today" | "week" | "month" | "year" | "all" | "custom"`
+  - `customStart`, `customEnd` (string `yyyy-mm-dd`)
+- Helpers em `src/lib/fynsinc.ts` (ou inline no arquivo) sem migração:
+  - `getPeriodRange(period, customStart?, customEnd?) → { start: string|null, end: string|null }`
+  - `getPreviousPeriod(start, end) → { start, end }` (mesma duração em dias; para "year"/"month"/"week"/"today" usa janela equivalente anterior)
 
-| Card | Origem (do `summary` da view) |
+### 3. Aplicar período aos 4 cards e ao Resumo
+Calcular no frontend, a partir de `tx` e `recurring`, sem tocar na view `v_client_financial_summary`:
+
+| Métrica | Regra |
 |---|---|
-| Já pagou | `total_received` |
-| A pagar | `total_receivable` |
-| Em atraso | `total_overdue` |
-| Saldo de aporte | `repasse_balance` |
+| Já pagou | sum(`amount_gross`) onde `type ∈ {receita_propria, comissao, cashback}` e `status='pago'` e `paid_at ∈ [start,end]` |
+| Total a receber | sum onde `type='receita_propria'`, `status='pendente'`, `due_date ∈ [start,end]` e `due_date >= hoje` |
+| Em atraso | sum onde `type='receita_propria'`, `status='pendente'`, `due_date < hoje` e `due_date <= end` |
+| Saldo de aporte | `summary.repasse_balance` (acumulado, ignora período) |
 
-Layout: `grid grid-cols-2 md:grid-cols-4 gap-3`, cards maiores (mesmo estilo glass, com ícone, label e valor em destaque, tons: success / default / destructive / primary).
+Para período = "all": ignora filtro de data nas três primeiras (mantém regra de `status` e tipo); cai pros valores da view se preferir, mas mantém cálculo local para consistência.
 
-### 3. Bloco "Resumo do cliente" (novo, compacto)
-Logo abaixo dos 4 cards, um único bloco `glass rounded-2xl` com título "Resumo do cliente" e uma lista compacta (grid 1 col mobile / 2 cols md) de linhas `label: valor`:
+### 4. Resumo do cliente (textos vazios + período)
+Atualizar `ClientSummaryBlock`:
+- "Previsto no mês" → **"Previsto no período"** (calcula sum `recurring.amount` ativas com `next_due_date ∈ [start,end]`; quando período = "month", mantém `summary.expected_recurring_month`).
+- Textos vazios:
+  - Mensalidade ativa → "Nenhuma mensalidade ativa"
+  - Próximo vencimento → "Sem vencimentos neste período"
+  - Previsto no período → "Sem previsão para o período"
+  - Última movimentação → "Nenhuma movimentação no período" (filtrar `tx` por `created_at ∈ [start,end]`)
+  - Último pagamento → "Nenhum pagamento registrado" (filtrar `paid_at ∈ [start,end]`)
+- Última movimentação: `descrição — data` (já é, ajusta separador e label).
+- Último pagamento: `R$ X em dd/mm/aaaa` (já é, ajusta texto).
 
-- Mensalidade ativa → `summary.active_recurring_amount` (ou "Nenhum registro")
-- Próximo vencimento → menor `next_due_date` de `recurring` ativas
-- Previsto no mês → `summary.expected_recurring_month`
-- Última movimentação → última `tx` por `created_at` (descrição + data)
-- Último pagamento → última `tx` paga (`paid_at` mais recente, qualquer tipo "pago")
-- Status financeiro → badge `FinancialStatusBadge`
+### 5. Botão "Comparar período" + Drawer
+Ao lado do filtro, botão `Comparar período` → abre `Sheet` (lateral em desktop, fullscreen em mobile).
 
-Sem cards individuais grandes — apenas linhas com label `text-muted-foreground` e valor em destaque.
+Conteúdo do Sheet:
+- Título: **Comparação de período**
+- Subtítulo: `Período atual (dd/mm – dd/mm) vs anterior (dd/mm – dd/mm)`
+- 4 cards comparativos (compactos, 2x2 em mobile, 4 colunas desktop):
+  1. **Recebido** — receita_propria + comissao + cashback **pagos**
+  2. **Lucro estimado** — Recebido − (taxas pagas) − (despesa_propria paga com client_id)
+  3. **A receber** — receita_propria pendente futura no período
+  4. **Em atraso** — receita_propria pendente vencida até fim do período
+- Cada card: valor atual (grande), valor anterior (`text-muted-foreground` pequeno), Δ absoluto + %, ícone trend up/down/equal.
+- Regras de cor:
+  - Recebido/Lucro/A receber: ↑ verde, ↓ vermelho discreto, = neutro
+  - Em atraso: ↑ vermelho, ↓ verde (inverter sinal de "bom")
+- Gráfico simples (sem nova dependência): 3 pares de barras horizontais com `div` + `width:%` proporcional ao maior valor entre os dois períodos: Recebido, Lucro, Em atraso. Atual = cor sólida; Anterior = cor com 40% opacidade. Sem Recharts/D3.
+- Linha secundária opcional ("Movimentação de aporte no período"): aportes recebidos (`type='repasse_recebido'`, paid_at no período) e utilizados (`type='uso_repasse'`, paid_at no período), apenas texto.
 
-### 4. Abas (reduzir de 8 para 6)
-Trocar a `TabsList` para apenas:
-1. Visão geral
-2. Financeiro
-3. Aportes
-4. Arquivos
-5. Timeline
-6. Observações
+### 6. Visão geral mais limpa
+Manter apenas, nessa ordem:
+1. Header com filtro de período + botão Comparar
+2. Próximos vencimentos (filtrar `due_date ∈ [hoje, end]`)
+3. Últimas movimentações (filtrar `created_at ∈ [start,end]`)
+4. Mensalidades ativas (só se houver)
 
-Remover as abas "Mensalidades" e "Planos/Ferramentas". O componente `MensalidadesTab` e `PlanosTab` ficam no arquivo mas não são mais renderizados como aba de primeiro nível (mantidos no código por enquanto, podem ser excluídos numa próxima etapa para evitar mexer em lógica de mutação de recorrências aqui).
+Sem repetir 4 cards nem o Resumo dentro da aba (já estão acima das tabs).
 
-### 5. Aba "Visão geral" (simplificar)
-Reaproveitar `OverviewTab` reduzindo a:
-- Bloco "Próximos vencimentos" (mantém atual, top 5)
-- Bloco "Últimas movimentações" (mantém atual, top 5)
-- Bloco "Mensalidades ativas" (lista compacta das `recurring` com `status='ativo'`, só se houver)
-- Alerta de inadimplência se aplicável
+### 7. Abas
+Mantém as 6 atuais: Visão geral · Financeiro · Aportes · Arquivos · Timeline · Observações. Nenhuma mudança nas demais abas neste passo.
 
-Não repetir os 4 cards principais nem o "Resumo do cliente" dentro da aba.
+### 8. Responsividade
+- Desktop: filtro + botão Comparar na mesma linha (`flex items-center gap-2`).
+- Mobile: filtro full-width, botão Comparar abaixo (ou ao lado se couber em `sm:`).
+- Sheet de comparação: `side="right"` desktop, `w-full` no mobile.
+- 4 cards: já 2x2 mobile / 4 cols desktop.
 
-### 6. Aba "Financeiro" (manter)
-`FinanceiroTab` existente já cobre o requisito (lista com filtros de período/tipo/status/banco). Nenhuma mudança.
-
-### 7. Aba "Aportes" (ajuste leve)
-`AportesTab` existente já mostra Total aportado / utilizado / saldo + histórico por plataforma. Manter como está; só garantir que os 3 indicadores do topo apareçam compactos (já é o caso).
-
-### 8. Aba "Arquivos" (manter)
-`ArquivosTab` existente atende — bucket `client-documents`, URLs assinadas, tipos de documento listados. Nenhuma mudança.
-
-### 9. Aba "Timeline" (manter)
-`TimelineTab` existente já agrega no frontend (tx + recurring + docs + criação). Nenhuma mudança.
-
-### 10. Aba "Observações" (manter)
-`ObservacoesTab` existente atende. Nenhuma mudança.
-
-### 11. Mobile
-- 4 cards principais em grid 2x2 (já natural com `grid-cols-2 md:grid-cols-4`).
-- Resumo do cliente em 1 coluna.
-- `TabsList` continua com scroll horizontal (`overflow-x-auto`).
+### 9. Performance / Cache
+- Sem novas queries: tudo deriva de `client-transactions` + `client-recurring` + `client-summary` que já existem.
+- Cálculos memoizados com `useMemo` por `[tx, recurring, period, customStart, customEnd]`.
+- Período não vira parte da `queryKey` (cálculo é client-side).
 
 ## Fora de escopo
 
-- Não criar nova tabela/timeline persistida.
-- Não mexer em `v_client_financial_summary`, `financial_transactions`, `recurring_contracts`, `third_party_plans`, `client_documents`.
-- Não tocar em sidebar, install PWA, login, dashboard, financeiro/recorrências/aportes/bancos/configurações globais.
-- Não remover (ainda) os componentes `MensalidadesTab` e `PlanosTab` do arquivo — apenas deixá-los sem trigger na `TabsList`. Limpeza pode ser uma etapa futura.
+- Não criar/alterar `v_client_financial_summary`.
+- Não criar nova tabela, RPC, view ou migração.
+- Não adicionar Recharts / nova dependência de gráfico — barras com `div`.
+- Não voltar abas Mensalidades / Planos como top-level.
+- Não tocar em sidebar, install PWA, login, dashboard, financeiro/recorrências/aportes/bancos/configurações globais, auth, RLS, assinaturas.
 
 ## Arquivos afetados
 
-- `src/components/client-dossier.tsx` — substituir `MetricsGrid` pelos 4 cards, adicionar bloco "Resumo do cliente", reduzir `TabsList` para 6 abas, simplificar `OverviewTab`.
+- `src/components/client-dossier.tsx` — único arquivo alterado:
+  - renomear "A pagar" → "Total a receber"
+  - subir estado de período para `ClienteDetalhe`
+  - novos helpers locais `getPeriodRange` e `getPreviousPeriod`
+  - `MainMetrics` e `ClientSummaryBlock` reagindo ao período
+  - novo header de filtro + botão `Comparar período` dentro de `OverviewTab`
+  - novo componente `ComparePeriodSheet` (Sheet + 4 cards comparativos + barras simples)
+  - textos vazios mais claros no `ClientSummaryBlock`

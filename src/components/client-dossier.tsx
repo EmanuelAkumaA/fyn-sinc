@@ -207,6 +207,11 @@ function ClienteDetalhe({ id }: { id: string }) {
   });
 
   const [editOpen, setEditOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
+  const periodTotals = useMemo(() => computePeriodTotals(tx, range.start, range.end), [tx, range]);
 
   const updateClient = useMutation({
     mutationFn: async (data: ClientFormState) => {
@@ -305,8 +310,15 @@ function ClienteDetalhe({ id }: { id: string }) {
         </div>
       )}
 
-      <MainMetrics summary={summary} />
-      <ClientSummaryBlock summary={summary} tx={tx} recurring={recurring} financialStatus={client.financial_status ?? client.status} />
+      <MainMetrics totals={periodTotals} repasseBalance={summary?.repasse_balance ?? 0} />
+      <ClientSummaryBlock
+        summary={summary}
+        tx={tx}
+        recurring={recurring}
+        financialStatus={client.financial_status ?? client.status}
+        range={range}
+        period={period}
+      />
 
       <Tabs defaultValue="overview" className="mt-6">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
@@ -319,7 +331,18 @@ function ClienteDetalhe({ id }: { id: string }) {
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab tx={tx} recurring={recurring} inadimplente={inadimplente} />
+          <OverviewTab
+            tx={tx}
+            recurring={recurring}
+            inadimplente={inadimplente}
+            period={period}
+            setPeriod={setPeriod}
+            customStart={customStart}
+            setCustomStart={setCustomStart}
+            customEnd={customEnd}
+            setCustomEnd={setCustomEnd}
+            range={range}
+          />
         </TabsContent>
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
@@ -341,19 +364,114 @@ function ClienteDetalhe({ id }: { id: string }) {
   );
 }
 
+/* ----------------------------- PERIOD HELPERS ----------------------------- */
+
+type Period = "today" | "week" | "month" | "year" | "all" | "custom";
+type Range = { start: string | null; end: string | null };
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: "Hoje",
+  week: "Semana",
+  month: "Mês",
+  year: "Ano",
+  all: "Todo o histórico",
+  custom: "Personalizado",
+};
+
+function isoDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getPeriodRange(period: Period, customStart?: string, customEnd?: string): Range {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  switch (period) {
+    case "today": { const t = isoDate(new Date(y, m, d)); return { start: t, end: t }; }
+    case "week": {
+      const day = now.getDay();
+      return { start: isoDate(new Date(y, m, d - day)), end: isoDate(new Date(y, m, d - day + 6)) };
+    }
+    case "month": return { start: isoDate(new Date(y, m, 1)), end: isoDate(new Date(y, m + 1, 0)) };
+    case "year": return { start: isoDate(new Date(y, 0, 1)), end: isoDate(new Date(y, 11, 31)) };
+    case "all": return { start: null, end: null };
+    case "custom": return { start: customStart || null, end: customEnd || null };
+  }
+}
+
+function getPreviousPeriod(range: Range): Range {
+  if (!range.start || !range.end) return { start: null, end: null };
+  const s = new Date(range.start + "T00:00:00");
+  const e = new Date(range.end + "T00:00:00");
+  const dayMs = 86400000;
+  const days = Math.round((e.getTime() - s.getTime()) / dayMs) + 1;
+  const prevEnd = new Date(s.getTime() - dayMs);
+  const prevStart = new Date(prevEnd.getTime() - (days - 1) * dayMs);
+  return { start: isoDate(prevStart), end: isoDate(prevEnd) };
+}
+
+function inRange(date: string | null | undefined, range: Range): boolean {
+  if (!date) return false;
+  const d = date.slice(0, 10);
+  if (!range.start && !range.end) return true;
+  if (range.start && d < range.start) return false;
+  if (range.end && d > range.end) return false;
+  return true;
+}
+
+type PeriodTotals = {
+  received: number;
+  receivable: number;
+  overdue: number;
+  profit: number;
+  fees: number;
+  ownExpenses: number;
+  repasseRec: number;
+  repasseUso: number;
+};
+
+function computePeriodTotals(tx: Tx[], rangeStart: string | null, rangeEnd: string | null): PeriodTotals {
+  const range: Range = { start: rangeStart, end: rangeEnd };
+  const today = isoDate(new Date());
+  let received = 0, receivable = 0, overdue = 0, fees = 0, ownExpenses = 0, repasseRec = 0, repasseUso = 0;
+  for (const t of tx) {
+    const g = Number(t.amount_gross);
+    if (t.status === "pago" && inRange(t.paid_at, range)) {
+      if (t.type === "receita_propria" || t.type === "comissao" || t.type === "cashback") received += g;
+      if (t.type === "taxa") fees += g;
+      if (t.type === "despesa_propria") ownExpenses += g;
+      if (t.type === "repasse_recebido") repasseRec += g;
+      if (t.type === "uso_repasse") repasseUso += g;
+    }
+    if (t.type === "receita_propria" && t.status === "pendente" && t.due_date) {
+      const dd = t.due_date;
+      if (dd >= today && inRange(dd, range)) receivable += g;
+      const upper = range.end ?? today;
+      const lowerOk = !range.start || dd >= range.start;
+      if (dd < today && dd <= upper && lowerOk) overdue += g;
+    }
+  }
+  return { received, receivable, overdue, profit: received - fees - ownExpenses, fees, ownExpenses, repasseRec, repasseUso };
+}
+
+function formatRange(range: Range): string {
+  if (!range.start || !range.end) return "todo o histórico";
+  return `${formatDate(range.start)} – ${formatDate(range.end)}`;
+}
+
 /* ----------------------------- MAIN METRICS ----------------------------- */
 
 type Tone = "success" | "destructive" | "primary";
 
-
-function MainMetrics({ summary }: { summary: Summary | null | undefined }) {
-  const s = summary ?? ({} as Partial<Summary>);
+function MainMetrics({ totals, repasseBalance }: { totals: PeriodTotals; repasseBalance: number }) {
   type Card = { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> };
   const cards: Card[] = [
-    { label: "Já pagou", value: s.total_received ?? 0, tone: "success", icon: TrendingUp },
-    { label: "A pagar", value: s.total_receivable ?? 0, icon: CalendarClock },
-    { label: "Em atraso", value: s.total_overdue ?? 0, tone: "destructive", icon: AlertTriangle },
-    { label: "Saldo de aporte", value: s.repasse_balance ?? 0, tone: "primary", icon: Wallet },
+    { label: "Já pagou", value: totals.received, tone: "success", icon: TrendingUp },
+    { label: "Total a receber", value: totals.receivable, icon: CalendarClock },
+    { label: "Em atraso", value: totals.overdue, tone: "destructive", icon: AlertTriangle },
+    { label: "Saldo de aporte", value: repasseBalance, tone: "primary", icon: Wallet },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -384,50 +502,62 @@ function MetricBig({ label, value, tone, icon: Icon }: { label: string; value: n
 
 /* ----------------------------- CLIENT SUMMARY BLOCK ----------------------------- */
 
-function ClientSummaryBlock({ summary, tx, recurring, financialStatus }: {
+function ClientSummaryBlock({ summary, tx, recurring, financialStatus, range, period }: {
   summary: Summary | null | undefined;
   tx: Tx[];
   recurring: Recurring[];
   financialStatus: string | null | undefined;
+  range: Range;
+  period: Period;
 }) {
   const ativas = recurring.filter((r) => r.status === "ativo");
   const proxVenc = ativas
     .map((r) => r.next_due_date)
-    .filter(Boolean)
+    .filter((d): d is string => !!d && inRange(d, range))
     .sort()[0] ?? null;
-  const ultimaMov = [...tx].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
+
+  const ultimaMov = [...tx]
+    .filter((t) => inRange(t.created_at, range))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
+
   const ultimoPag = [...tx]
-    .filter((t) => t.status === "pago" && t.paid_at)
+    .filter((t) => t.status === "pago" && t.paid_at && inRange(t.paid_at, range))
     .sort((a, b) => (b.paid_at ?? "").localeCompare(a.paid_at ?? ""))[0] ?? null;
+
+  const previstoPeriodo = period === "month"
+    ? (summary?.expected_recurring_month ?? 0)
+    : ativas
+        .filter((r) => inRange(r.next_due_date, range))
+        .reduce((s, r) => s + Number(r.amount), 0);
+
+  const muted = (txt: string) => <span className="text-muted-foreground">{txt}</span>;
 
   const items: { label: string; value: React.ReactNode }[] = [
     {
       label: "Mensalidade ativa",
-      value: (summary?.active_recurring_amount ?? 0) > 0
-        ? <span className="text-primary font-semibold">{formatBRL(summary?.active_recurring_amount ?? 0)}</span>
-        : <span className="text-muted-foreground">Nenhum registro</span>,
+      value: ativas.length > 0
+        ? <span className="text-primary font-semibold">{formatBRL(summary?.active_recurring_amount ?? ativas.reduce((s, r) => s + Number(r.amount), 0))}</span>
+        : muted("Nenhuma mensalidade ativa"),
     },
     {
       label: "Próximo vencimento",
-      value: proxVenc ? formatDate(proxVenc) : <span className="text-muted-foreground">Nenhum registro</span>,
+      value: proxVenc ? formatDate(proxVenc) : muted("Sem vencimentos neste período"),
     },
     {
-      label: "Previsto no mês",
-      value: (summary?.expected_recurring_month ?? 0) > 0
-        ? formatBRL(summary?.expected_recurring_month ?? 0)
-        : <span className="text-muted-foreground">Nenhum registro</span>,
+      label: "Previsto no período",
+      value: previstoPeriodo > 0 ? formatBRL(previstoPeriodo) : muted("Sem previsão para o período"),
     },
     {
       label: "Última movimentação",
       value: ultimaMov
-        ? <span className="truncate">{ultimaMov.description} · {formatDate(ultimaMov.created_at)}</span>
-        : <span className="text-muted-foreground">Nenhum registro</span>,
+        ? <span className="truncate">{ultimaMov.description} — {formatDate(ultimaMov.created_at)}</span>
+        : muted("Nenhuma movimentação no período"),
     },
     {
       label: "Último pagamento",
       value: ultimoPag
-        ? <span>{formatBRL(Number(ultimoPag.amount_gross))} · {formatDate(ultimoPag.paid_at)}</span>
-        : <span className="text-muted-foreground">Nenhum pagamento registrado</span>,
+        ? <span>{formatBRL(Number(ultimoPag.amount_gross))} em {formatDate(ultimoPag.paid_at)}</span>
+        : muted("Nenhum pagamento registrado"),
     },
     {
       label: "Status financeiro",
@@ -453,71 +583,109 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus }: {
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
-function OverviewTab({ tx, recurring, inadimplente }: {
+function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customStart, setCustomStart, customEnd, setCustomEnd, range }: {
   tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
+  period: Period; setPeriod: (p: Period) => void;
+  customStart: string; setCustomStart: (s: string) => void;
+  customEnd: string; setCustomEnd: (s: string) => void;
+  range: Range;
 }) {
   void inadimplente;
-  const today = new Date().toISOString().slice(0, 10);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const today = isoDate(new Date());
+  const upperEnd = range.end ?? "9999-12-31";
+
   const upcoming = tx
-    .filter((t) => t.type === "receita_propria" && t.status === "pendente" && t.due_date && t.due_date >= today)
+    .filter((t) => t.type === "receita_propria" && t.status === "pendente" && t.due_date && t.due_date >= today && t.due_date <= upperEnd && (!range.start || t.due_date >= range.start))
     .slice(0, 5);
-  const latest = [...tx].sort((a, b) => (b.created_at).localeCompare(a.created_at)).slice(0, 5);
+  const latest = [...tx]
+    .filter((t) => inRange(t.created_at, range))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 5);
   const ativas = recurring.filter((r) => r.status === "ativo");
 
   return (
-    <div className="grid lg:grid-cols-2 gap-3">
-      <Card title="Próximos vencimentos">
-        {upcoming.length === 0 ? <Empty>Sem vencimentos próximos.</Empty> : (
-          <ul className="divide-y divide-border/50">
-            {upcoming.map((t) => (
-              <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{t.description}</div>
-                  <div className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</div>
-                </div>
-                <span className="font-display font-semibold">{formatBRL(Number(t.amount_gross))}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+    <div className="space-y-3">
+      <div className="glass rounded-2xl p-3 flex flex-col md:flex-row md:items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground ml-1" />
+          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+                <SelectItem key={p} value={p}>{PERIOD_LABELS[p]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {period === "custom" && (
+            <>
+              <Input type="date" className="w-40" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input type="date" className="w-40" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+            </>
+          )}
+          <span className="text-xs text-muted-foreground ml-1 hidden md:inline">{formatRange(range)}</span>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCompareOpen(true)}>
+          <TrendingUp className="h-3.5 w-3.5" /> Comparar período
+        </Button>
+      </div>
 
-      <Card title="Últimas movimentações">
-        {latest.length === 0 ? <Empty>Nenhum lançamento ainda.</Empty> : (
-          <ul className="divide-y divide-border/50">
-            {latest.map((t) => (
-              <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{t.description}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</div>
-                </div>
-                <span className={cn("font-display font-semibold", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
-                  {formatBRL(Number(t.amount_gross))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card title="Mensalidades ativas">
-        {ativas.length === 0 ? <Empty>Nenhuma mensalidade ativa.</Empty> : (
-          <ul className="divide-y divide-border/50">
-            {ativas.map((r) => (
-              <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{r.description ?? "Mensalidade"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency} · próximo {formatDate(r.next_due_date)}
+      <div className="grid lg:grid-cols-2 gap-3">
+        <Card title="Próximos vencimentos">
+          {upcoming.length === 0 ? <Empty>Sem vencimentos próximos.</Empty> : (
+            <ul className="divide-y divide-border/50">
+              {upcoming.map((t) => (
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{t.description}</div>
+                    <div className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</div>
                   </div>
-                </div>
-                <span className="font-display font-semibold text-primary">{formatBRL(Number(r.amount))}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+                  <span className="font-display font-semibold">{formatBRL(Number(t.amount_gross))}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
+        <Card title="Últimas movimentações">
+          {latest.length === 0 ? <Empty>Nenhuma movimentação no período.</Empty> : (
+            <ul className="divide-y divide-border/50">
+              {latest.map((t) => (
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{t.description}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</div>
+                  </div>
+                  <span className={cn("font-display font-semibold", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
+                    {formatBRL(Number(t.amount_gross))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {ativas.length > 0 && (
+          <Card title="Mensalidades ativas">
+            <ul className="divide-y divide-border/50">
+              {ativas.map((r) => (
+                <li key={r.id} className="flex items-center justify-between py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{r.description ?? "Mensalidade"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency} · próximo {formatDate(r.next_due_date)}
+                    </div>
+                  </div>
+                  <span className="font-display font-semibold text-primary">{formatBRL(Number(r.amount))}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+
+      <ComparePeriodSheet open={compareOpen} onOpenChange={setCompareOpen} tx={tx} range={range} />
     </div>
   );
 }
@@ -1104,6 +1272,92 @@ function ObservacoesTab({ notes, onSave, saving }: { notes: string | null | unde
         >
           {saving ? "Salvando..." : "Salvar"}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- COMPARE PERIOD SHEET ----------------------------- */
+
+function ComparePeriodSheet({ open, onOpenChange, tx, range }: {
+  open: boolean; onOpenChange: (o: boolean) => void; tx: Tx[]; range: Range;
+}) {
+  const prev = useMemo(() => getPreviousPeriod(range), [range]);
+  const current = useMemo(() => computePeriodTotals(tx, range.start, range.end), [tx, range]);
+  const previous = useMemo(() => computePeriodTotals(tx, prev.start, prev.end), [tx, prev]);
+
+  const metrics: { key: string; label: string; current: number; previous: number; inverse?: boolean }[] = [
+    { key: "rec", label: "Recebido", current: current.received, previous: previous.received },
+    { key: "lucro", label: "Lucro estimado", current: current.profit, previous: previous.profit },
+    { key: "areceber", label: "A receber", current: current.receivable, previous: previous.receivable },
+    { key: "atraso", label: "Em atraso", current: current.overdue, previous: previous.overdue, inverse: true },
+  ];
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Comparação de período</SheetTitle>
+        </SheetHeader>
+        <p className="text-xs text-muted-foreground mt-1">
+          Atual: {formatRange(range)} · Anterior: {formatRange(prev)}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {metrics.map(({ key, ...m }) => <CompareCard key={key} {...m} />)}
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Comparativo visual</h4>
+          {["rec", "lucro", "atraso"].map((k) => {
+            const m = metrics.find((x) => x.key === k)!;
+            const max = Math.max(m.current, m.previous, 1);
+            return (
+              <div key={k} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{m.label}</span>
+                  <span className="text-muted-foreground">máx {formatBRL(max)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-secondary/40 overflow-hidden">
+                  <div className="h-full bg-primary" style={{ width: `${(m.current / max) * 100}%` }} />
+                </div>
+                <div className="h-2 rounded-full bg-secondary/40 overflow-hidden">
+                  <div className="h-full bg-primary/40" style={{ width: `${(m.previous / max) * 100}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Atual {formatBRL(m.current)}</span>
+                  <span>Anterior {formatBRL(m.previous)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 glass rounded-xl p-3 text-xs">
+          <div className="text-muted-foreground uppercase tracking-wider mb-1">Movimentação de aporte no período</div>
+          <div className="flex justify-between"><span>Aportes recebidos</span><span className="text-[color:var(--success)] font-medium">{formatBRL(current.repasseRec)}</span></div>
+          <div className="flex justify-between"><span>Aportes utilizados</span><span className="text-[color:var(--destructive)] font-medium">{formatBRL(current.repasseUso)}</span></div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function CompareCard({ label, current, previous, inverse }: { label: string; current: number; previous: number; inverse?: boolean }) {
+  const diff = current - previous;
+  const pct = previous === 0 ? (current === 0 ? 0 : 100) : (diff / Math.abs(previous)) * 100;
+  const up = diff > 0;
+  const flat = diff === 0;
+  const good = flat ? null : (inverse ? !up : up);
+  const cls = good == null ? "text-muted-foreground" : good ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]";
+  const arrow = flat ? "—" : up ? "▲" : "▼";
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-display text-lg font-bold mt-1">{formatBRL(current)}</div>
+      <div className="text-[11px] text-muted-foreground">anterior {formatBRL(previous)}</div>
+      <div className={cn("text-xs font-medium mt-1", cls)}>
+        {arrow} {formatBRL(Math.abs(diff))} ({pct >= 0 ? "+" : ""}{pct.toFixed(0)}%)
       </div>
     </div>
   );
