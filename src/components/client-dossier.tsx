@@ -343,6 +343,9 @@ function ClienteDetalhe({ id }: { id: string }) {
 
 /* ----------------------------- MAIN METRICS ----------------------------- */
 
+type Tone = "success" | "destructive" | "primary";
+
+
 function MainMetrics({ summary }: { summary: Summary | null | undefined }) {
   const s = summary ?? ({} as Partial<Summary>);
   type Card = { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> };
