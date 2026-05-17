@@ -1276,3 +1276,89 @@ function ObservacoesTab({ notes, onSave, saving }: { notes: string | null | unde
     </div>
   );
 }
+
+/* ----------------------------- COMPARE PERIOD SHEET ----------------------------- */
+
+function ComparePeriodSheet({ open, onOpenChange, tx, range }: {
+  open: boolean; onOpenChange: (o: boolean) => void; tx: Tx[]; range: Range;
+}) {
+  const prev = useMemo(() => getPreviousPeriod(range), [range]);
+  const current = useMemo(() => computePeriodTotals(tx, range.start, range.end), [tx, range]);
+  const previous = useMemo(() => computePeriodTotals(tx, prev.start, prev.end), [tx, prev]);
+
+  const metrics: { key: string; label: string; current: number; previous: number; inverse?: boolean }[] = [
+    { key: "rec", label: "Recebido", current: current.received, previous: previous.received },
+    { key: "lucro", label: "Lucro estimado", current: current.profit, previous: previous.profit },
+    { key: "areceber", label: "A receber", current: current.receivable, previous: previous.receivable },
+    { key: "atraso", label: "Em atraso", current: current.overdue, previous: previous.overdue, inverse: true },
+  ];
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Comparação de período</SheetTitle>
+        </SheetHeader>
+        <p className="text-xs text-muted-foreground mt-1">
+          Atual: {formatRange(range)} · Anterior: {formatRange(prev)}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {metrics.map((m) => <CompareCard key={m.key} {...m} />)}
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Comparativo visual</h4>
+          {["rec", "lucro", "atraso"].map((k) => {
+            const m = metrics.find((x) => x.key === k)!;
+            const max = Math.max(m.current, m.previous, 1);
+            return (
+              <div key={k} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{m.label}</span>
+                  <span className="text-muted-foreground">máx {formatBRL(max)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-secondary/40 overflow-hidden">
+                  <div className="h-full bg-primary" style={{ width: `${(m.current / max) * 100}%` }} />
+                </div>
+                <div className="h-2 rounded-full bg-secondary/40 overflow-hidden">
+                  <div className="h-full bg-primary/40" style={{ width: `${(m.previous / max) * 100}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Atual {formatBRL(m.current)}</span>
+                  <span>Anterior {formatBRL(m.previous)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 glass rounded-xl p-3 text-xs">
+          <div className="text-muted-foreground uppercase tracking-wider mb-1">Movimentação de aporte no período</div>
+          <div className="flex justify-between"><span>Aportes recebidos</span><span className="text-[color:var(--success)] font-medium">{formatBRL(current.repasseRec)}</span></div>
+          <div className="flex justify-between"><span>Aportes utilizados</span><span className="text-[color:var(--destructive)] font-medium">{formatBRL(current.repasseUso)}</span></div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function CompareCard({ label, current, previous, inverse }: { label: string; current: number; previous: number; inverse?: boolean }) {
+  const diff = current - previous;
+  const pct = previous === 0 ? (current === 0 ? 0 : 100) : (diff / Math.abs(previous)) * 100;
+  const up = diff > 0;
+  const flat = diff === 0;
+  const good = flat ? null : (inverse ? !up : up);
+  const cls = good == null ? "text-muted-foreground" : good ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]";
+  const arrow = flat ? "—" : up ? "▲" : "▼";
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-display text-lg font-bold mt-1">{formatBRL(current)}</div>
+      <div className="text-[11px] text-muted-foreground">anterior {formatBRL(previous)}</div>
+      <div className={cn("text-xs font-medium mt-1", cls)}>
+        {arrow} {formatBRL(Math.abs(diff))} ({pct >= 0 ? "+" : ""}{pct.toFixed(0)}%)
+      </div>
+    </div>
+  );
+}
