@@ -124,8 +124,7 @@ const DOC_TYPES: { value: string; label: string }[] = [
   { value: "outro", label: "Outro" },
 ];
 
-function ClienteDetalhe() {
-  const { id } = Route.useParams();
+function ClienteDetalhe({ id }: { id: string }) {
   const qc = useQueryClient();
 
   const { data: client } = useQuery({
