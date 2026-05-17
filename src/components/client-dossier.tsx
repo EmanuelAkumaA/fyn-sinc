@@ -23,9 +23,9 @@ import { getBrandColor, hexToRgba } from "@/lib/client-brand";
 import { invalidateClientCaches } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_app/clientes/$id")({
-  component: ClienteDetalhe,
-});
+export function ClientDossier({ clientId: id }: { clientId: string }) {
+  return <ClienteDetalhe id={id} />;
+}
 
 type Tx = {
   id: string;
