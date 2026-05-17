@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/fynsinc";
 import { ArrowLeft } from "lucide-react";
 
-export const Route = createFileRoute("/_admin/organizations/$id")({
+export const Route = createFileRoute("/admin/organizations/$id")({
   component: OrgDetail,
 });
 

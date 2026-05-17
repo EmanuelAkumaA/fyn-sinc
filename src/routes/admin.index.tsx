@@ -5,7 +5,7 @@ import { adminMetrics } from "@/lib/admin.functions";
 import { MetricCard } from "@/components/metric-card";
 import { Building2, Clock4, AlertTriangle, CheckCircle2, Pause, Users, Sparkles } from "lucide-react";
 
-export const Route = createFileRoute("/_admin/")({
+export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
   head: () => ({ meta: [{ title: "Admin · Dashboard — Fyn Sinc" }] }),
 });

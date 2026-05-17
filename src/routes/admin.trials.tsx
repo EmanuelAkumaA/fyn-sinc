@@ -14,7 +14,7 @@ const FILTERS = [
   { v: "converted", label: "Convertidos" },
 ] as const;
 
-export const Route = createFileRoute("/_admin/trials")({
+export const Route = createFileRoute("/admin/trials")({
   component: TrialsPage,
   head: () => ({ meta: [{ title: "Trials — Fyn Sinc Admin" }] }),
 });

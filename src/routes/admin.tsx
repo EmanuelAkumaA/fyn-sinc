@@ -6,7 +6,7 @@ import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { LayoutDashboard, Building2, Users, Clock4, ShieldCheck, LogOut, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_admin")({
+export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();

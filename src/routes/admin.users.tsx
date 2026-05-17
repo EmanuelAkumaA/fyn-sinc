@@ -5,7 +5,7 @@ import { listAllUsers } from "@/lib/admin.functions";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/fynsinc";
 
-export const Route = createFileRoute("/_admin/users")({
+export const Route = createFileRoute("/admin/users")({
   component: UsersPage,
   head: () => ({ meta: [{ title: "Usuários — Fyn Sinc Admin" }] }),
 });
