@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
 import { ClientForm, type ClientRow, type ClientFormState } from "@/components/client-form";
+import { ClientDossier } from "@/components/client-dossier";
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
