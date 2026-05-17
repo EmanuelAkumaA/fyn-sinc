@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
 import { clearSessionTimer, isSessionExpired } from "@/lib/session";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
-import { setCurrentOrgId, getCurrentOrgIdLocal, clearCurrentOrgId } from "@/lib/current-org";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
