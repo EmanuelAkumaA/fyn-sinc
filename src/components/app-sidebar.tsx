@@ -29,11 +29,11 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0">
-      <div className="px-5 py-5 flex items-center">
-        <img src={logoUrl} alt="Fyn Sinc" className="h-24 object-contain" />
+      <div className="px-5 pt-5 pb-1 flex items-center">
+        <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 pt-0 space-y-0.5 overflow-y-auto">
         {NAV.map(({ to, label, icon: Icon }) => {
           const active = path === to || path.startsWith(to + "/");
           return (
