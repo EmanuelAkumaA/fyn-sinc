@@ -305,34 +305,27 @@ function ClienteDetalhe({ id }: { id: string }) {
         </div>
       )}
 
-      <MetricsGrid summary={summary} />
+      <MainMetrics summary={summary} />
+      <ClientSummaryBlock summary={summary} tx={tx} recurring={recurring} financialStatus={client.financial_status ?? client.status} />
 
       <Tabs defaultValue="overview" className="mt-6">
         <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap">
           <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
           <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
-          <TabsTrigger value="mensalidades" className="whitespace-nowrap">Mensalidades</TabsTrigger>
-          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes/Repasses</TabsTrigger>
-          <TabsTrigger value="planos" className="whitespace-nowrap">Planos/Ferramentas</TabsTrigger>
+          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes</TabsTrigger>
           <TabsTrigger value="arquivos" className="whitespace-nowrap">Arquivos</TabsTrigger>
           <TabsTrigger value="timeline" className="whitespace-nowrap">Timeline</TabsTrigger>
           <TabsTrigger value="observacoes" className="whitespace-nowrap">Observações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab summary={summary} tx={tx} recurring={recurring} inadimplente={inadimplente} />
+          <OverviewTab tx={tx} recurring={recurring} inadimplente={inadimplente} />
         </TabsContent>
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
         </TabsContent>
-        <TabsContent value="mensalidades">
-          <MensalidadesTab recurring={recurring} clientId={id} />
-        </TabsContent>
         <TabsContent value="aportes">
           <AportesTab tx={tx} summary={summary} />
-        </TabsContent>
-        <TabsContent value="planos">
-          <PlanosTab plans={plans} />
         </TabsContent>
         <TabsContent value="arquivos">
           <ArquivosTab clientId={id} orgId={(client as ClientRow & { organization_id?: string }).organization_id ?? null} docs={docs} tx={tx} />
@@ -348,80 +341,111 @@ function ClienteDetalhe({ id }: { id: string }) {
   );
 }
 
-/* ----------------------------- METRICS ----------------------------- */
+/* ----------------------------- MAIN METRICS ----------------------------- */
 
-function MetricsGrid({ summary }: { summary: Summary | null | undefined }) {
+type Tone = "success" | "destructive" | "primary";
+
+
+function MainMetrics({ summary }: { summary: Summary | null | undefined }) {
   const s = summary ?? ({} as Partial<Summary>);
-  const [showAll, setShowAll] = useState(false);
-
-  type Card = { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }>; secondary?: { label: string; value: number } };
-
-  const row1: Card[] = [
-    { label: "Total recebido", value: s.total_received ?? 0, tone: "success", icon: TrendingUp },
-    { label: "A receber", value: s.total_receivable ?? 0, icon: CalendarClock },
+  type Card = { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> };
+  const cards: Card[] = [
+    { label: "Já pagou", value: s.total_received ?? 0, tone: "success", icon: TrendingUp },
+    { label: "A pagar", value: s.total_receivable ?? 0, icon: CalendarClock },
     { label: "Em atraso", value: s.total_overdue ?? 0, tone: "destructive", icon: AlertTriangle },
-    { label: "Lucro líquido", value: s.client_net_profit ?? 0, tone: (s.client_net_profit ?? 0) >= 0 ? "success" : "destructive", icon: Banknote },
+    { label: "Saldo de aporte", value: s.repasse_balance ?? 0, tone: "primary", icon: Wallet },
   ];
-  const row2: Card[] = [
-    { label: "Mensalidade ativa", value: s.active_recurring_amount ?? 0, tone: "primary", icon: Repeat },
-    { label: "Recorrência prevista no mês", value: s.expected_recurring_month ?? 0, icon: CalendarClock },
-    { label: "Avulsos pendentes", value: s.pending_one_time_amount ?? 0, icon: Clock },
-    { label: "Taxas pagas", value: s.total_fees ?? 0, tone: "destructive", icon: Receipt },
-  ];
-  const row3: Card[] = [
-    { label: "Saldo de repasse", value: s.repasse_balance ?? 0, tone: "primary", icon: Wallet },
-    { label: "Repasses recebidos", value: s.total_repasse_received ?? 0, icon: ArrowDownCircle },
-    { label: "Repasses utilizados", value: s.total_repasse_used ?? 0, icon: ArrowUpCircle },
-    { label: "Comissões / Cashbacks", value: s.total_commissions ?? 0, tone: "success", icon: Gift, secondary: { label: "Cashbacks", value: s.total_cashbacks ?? 0 } },
-  ];
-
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {row1.map((c) => <MetricMini key={c.label} {...c} />)}
-      </div>
-      <div className={cn("space-y-3", !showAll && "hidden md:block")}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {row2.map((c) => <MetricMini key={c.label} {...c} />)}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {row3.map((c) => <MetricMini key={c.label} {...c} />)}
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => setShowAll((v) => !v)}
-        className="md:hidden w-full text-xs font-medium text-muted-foreground hover:text-foreground py-2"
-      >
-        {showAll ? "Ocultar métricas extras" : "Ver todas as métricas"}
-      </button>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {cards.map((c) => <MetricBig key={c.label} {...c} />)}
     </div>
   );
 }
 
-type Tone = "success" | "destructive" | "primary";
-
-function MetricMini({ label, value, tone, icon: Icon, secondary }: { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }>; secondary?: { label: string; value: number } }) {
+function MetricBig({ label, value, tone, icon: Icon }: { label: string; value: number; tone?: Tone; icon: React.ComponentType<{ className?: string }> }) {
   const toneCls =
     tone === "success" ? "text-[color:var(--success)]" :
     tone === "destructive" ? "text-[color:var(--destructive)]" :
     tone === "primary" ? "text-primary" : "";
   return (
-    <div className="glass rounded-2xl p-4">
+    <div className="glass rounded-2xl p-5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <div className="h-7 w-7 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
-          <Icon className="h-3.5 w-3.5" />
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+        <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
+          <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className={cn("font-display text-xl md:text-2xl font-bold mt-1.5 tracking-tight", toneCls)}>
+      <div className={cn("font-display text-2xl md:text-3xl font-bold mt-2 tracking-tight", toneCls)}>
         {formatBRL(value)}
       </div>
-      {secondary && (
-        <div className="mt-1 text-[11px] text-muted-foreground">
-          {secondary.label}: <span className="font-semibold text-foreground">{formatBRL(secondary.value)}</span>
-        </div>
-      )}
+    </div>
+  );
+}
+
+/* ----------------------------- CLIENT SUMMARY BLOCK ----------------------------- */
+
+function ClientSummaryBlock({ summary, tx, recurring, financialStatus }: {
+  summary: Summary | null | undefined;
+  tx: Tx[];
+  recurring: Recurring[];
+  financialStatus: string | null | undefined;
+}) {
+  const ativas = recurring.filter((r) => r.status === "ativo");
+  const proxVenc = ativas
+    .map((r) => r.next_due_date)
+    .filter(Boolean)
+    .sort()[0] ?? null;
+  const ultimaMov = [...tx].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
+  const ultimoPag = [...tx]
+    .filter((t) => t.status === "pago" && t.paid_at)
+    .sort((a, b) => (b.paid_at ?? "").localeCompare(a.paid_at ?? ""))[0] ?? null;
+
+  const items: { label: string; value: React.ReactNode }[] = [
+    {
+      label: "Mensalidade ativa",
+      value: (summary?.active_recurring_amount ?? 0) > 0
+        ? <span className="text-primary font-semibold">{formatBRL(summary?.active_recurring_amount ?? 0)}</span>
+        : <span className="text-muted-foreground">Nenhum registro</span>,
+    },
+    {
+      label: "Próximo vencimento",
+      value: proxVenc ? formatDate(proxVenc) : <span className="text-muted-foreground">Nenhum registro</span>,
+    },
+    {
+      label: "Previsto no mês",
+      value: (summary?.expected_recurring_month ?? 0) > 0
+        ? formatBRL(summary?.expected_recurring_month ?? 0)
+        : <span className="text-muted-foreground">Nenhum registro</span>,
+    },
+    {
+      label: "Última movimentação",
+      value: ultimaMov
+        ? <span className="truncate">{ultimaMov.description} · {formatDate(ultimaMov.created_at)}</span>
+        : <span className="text-muted-foreground">Nenhum registro</span>,
+    },
+    {
+      label: "Último pagamento",
+      value: ultimoPag
+        ? <span>{formatBRL(Number(ultimoPag.amount_gross))} · {formatDate(ultimoPag.paid_at)}</span>
+        : <span className="text-muted-foreground">Nenhum pagamento registrado</span>,
+    },
+    {
+      label: "Status financeiro",
+      value: <FinancialStatusBadge value={financialStatus} />,
+    },
+  ];
+
+  return (
+    <div className="glass rounded-2xl p-4 md:p-5 mt-3">
+      <h3 className="font-display font-semibold mb-3">Resumo do cliente</h3>
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        {items.map((it) => (
+          <li key={it.label} className="flex items-center justify-between gap-3 py-1 border-b border-border/30 last:border-0 md:[&:nth-last-child(2)]:border-0">
+            <span className="text-muted-foreground text-xs uppercase tracking-wider">{it.label}</span>
+            <span className="font-medium text-right min-w-0 truncate">{it.value}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -429,9 +453,10 @@ function MetricMini({ label, value, tone, icon: Icon, secondary }: { label: stri
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
-function OverviewTab({ summary, tx, recurring, inadimplente }: {
-  summary: Summary | null | undefined; tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
+function OverviewTab({ tx, recurring, inadimplente }: {
+  tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
 }) {
+  void inadimplente;
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = tx
     .filter((t) => t.type === "receita_propria" && t.status === "pendente" && t.due_date && t.due_date >= today)
@@ -493,14 +518,6 @@ function OverviewTab({ summary, tx, recurring, inadimplente }: {
         )}
       </Card>
 
-      <Card title="Resumo rápido">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Stat label="Saldo repasse" value={formatBRL(summary?.repasse_balance ?? 0)} tone="primary" />
-          <Stat label="Em atraso" value={formatBRL(summary?.total_overdue ?? 0)} tone={inadimplente ? "destructive" : undefined} />
-          <Stat label="Lucro líquido" value={formatBRL(summary?.client_net_profit ?? 0)} tone="success" />
-          <Stat label="Mensalidade" value={formatBRL(summary?.active_recurring_amount ?? 0)} />
-        </div>
-      </Card>
     </div>
   );
 }
