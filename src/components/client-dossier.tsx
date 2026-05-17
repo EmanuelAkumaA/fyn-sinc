@@ -450,9 +450,10 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus }: {
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
-function OverviewTab({ summary, tx, recurring, inadimplente }: {
-  summary: Summary | null | undefined; tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
+function OverviewTab({ tx, recurring, inadimplente }: {
+  tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
 }) {
+  void inadimplente;
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = tx
     .filter((t) => t.type === "receita_propria" && t.status === "pendente" && t.due_date && t.due_date >= today)
