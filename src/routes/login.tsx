@@ -11,16 +11,17 @@ import logoUrl from "@/assets/logo-full.svg";
 
 const REMEMBER_EMAIL_KEY = "fynsinc:remembered_email";
 
-type LoginSearch = { next?: string };
-
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  validateSearch: (search: Record<string, unknown>): LoginSearch => {
-    const n = search.next;
-    return typeof n === "string" && n.startsWith("/") && !n.startsWith("//") ? { next: n } : {};
-  },
   head: () => ({ meta: [{ title: "Entrar — Fyn Sinc" }] }),
 });
+
+function readNextParam(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const n = new URLSearchParams(window.location.search).get("next");
+  if (!n || !n.startsWith("/") || n.startsWith("//")) return undefined;
+  return n;
+}
 
 function LoginPage() {
   const navigate = useNavigate();
