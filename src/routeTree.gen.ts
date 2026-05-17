@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrialRouteImport } from './routes/trial'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SelectOrgRouteImport } from './routes/select-org'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,9 +26,19 @@ import { Route as AppBancosRouteImport } from './routes/_app/bancos'
 import { Route as AppAportesRouteImport } from './routes/_app/aportes'
 import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
+const TrialRoute = TrialRouteImport.update({
+  id: '/trial',
+  path: '/trial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelectOrgRoute = SelectOrgRouteImport.update({
+  id: '/select-org',
+  path: '/select-org',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -97,7 +109,9 @@ const AppClientesIdRoute = AppClientesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -112,7 +126,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/aportes': typeof AppAportesRoute
   '/bancos': typeof AppBancosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -129,7 +145,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/select-org': typeof SelectOrgRoute
   '/signup': typeof SignupRoute
+  '/trial': typeof TrialRoute
   '/_app/aportes': typeof AppAportesRoute
   '/_app/bancos': typeof AppBancosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
@@ -146,7 +164,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -161,7 +181,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/aportes'
     | '/bancos'
     | '/clientes'
@@ -177,7 +199,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/select-org'
     | '/signup'
+    | '/trial'
     | '/_app/aportes'
     | '/_app/bancos'
     | '/_app/clientes'
@@ -194,16 +218,32 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SelectOrgRoute: typeof SelectOrgRoute
   SignupRoute: typeof SignupRoute
+  TrialRoute: typeof TrialRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trial': {
+      id: '/trial'
+      path: '/trial'
+      fullPath: '/trial'
+      preLoaderRoute: typeof TrialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/select-org': {
+      id: '/select-org'
+      path: '/select-org'
+      fullPath: '/select-org'
+      preLoaderRoute: typeof SelectOrgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -342,7 +382,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  SelectOrgRoute: SelectOrgRoute,
   SignupRoute: SignupRoute,
+  TrialRoute: TrialRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
