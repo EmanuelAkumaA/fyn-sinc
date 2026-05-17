@@ -52,7 +52,7 @@ function LoginPage() {
     }
     startSessionTimer();
     toast.success("Bem-vindo de volta");
-    navigate({ to: "/dashboard" });
+    navigate({ to: (next ?? "/dashboard") as "/dashboard" });
   }
 
   return (
