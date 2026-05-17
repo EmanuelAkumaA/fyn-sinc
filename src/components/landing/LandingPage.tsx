@@ -50,7 +50,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import logoFull from "@/assets/logo-full.svg";
 
 const NAV = [
   { href: "#inicio", label: "Início" },
@@ -59,6 +66,7 @@ const NAV = [
   { href: "#recursos", label: "Recursos" },
   { href: "#para-quem", label: "Para quem é" },
   { href: "#acesso", label: "Acesso" },
+  { href: "#faq", label: "FAQ" },
 ];
 
 function RequestAccessDialog({
@@ -118,13 +126,8 @@ function RequestAccessDialog({
 
 function Logo({ className }: { className?: string }) {
   return (
-    <Link to="/" className={cn("flex items-center gap-2", className)}>
-      <span className="grid h-8 w-8 place-items-center rounded-xl bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-glow)]">
-        <Sparkles className="h-4 w-4" />
-      </span>
-      <span className="font-display text-lg font-semibold tracking-tight">
-        Fyn <span className="text-primary">Sinc</span>
-      </span>
+    <Link to="/" className={cn("flex items-center", className)} aria-label="Fyn Sinc">
+      <img src={logoFull} alt="Fyn Sinc" className="h-9 w-auto sm:h-10" />
     </Link>
   );
 }
@@ -806,6 +809,7 @@ export default function LandingPage() {
         <AudienceSection />
         <DifferentialsSection />
         <AccessSection />
+        <FAQSection />
         <FinalCTA />
       </main>
       <Footer />
