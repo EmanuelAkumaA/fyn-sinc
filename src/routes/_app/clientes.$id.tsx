@@ -340,7 +340,7 @@ function ClienteDetalhe() {
           <PlanosTab plans={plans} />
         </TabsContent>
         <TabsContent value="arquivos">
-          <ArquivosTab clientId={id} orgId={client.organization_id ?? null} docs={docs} tx={tx} />
+          <ArquivosTab clientId={id} orgId={(client as ClientRow & { organization_id?: string }).organization_id ?? null} docs={docs} tx={tx} />
         </TabsContent>
         <TabsContent value="timeline">
           <TimelineTab tx={tx} recurring={recurring} docs={docs} clientCreatedAt={(client as ClientRow & { created_at?: string }).created_at} />
