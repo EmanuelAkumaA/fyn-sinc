@@ -10,13 +10,22 @@ export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
+    if (!data.session) {
+      window.location.assign("/login?next=/admin");
+      throw redirect({ to: "/login" });
+    }
     const { data: role } = await supabase
       .from("user_global_roles")
       .select("role")
       .eq("user_id", data.session.user.id)
       .maybeSingle();
-    if (!role || role.role !== "super_admin") throw redirect({ to: "/dashboard" });
+    if (!role || role.role !== "super_admin") {
+      window.sessionStorage.setItem(
+        "fynsinc:flash",
+        "Acesso restrito ao super admin. Você foi redirecionado para o app.",
+      );
+      throw redirect({ to: "/dashboard" });
+    }
   },
   component: AdminLayout,
 });
