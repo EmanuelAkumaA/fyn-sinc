@@ -102,7 +102,7 @@ function ClientesPage() {
     { ativos: 0, inativos: 0, inadimplentes: 0, emDia: 0 },
   );
 
-  const handleSubmit = (data: FormState) => {
+  const handleSubmit = (data: ClientFormState) => {
     const payload: Partial<ClientRow> = {
       ...data,
       logo_url: data.logo_url.trim() || null,
