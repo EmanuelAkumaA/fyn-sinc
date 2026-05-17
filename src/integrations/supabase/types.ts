@@ -343,24 +343,30 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          member_role: Database["public"]["Enums"]["org_role"]
           organization_id: string
           role: Database["public"]["Enums"]["app_role"]
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          member_role?: Database["public"]["Enums"]["org_role"]
           organization_id: string
           role?: Database["public"]["Enums"]["app_role"]
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          member_role?: Database["public"]["Enums"]["org_role"]
           organization_id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -379,21 +385,39 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          plan: string
           slug: string | null
+          status: string
+          subscription_ends_at: string | null
+          subscription_start_at: string | null
+          trial_ends_at: string | null
+          trial_start_at: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          plan?: string
           slug?: string | null
+          status?: string
+          subscription_ends_at?: string | null
+          subscription_start_at?: string | null
+          trial_ends_at?: string | null
+          trial_start_at?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          plan?: string
           slug?: string | null
+          status?: string
+          subscription_ends_at?: string | null
+          subscription_start_at?: string | null
+          trial_ends_at?: string | null
+          trial_start_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -655,6 +679,74 @@ export type Database = {
           },
         ]
       }
+      trial_requests: {
+        Row: {
+          clients_estimate: string | null
+          company_name: string
+          created_at: string
+          email: string
+          id: string
+          organization_id: string | null
+          responsible_name: string
+          segment: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          clients_estimate?: string | null
+          company_name: string
+          created_at?: string
+          email: string
+          id?: string
+          organization_id?: string | null
+          responsible_name: string
+          segment?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          clients_estimate?: string | null
+          company_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          organization_id?: string | null
+          responsible_name?: string
+          segment?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_global_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["global_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["global_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["global_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_bank_balance: {
@@ -741,7 +833,19 @@ export type Database = {
     }
     Functions: {
       current_org_id: { Args: never; Returns: string }
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _roles: Database["public"]["Enums"]["org_role"][]
+        }
+        Returns: boolean
+      }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      link_super_admin_by_email: {
+        Args: { _email: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
@@ -753,6 +857,8 @@ export type Database = {
       client_status: "ativo" | "inativo" | "inadimplente"
       client_type: "PF" | "PJ"
       entity_status: "ativo" | "inativo" | "pausado" | "cancelado"
+      global_role: "super_admin"
+      org_role: "owner" | "manager" | "member"
       plan_status:
         | "pendente"
         | "recebido"
@@ -914,6 +1020,8 @@ export const Constants = {
       client_status: ["ativo", "inativo", "inadimplente"],
       client_type: ["PF", "PJ"],
       entity_status: ["ativo", "inativo", "pausado", "cancelado"],
+      global_role: ["super_admin"],
+      org_role: ["owner", "manager", "member"],
       plan_status: [
         "pendente",
         "recebido",
