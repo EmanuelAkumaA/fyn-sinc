@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import logoUrl from "@/assets/logo.svg";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -39,8 +40,8 @@ function SignupPage() {
     <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-4" style={{ background: "var(--gradient-primary)" }}>
-            <span className="font-display text-2xl font-bold text-background">F</span>
+          <div className="inline-flex h-16 w-16 items-center justify-center mb-4">
+            <img src={logoUrl} alt="Fyn Sinc" className="h-16 w-16 object-contain" />
           </div>
           <h1 className="font-display text-3xl font-bold">Crie sua conta</h1>
           <p className="text-muted-foreground text-sm mt-1">Comece a organizar o financeiro da sua empresa</p>
