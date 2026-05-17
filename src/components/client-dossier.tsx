@@ -253,9 +253,6 @@ function ClienteDetalhe({ id }: { id: string }) {
 
   return (
     <>
-      <Link to="/clientes" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3">
-        <ArrowLeft className="h-4 w-4" /> Clientes
-      </Link>
 
       <header className="client-header p-5 md:p-6 mb-6" style={style}>
         <div className="flex flex-col md:flex-row md:items-center gap-4">
