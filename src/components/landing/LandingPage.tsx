@@ -795,6 +795,67 @@ function Footer() {
   );
 }
 
+const FAQ_ITEMS = [
+  {
+    q: "Como o Fyn Sinc trata repasses de clientes?",
+    a: "Repasses entram como movimentação separada da receita própria. O sistema calcula automaticamente o que é seu e o que pertence ao cliente, sem inflar o seu faturamento.",
+  },
+  {
+    q: "O que é \"lucro real\" no Fyn Sinc?",
+    a: "É o resultado após descontar custos, comissões, taxas, cashback e repasses da receita própria. Você vê por cliente e no consolidado da operação.",
+  },
+  {
+    q: "Repasse conta como minha receita?",
+    a: "Não. Ele aparece como entrada e saída espelhadas e não soma ao lucro — evita a ilusão de faturamento alto com margem baixa.",
+  },
+  {
+    q: "Como funciona o onboarding?",
+    a: "Você cadastra clientes, planos, serviços, taxas e bancos, lança ou importa as primeiras movimentações e o painel já mostra receita, repasses e lucro real do mês.",
+  },
+  {
+    q: "Quanto tempo leva para começar a usar?",
+    a: "A operação básica fica de pé no mesmo dia. Histórico e recorrências são configurados conforme o volume de clientes.",
+  },
+  {
+    q: "Preciso integrar com banco ou ERP?",
+    a: "Não é obrigatório. O Fyn Sinc funciona de forma independente; integrações futuras são opcionais.",
+  },
+  {
+    q: "Suporta comissões, cashback e taxas variáveis por cliente?",
+    a: "Sim. Todos são parâmetros por cliente e plano e entram automaticamente no cálculo do lucro real.",
+  },
+];
+
+function FAQSection() {
+  return (
+    <section id="faq" className="border-t border-border/60 py-20 sm:py-28">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <SectionTitle
+          kicker="FAQ"
+          title="Perguntas frequentes"
+          subtitle="Respostas objetivas sobre repasses, lucro real e onboarding."
+        />
+        <Accordion type="single" collapsible className="mt-10 space-y-3">
+          {FAQ_ITEMS.map((item, i) => (
+            <AccordionItem
+              key={i}
+              value={`item-${i}`}
+              className="rounded-xl border border-border/60 bg-card/40 px-4 last:border-b"
+            >
+              <AccordionTrigger className="text-left font-display text-base font-semibold hover:no-underline">
+                {item.q}
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                {item.a}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
