@@ -145,13 +145,7 @@ export function useInstallPwa(): InstallPwaContextValue {
 }
 
 export function InstallPwaBanner() {
-  const { canInstall, promptInstall, showInstructions, setShowInstructions } = useInstallPwa();
-  const [dismissed, setDismissed] = useState(() => recentlyDismissed());
-
-  const dismiss = () => {
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
-    setDismissed(true);
-  };
+  const { canInstall, promptInstall, showInstructions, setShowInstructions, dismissed, dismiss } = useInstallPwa();
 
   const handleInstall = async () => {
     await promptInstall();
