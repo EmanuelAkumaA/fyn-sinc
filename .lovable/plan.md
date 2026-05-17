@@ -1,42 +1,87 @@
-## Objetivo
 
-Ao clicar em um card de cliente na página `/clientes`, em vez de navegar para `/clientes/$id`, abrir o dossiê completo (header + 8 abas já implementadas) dentro de um **Dialog grande** sobreposto à lista, mantendo a rota atual.
+## Parte 1 — PWA instalável (sem service worker)
 
-## Mudanças
+Boa parte já está pronta: `public/manifest.webmanifest`, ícones 192/512, `<link rel="manifest">` e meta tags Apple no `__root.tsx`. Faltam ajustes finos.
 
-### 1. Extrair conteúdo do dossiê em componente reutilizável
-Arquivo novo: `src/components/client-dossier.tsx`
-- Receber `clientId: string` por prop.
-- Mover todo o conteúdo atual de `src/routes/_app/clientes.$id.tsx` (header com logo/status/edit, abas Overview/Financeiro/Mensalidades/Aportes/Planos/Arquivos/Timeline/Observações, hooks de queries) para esse componente.
-- Remover dependência de `Route.useParams()` — usar a prop.
-- Remover botão "Voltar" (não faz sentido em modal); manter botão de editar.
+### 1.1 Ajustar `public/manifest.webmanifest`
+- Adicionar `"scope": "/"`.
+- Trocar `"start_url": "/"` por `"start_url": "/login"` (alinhado ao pedido).
+- Trocar `"orientation": "portrait"` por `"portrait-primary"`.
+- Atualizar `description` para "Sistema financeiro operacional para empresas de serviço."
+- Manter `name`, `short_name`, cores `#0D1B2A`, `display: standalone` e ícones existentes (já `purpose: "any maskable"`).
 
-### 2. Simplificar a rota `/clientes/$id`
-Arquivo: `src/routes/_app/clientes.$id.tsx`
-- Manter a rota funcional (deep link continua valendo) renderizando apenas `<ClientDossier clientId={id} />` dentro do layout de página padrão.
+### 1.2 `__root.tsx` (meta tags)
+Já tem `theme-color`, `apple-mobile-web-app-capable`, `status-bar-style` e `app-title`. Nada a adicionar — apenas validar que `viewport-fit=cover` continua presente (está).
 
-### 3. Abrir como modal na lista de clientes
-Arquivo: `src/routes/_app/clientes.tsx`
-- Adicionar estado `viewingId: string | null`.
-- Adicionar nova prop `onOpen` no `ClientCard` (ver passo 4).
-- Renderizar `<Dialog open={!!viewingId} onOpenChange={...}>` com `DialogContent` largo (`max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-0`) contendo `<ClientDossier clientId={viewingId} />`.
-- Manter o `Sheet` de edição (Novo/Editar) intacto.
+### 1.3 Não fazer nesta etapa
+- Nenhum service worker, `vite-plugin-pwa`, cache offline ou prompt de instalação custom.
+- Sem alterações em build/Vite.
 
-### 4. Trocar o comportamento de clique do card
-Arquivo: `src/components/client-card.tsx`
-- Substituir o wrapper `<Link to="/clientes/$id">` por um `<button>` (ou `div` com `role="button"`) que chama `onOpen(client)`.
-- Manter `stopNav` para os controles do dropdown (Editar).
-- Preservar estilos atuais (`client-card group ...`) e acessibilidade (aria-label, foco).
+### 1.4 Polimentos mobile (genéricos)
+- Garantir que o `Dialog` do dossiê use `w-screen h-[100dvh] max-w-none rounded-none` em telas `< md`, e `max-w-6xl w-[95vw] max-h-[92vh]` em `md+`.
+- Confirmar `safe-area-inset` na `MobileBottomNav` (padding-bottom env(safe-area-inset-bottom)).
+- TabsList do dossiê: já tem `overflow-x-auto`; adicionar `whitespace-nowrap` nos triggers e remover `justify-start` se atrapalhar scroll horizontal no mobile.
 
-## Detalhes técnicos
+## Parte 2 — Refinar dossiê do cliente
 
-- Reaproveitar `Dialog` do shadcn (`@/components/ui/dialog`).
-- Invalidação de cache via `invalidateClientCaches` continua igual — modal lê das mesmas queries.
-- Ao fechar o modal, limpar `viewingId` para desmontar e liberar queries pesadas.
-- Sem mudanças no banco, RLS, ou lógica de negócio.
+Base já existe em `src/components/client-dossier.tsx` com header, 13 métricas, 8 abas e view `v_client_financial_summary`. As mudanças são organização visual e UX, sem tocar em regras financeiras nem na view.
+
+### 2.1 Reorganizar grid de métricas (`MetricsGrid`)
+Mudar de uma grade plana de 13 cards para 3 linhas semânticas com 4 cards cada (último grupo = 4: Saldo de repasse, Repasses recebidos, Repasses utilizados, Comissões+Cashbacks combinados em 1 card ou manter 4 separados — manter os 4 separados, totalizando 12 + Lucro líquido na primeira linha).
+
+Layout final:
+- **Linha 1 (principais)**: Total recebido · A receber · Em atraso · Lucro líquido
+- **Linha 2 (operacional)**: Mensalidade ativa · Recorrência prevista no mês · Avulsos pendentes · Taxas pagas
+- **Linha 3 (repasses & ganhos)**: Saldo de repasse · Repasses recebidos · Repasses utilizados · Comissões + Cashbacks (mostrar dois valores empilhados no mesmo card)
+
+Mobile: mostrar só a Linha 1 (4 cards principais) por padrão, com botão "Ver todas as métricas" expandindo Linhas 2 e 3. Desktop: todas visíveis.
+
+Implementação: três `<div className="grid grid-cols-2 md:grid-cols-4 gap-3">` em sequência + estado `showAll` controlando visibilidade das linhas 2 e 3 em telas `< md`.
+
+### 2.2 Modal grande → fullscreen no mobile
+Em `src/routes/_app/clientes.tsx`, ajustar o `DialogContent` para:
+- Mobile (`<md`): `w-screen h-[100dvh] max-w-none max-h-none rounded-none p-4 overflow-y-auto`.
+- Desktop (`md+`): manter `max-w-6xl w-[95vw] max-h-[92vh] p-6`.
+
+Header do dossiê: stack vertical com logo+nome em cima, contato no meio e status+botão Editar embaixo no mobile (já está com `flex-col md:flex-row` — só validar).
+
+### 2.3 Aba Visão geral
+Pequenos refinos:
+- Adicionar 4º card "Resumo rápido" com: total cliente desde cadastro, ticket médio recebido, mensalidade total, dias desde último pagamento.
+- Manter os cards existentes (Próximos vencimentos, Últimas movimentações, Mensalidades ativas).
+- Banner de inadimplência já existe acima das métricas — manter.
+
+### 2.4 Aba Arquivos
+Validar (sem reescrever) que:
+- Upload usa `client-documents/{organization_id}/{client_id}/{filename}`.
+- Visualização usa `createSignedUrl` (não `getPublicUrl`).
+- Insert do `client_documents` carrega `client_id` correto, sem criar novo cliente.
+
+Se algum item acima estiver divergente, corrigir pontualmente.
+
+### 2.5 Aba Timeline
+Já é agregada no frontend a partir de `tx`, `recurring`, `docs` + `client.created_at`. Validar ordenação desc e ícones por tipo. Sem mudanças de schema.
+
+### 2.6 Atualização dinâmica
+`invalidateClientCaches` já cobre `clients`, `client`, `client-summary`, `client-transactions`, `client-documents`, `client-recurring`, `client-plans`, `client-timeline`, `dashboard`, `transactions`, `recorrencias`, `plans`.
+
+Adicionar chave `wallet` (mencionada no pedido) na função.
+
+### 2.7 NÃO mexer
+- View `v_client_financial_summary` (já está pronta com os 14 campos pedidos).
+- Regras de receita/despesa/repasse/comissão/cashback/taxa.
+- Storage bucket `client-documents` (já privado).
+- RLS (já filtra por `organization_id`).
+- Módulos Admin, assinaturas, trial, painel público.
+
+## Arquivos afetados
+
+- `public/manifest.webmanifest` — ajustar campos.
+- `src/components/client-dossier.tsx` — reorganizar `MetricsGrid` em 3 linhas + toggle mobile; adicionar card "Resumo rápido" no Overview; pequenos ajustes mobile nas TabsList.
+- `src/routes/_app/clientes.tsx` — `DialogContent` responsivo (fullscreen mobile).
+- `src/lib/client-cache.ts` — incluir chave `wallet`.
 
 ## Fora de escopo
-
-- Nenhuma alteração nos cálculos da view `v_client_financial_summary`.
-- Nenhuma alteração no upload/storage de documentos.
-- Sem mudanças nas rotas de outros módulos.
+- Service worker / offline / cache avançado.
+- Mudanças em rotas, schema, RLS, view, storage.
+- Outros módulos do produto.

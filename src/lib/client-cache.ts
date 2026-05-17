@@ -11,6 +11,7 @@ export function invalidateClientCaches(qc: QueryClient, clientId?: string | null
     "transactions",
     "recorrencias",
     "plans",
+    "wallet",
   ];
   keys.forEach((k) => qc.invalidateQueries({ queryKey: Array.isArray(k) ? k : [k] }));
 
