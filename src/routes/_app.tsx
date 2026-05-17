@@ -28,6 +28,13 @@ function AppLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const flash = window.sessionStorage.getItem("fynsinc:flash");
+      if (flash) {
+        window.sessionStorage.removeItem("fynsinc:flash");
+        toast.error(flash);
+      }
+    }
     let active = true;
 
     const evaluate = async () => {
