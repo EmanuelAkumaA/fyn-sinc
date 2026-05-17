@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
 import { ClientForm, type ClientRow, type ClientFormState } from "@/components/client-form";
+import { ClientDossier } from "@/components/client-dossier";
 
 export const Route = createFileRoute("/_app/clientes")({
   component: ClientesPage,
@@ -26,6 +28,7 @@ function ClientesPage() {
   const [financialStatusFilter, setFinancialStatusFilter] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRow | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
@@ -191,6 +194,7 @@ function ClientesPage() {
             <ClientCard
               key={c.id}
               client={c}
+              onOpen={(client) => setViewingId(client.id)}
               onEdit={(client) => {
                 setEditing(client as ClientRow);
                 setOpen(true);
@@ -199,6 +203,12 @@ function ClientesPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!viewingId} onOpenChange={(v) => !v && setViewingId(null)}>
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-6">
+          {viewingId && <ClientDossier clientId={viewingId} />}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

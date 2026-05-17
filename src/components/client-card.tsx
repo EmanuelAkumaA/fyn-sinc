@@ -1,5 +1,4 @@
 import { memo, useCallback, useMemo, type CSSProperties, type MouseEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, Pencil, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientStatusBadge, FinancialStatusBadge } from "@/components/ui-helpers";
@@ -30,10 +29,11 @@ type ClientLike = {
 interface ClientCardProps {
   client: ClientLike;
   onEdit?: (client: ClientLike) => void;
+  onOpen?: (client: ClientLike) => void;
   className?: string;
 }
 
-function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
+function ClientCardImpl({ client, onEdit, onOpen, className }: ClientCardProps) {
   const style = useMemo<CSSProperties>(() => {
     const color = getBrandColor(client);
     return {
@@ -49,11 +49,11 @@ function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
   }, []);
 
   return (
-    <Link
-      to="/clientes/$id"
-      params={{ id: client.id }}
+    <button
+      type="button"
+      onClick={() => onOpen?.(client)}
       style={style}
-      className={cn("client-card group relative block", className)}
+      className={cn("client-card group relative block w-full text-left", className)}
     >
       <div className="flex items-center gap-4 p-4 md:p-5">
         <ClientLogo client={client} size="md" className="client-card__logo" />
@@ -103,7 +103,7 @@ function ClientCardImpl({ client, onEdit, className }: ClientCardProps) {
           )}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
