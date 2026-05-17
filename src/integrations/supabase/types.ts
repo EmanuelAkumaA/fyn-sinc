@@ -58,6 +58,66 @@ export type Database = {
           },
         ]
       }
+      client_documents: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          document_date: string | null
+          document_type: string
+          file_name: string | null
+          file_path: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          organization_id: string
+          related_recurring_id: string | null
+          related_transaction_id: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          document_date?: string | null
+          document_type: string
+          file_name?: string | null
+          file_path: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          organization_id: string
+          related_recurring_id?: string | null
+          related_transaction_id?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          document_date?: string | null
+          document_type?: string
+          file_name?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          organization_id?: string
+          related_recurring_id?: string | null
+          related_transaction_id?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           brand_color: string | null
@@ -225,6 +285,13 @@ export type Database = {
             foreignKeyName: "financial_transactions_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "v_client_financial_summary"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "v_client_wallet"
             referencedColumns: ["client_id"]
           },
@@ -387,6 +454,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_financial_summary"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "recurring_contracts_client_id_fkey"
@@ -562,6 +636,13 @@ export type Database = {
             foreignKeyName: "third_party_plans_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "v_client_financial_summary"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "v_client_wallet"
             referencedColumns: ["client_id"]
           },
@@ -601,6 +682,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "banks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_client_financial_summary: {
+        Row: {
+          active_recurring_amount: number | null
+          client_id: string | null
+          client_net_profit: number | null
+          expected_recurring_month: number | null
+          organization_id: string | null
+          pending_one_time_amount: number | null
+          repasse_balance: number | null
+          total_cashbacks: number | null
+          total_commissions: number | null
+          total_expenses: number | null
+          total_fees: number | null
+          total_overdue: number | null
+          total_receivable: number | null
+          total_received: number | null
+          total_repasse_received: number | null
+          total_repasse_used: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
