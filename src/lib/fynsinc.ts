@@ -1,12 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
 export async function getCurrentOrgId(): Promise<string | null> {
+  const local = getCurrentOrgIdLocal();
+  if (local) return local;
   const { data: userRes } = await supabase.auth.getUser();
   if (!userRes.user) return null;
   const { data } = await supabase
     .from("organization_users")
     .select("organization_id")
     .eq("user_id", userRes.user.id)
+    .eq("status", "active")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
