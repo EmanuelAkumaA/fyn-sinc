@@ -34,7 +34,7 @@ export function AppSidebar() {
           <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
         </div>
 
-        <nav className="px-3 pt-0 space-y-0.5 overflow-y-auto">
+        <nav className="px-3 pt-0 space-y-1 overflow-y-auto">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = path === to || path.startsWith(to + "/");
             return (
@@ -42,7 +42,7 @@ export function AppSidebar() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition",
+                  "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition",
                   active
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
@@ -59,7 +59,7 @@ export function AppSidebar() {
 
       <button
         onClick={logout}
-        className="m-3 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+        className="m-3 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
       >
         <LogOut className="h-[18px] w-[18px]" />
         Sair
