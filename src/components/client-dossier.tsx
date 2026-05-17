@@ -331,7 +331,18 @@ function ClienteDetalhe({ id }: { id: string }) {
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab tx={tx} recurring={recurring} inadimplente={inadimplente} />
+          <OverviewTab
+            tx={tx}
+            recurring={recurring}
+            inadimplente={inadimplente}
+            period={period}
+            setPeriod={setPeriod}
+            customStart={customStart}
+            setCustomStart={setCustomStart}
+            customEnd={customEnd}
+            setCustomEnd={setCustomEnd}
+            range={range}
+          />
         </TabsContent>
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
