@@ -34,7 +34,7 @@ export function AppSidebar() {
           <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
         </div>
 
-        <nav className="px-3 pt-0 space-y-0.5 overflow-y-auto">
+        <nav className="px-3 pt-0 space-y-1 overflow-y-auto">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = path === to || path.startsWith(to + "/");
             return (
