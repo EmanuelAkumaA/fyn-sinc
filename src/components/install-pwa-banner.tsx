@@ -45,36 +45,37 @@ function recentlyDismissed(): boolean {
   }
 }
 
-export function InstallPwaBanner() {
+export function useInstallPwa() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
-  const [iosVisible, setIosVisible] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
-  const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isInIframe() || isStandalone()) return;
-    if (localStorage.getItem(INSTALLED_KEY)) return;
-    if (recentlyDismissed()) return;
+    if (isInIframe() || isStandalone()) {
+      setInstalled(true);
+      return;
+    }
+    if (localStorage.getItem(INSTALLED_KEY)) {
+      setInstalled(true);
+      return;
+    }
 
     const onBIP = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BIPEvent);
-      setHidden(false);
     };
     const onInstalled = () => {
       try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* ignore */ }
-      setHidden(true);
+      setInstalled(true);
       setDeferred(null);
     };
 
     window.addEventListener("beforeinstallprompt", onBIP);
     window.addEventListener("appinstalled", onInstalled);
 
-    if (isIOSSafari()) {
-      setIosVisible(true);
-      setHidden(false);
-    }
+    if (isIOSSafari()) setIsIOS(true);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBIP);
@@ -82,34 +83,46 @@ export function InstallPwaBanner() {
     };
   }, []);
 
-  const dismiss = () => {
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
-    setHidden(true);
-  };
-
-  const handleInstall = async () => {
+  const promptInstall = async () => {
     if (deferred) {
       try {
         await deferred.prompt();
         const choice = await deferred.userChoice;
         if (choice.outcome === "accepted") {
           try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* ignore */ }
-          setHidden(true);
-        } else {
-          dismiss();
+          setInstalled(true);
         }
-      } catch {
-        dismiss();
-      }
+      } catch { /* ignore */ }
       setDeferred(null);
       return;
     }
-    if (iosVisible) {
-      setShowInstructions(true);
-    }
+    if (isIOS) setShowInstructions(true);
   };
 
-  if (hidden || (!deferred && !iosVisible)) return null;
+  const canInstall = !installed && (deferred !== null || isIOS);
+
+  return { canInstall, isIOS, promptInstall, showInstructions, setShowInstructions };
+}
+
+export function InstallPwaBanner() {
+  const { canInstall, promptInstall, showInstructions, setShowInstructions } = useInstallPwa();
+  const [dismissed, setDismissed] = useState(() => recentlyDismissed());
+
+  const dismiss = () => {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
+    setDismissed(true);
+  };
+
+  const handleInstall = async () => {
+    await promptInstall();
+  };
+
+  if (!canInstall || dismissed) {
+    // still render the instructions dialog if it was opened from elsewhere
+    return (
+      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />
+    );
+  }
 
   return (
     <>
