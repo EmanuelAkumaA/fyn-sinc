@@ -1,9 +1,9 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertTriangle, ArrowDownCircle, ArrowUpCircle, Banknote,
-  CalendarClock, Clock, Download, FileText, Filter, Gift, Mail, Pencil, Phone,
+  CalendarClock, ChevronLeft, ChevronRight, Clock, Download, FileText, Filter, Gift, Mail, Pencil, Phone,
   Plus, Receipt, Repeat, ShoppingBag, Trash2, TrendingUp, Upload, Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,90 @@ import { cn } from "@/lib/utils";
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
   return <ClienteDetalhe id={id} />;
+}
+
+function ScrollableTabsBar({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const overflow = el.scrollWidth - el.clientWidth;
+      setCanLeft(el.scrollLeft > 2);
+      setCanRight(overflow > 2 && el.scrollLeft < overflow - 2);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    // hint animation on mobile if overflowing
+    if (el.scrollWidth > el.clientWidth) {
+      setShowHint(true);
+      const nudge = setTimeout(() => {
+        el.scrollTo({ left: 28, behavior: "smooth" });
+        setTimeout(() => el.scrollTo({ left: 0, behavior: "smooth" }), 550);
+      }, 350);
+      const hide = setTimeout(() => setShowHint(false), 2800);
+      return () => {
+        clearTimeout(nudge);
+        clearTimeout(hide);
+        el.removeEventListener("scroll", update);
+        ro.disconnect();
+      };
+    }
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  const scrollBy = (dx: number) => ref.current?.scrollBy({ left: dx, behavior: "smooth" });
+
+  return (
+    <div className="relative mb-4 -mx-3 sm:-mx-5 lg:-mx-6">
+      <div
+        ref={ref}
+        className="w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] px-3 sm:px-5 lg:px-6 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none] scroll-smooth"
+      >
+        {children}
+      </div>
+      {canLeft && (
+        <button
+          type="button"
+          aria-label="Rolar abas para a esquerda"
+          onClick={() => scrollBy(-160)}
+          className="hidden sm:flex absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border shadow-sm hover:bg-background"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
+      {canRight && (
+        <button
+          type="button"
+          aria-label="Rolar abas para a direita"
+          onClick={() => scrollBy(160)}
+          className="hidden sm:flex absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border shadow-sm hover:bg-background"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+      {canRight && (
+        <div
+          className={cn(
+            "sm:hidden pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-foreground/85 text-background text-[10px] font-medium px-2 py-1 shadow-md transition-opacity duration-500",
+            showHint ? "opacity-100 animate-pulse" : "opacity-0",
+          )}
+        >
+          deslize
+          <ChevronRight className="h-3 w-3" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 type Tx = {
@@ -321,7 +405,7 @@ function ClienteDetalhe({ id }: { id: string }) {
       />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <div className="w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] mb-4 -mx-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none]">
+        <ScrollableTabsBar>
           <TabsList className="inline-flex w-max min-w-full bg-secondary/40 h-auto p-1 gap-0.5">
             <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap min-h-9 px-3">Visão geral</TabsTrigger>
             <TabsTrigger value="financeiro" className="shrink-0 whitespace-nowrap min-h-9 px-3">Financeiro</TabsTrigger>
@@ -330,7 +414,7 @@ function ClienteDetalhe({ id }: { id: string }) {
             <TabsTrigger value="timeline" className="shrink-0 whitespace-nowrap min-h-9 px-3">Timeline</TabsTrigger>
             <TabsTrigger value="observacoes" className="shrink-0 whitespace-nowrap min-h-9 px-3">Observações</TabsTrigger>
           </TabsList>
-        </div>
+        </ScrollableTabsBar>
 
         <TabsContent value="overview">
           <OverviewTab
