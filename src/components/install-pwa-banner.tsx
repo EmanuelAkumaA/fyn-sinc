@@ -147,14 +147,14 @@ export function useInstallPwa(): InstallPwaContextValue {
 }
 
 export function InstallPwaBanner() {
-  const { canInstall, promptInstall, showInstructions, setShowInstructions, dismissed, dismiss } = useInstallPwa();
+  const { canInstall, promptInstall, showInstructions, setShowInstructions, dismissed, dismiss, isIOS } = useInstallPwa();
 
-  const handleInstall = async () => {
-    await promptInstall();
-  };
+  if ((!canInstall || dismissed) && !showInstructions) {
+    return null;
+  }
 
   if (!canInstall || dismissed) {
-    return <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />;
+    return <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} isIOS={isIOS} />;
   }
 
   return (
@@ -170,7 +170,7 @@ export function InstallPwaBanner() {
           </div>
           <Button
             size="sm"
-            onClick={handleInstall}
+            onClick={() => { void promptInstall(); }}
             style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
           >
             Instalar
@@ -186,38 +186,41 @@ export function InstallPwaBanner() {
         </div>
       </div>
 
-      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />
+      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} isIOS={isIOS} />
     </>
   );
 }
 
-function InstallInstructionsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function InstallInstructionsDialog({ open, onOpenChange, isIOS }: { open: boolean; onOpenChange: (v: boolean) => void; isIOS: boolean }) {
+  const steps = isIOS
+    ? [
+        <>Toque em <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.</>,
+        <>Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.</>,
+        <>Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</>,
+      ]
+    : [
+        <>Abra o menu do navegador (⋮ no Chrome, ⋯ no Edge).</>,
+        <>Escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</>,
+        <>Confirme em <strong>Instalar</strong>. O Fyn Sinc abre como app.</>,
+      ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Adicionar à Tela de Início</DialogTitle>
+          <DialogTitle>Instalar o Fyn Sinc</DialogTitle>
         </DialogHeader>
         <ol className="space-y-3 text-sm">
-          <li className="flex items-start gap-3">
-            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">1</span>
-            <span className="flex-1">
-              Toque no botão <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">2</span>
-            <span className="flex-1">
-              Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">3</span>
-            <span className="flex-1">Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</span>
-          </li>
+          {steps.map((content, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">{i + 1}</span>
+              <span className="flex-1">{content}</span>
+            </li>
+          ))}
         </ol>
       </DialogContent>
     </Dialog>
   );
 }
+
 
