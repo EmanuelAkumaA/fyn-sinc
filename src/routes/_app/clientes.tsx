@@ -28,6 +28,7 @@ function ClientesPage() {
   const [financialStatusFilter, setFinancialStatusFilter] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRow | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
