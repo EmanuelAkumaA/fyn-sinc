@@ -53,7 +53,7 @@ function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center">
           <img src={logoUrl} alt="Fyn Sinc" className="h-48 object-contain -mb-14" />
-          <p className="text-muted-foreground text-sm">Clareza, controle e resultado</p>
+          <p className="text-white/90 text-sm font-medium tracking-wide drop-shadow-sm">Clareza, controle e resultado</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-4">
