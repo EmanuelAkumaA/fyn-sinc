@@ -1304,7 +1304,7 @@ function ComparePeriodSheet({ open, onOpenChange, tx, range }: {
         </p>
 
         <div className="grid grid-cols-2 gap-2 mt-4">
-          {metrics.map((m) => <CompareCard key={m.key} {...m} />)}
+          {metrics.map(({ key, ...m }) => <CompareCard key={key} {...m} />)}
         </div>
 
         <div className="mt-5 space-y-3">
