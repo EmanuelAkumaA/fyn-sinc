@@ -1,113 +1,45 @@
-## Plano: Responsividade do modal de detalhe do cliente
+## Plano: Scroll horizontal real das abas no mobile
 
-Foco em `src/routes/_app/clientes.tsx` (wrapper do Dialog) e `src/components/client-dossier.tsx` (header, resumo, abas, filtros, blocos da visão geral). Sem mudar lógica, queries, cálculos, regras financeiras nem cards principais (apenas o layout deles).
+Apenas a `TabsList` em `src/components/client-dossier.tsx` (~324). Sem mexer em cards, resumo, filtros, métricas, regras financeiras, conteúdo das abas, nem em desktop/tablet (o ajuste preserva o comportamento atual quando há espaço).
 
-Breakpoints alvo:
-- Mobile: até 639px (`< sm`)
-- Tablet: 640–1023px (`sm` a `< lg`)
-- Desktop: ≥ 1024px (`lg+`)
+### Causa raiz
 
-### 1. Wrapper do Dialog (`clientes.tsx` ~208)
+O `TabsList` do shadcn é `inline-flex h-9` com `justify-center`. As classes `overflow-x-auto justify-start whitespace-nowrap max-w-full` foram aplicadas direto nele, mas como ele é `inline-flex`, ele tenta caber em `max-w-full` e comprime os itens (radix ainda renderiza todos, porém alguns ficam visualmente cortados sem ativar a scrollbar — agravado pelo `scrollbar: none` global). Resultado: Timeline e Observações ficam fora da área visível e o usuário não consegue arrastar.
 
-Reestruturar o `DialogContent` para 3 comportamentos distintos:
+### Solução
 
-- Mobile: fullscreen real (`w-screen h-[100dvh] max-w-none max-h-none rounded-none p-0`).
-- Tablet (`sm`): `sm:w-[92vw] sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl sm:max-w-3xl`.
-- Desktop (`lg`): `lg:max-w-6xl`.
+Separar o "container que rola" do "trilho dos itens":
 
-Estrutura interna:
-- container externo `overflow-hidden flex flex-col`
-- área de conteúdo interna única `flex-1 overflow-y-auto overflow-x-hidden` com padding `p-3 sm:p-5 lg:p-6`
-- evitar duplo scroll: remover `overflow-y-auto` do `DialogContent` raiz, mover para o wrapper interno do `ClientDossier`.
+1. Envolver o `TabsList` em uma `<div>` wrapper de scroll:
+   - `w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch]`
+   - `mb-4` (move o margin atual pra cá)
+   - `-mx-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6` para alinhar com o padding interno do modal (`p-3 sm:p-5 lg:p-6`) e permitir que a barra encoste nas bordas da área de scroll, com padding interno garantindo que a primeira/última aba não fiquem coladas.
 
-Para isso o `ClientDossier` passa a renderizar um `<div className="flex flex-col h-full min-h-0">` com header + scroll area, em vez de fragmento `<>...</>`.
+2. Ajustar o `TabsList`:
+   - `inline-flex w-max min-w-full bg-secondary/40 h-auto p-1 gap-0.5` (não `max-w-full`, não `overflow`)
+   - Remove `overflow-x-auto`, `max-w-full` e `justify-start whitespace-nowrap` daqui (vai pro wrapper).
 
-### 2. Header do cliente (`client-dossier.tsx` ~262)
+3. Ajustar cada `TabsTrigger`:
+   - Adicionar `shrink-0 whitespace-nowrap min-h-9 px-3` para garantir boa área de toque no mobile e nenhum item ser comprimido. (O `whitespace-nowrap` já existe; reforça-se o `shrink-0` e `min-h-9`.)
 
-Mobile (`flex-col`):
-- Logo + nome empilhados (logo no topo)
-- Badges (Ativo / Em dia) abaixo dos dados, em linha
-- Botão "Editar cliente" `w-full` ao final
-- Tipografia: `text-lg` no nome
-- Padding `p-4`
+### Verificação de containers pais
 
-Tablet (`sm`):
-- Logo à esquerda, dados ao lado (`sm:flex-row sm:items-center`)
-- Badges + botão alinhados à direita, mas com `sm:flex-row` ao invés de coluna empilhada
-- Nome `sm:text-2xl`
+O `<DialogContent>` é `overflow-hidden` e o wrapper interno do `ClientDossier` é `overflow-y-auto overflow-x-hidden` — o `overflow-x-hidden` aqui não impede o filho de ter seu próprio `overflow-x-auto` (ele só impede o eixo X do próprio container). Portanto não há container pai que precise mudar. Cards e demais blocos continuam respeitando a largura.
 
-Desktop (`lg`):
-- Mantém o atual, com nome `lg:text-3xl` e botão `lg:w-auto`
+### Fade lateral opcional
 
-Trocar breakpoints `md:` por `sm:`/`lg:` onde necessário para alinhar com a nova divisão (mobile/tablet/desktop).
-
-### 3. Cards principais — MainMetrics (~477)
-
-Manter conteúdo. Ajustar grid e densidade:
-- `grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3`
-- `MetricBig`: `p-3 sm:p-4 lg:p-5`, ícone `h-8 w-8 lg:h-9 lg:w-9`, valor `text-base sm:text-xl lg:text-3xl`, label mantém `text-xs`
-
-### 4. Resumo do cliente — ClientSummaryBlock (~568)
-
-- Mobile (`grid-cols-1`): cada item em linha vertical (label em cima, valor embaixo), divisores entre todos os itens, padding `p-3`.
-- Tablet (`sm:grid-cols-2`): 2 colunas; itens com label à esquerda e valor à direita (`sm:flex-row sm:items-center sm:justify-between`).
-- Desktop: mantém `sm:grid-cols-2` (visual já amplo dentro do modal grande).
-
-Ajustar a regra atual `md:` → `sm:` para que o tablet pegue 2 colunas.
-
-### 5. TabsList (~324)
-
-- Mobile/Tablet: `overflow-x-auto whitespace-nowrap` (já existe; scrollbar oculto pelo CSS global), garantir `-mx-1 px-1` para o primeiro/último não colarem na borda, e `min-h-11` para boa área de toque.
-- Tornar a TabsList `sticky top-0 z-10 bg-background/95 backdrop-blur` dentro da área de scroll, para ficar visível ao rolar (regra opcional aplicada apenas se estável — manter por enquanto, pode ser revertido se causar problema visual).
-- Desktop: comportamento normal.
-
-### 6. Filtro de período + Comparar período (OverviewTab ~609)
-
-Mobile (empilhado):
-- `flex flex-col gap-2`
-- Select de período `w-full`
-- Em modo `custom`: data inicial `w-full`, separador some ou vira label, data final `w-full`
-- Botão "Comparar período" `w-full` abaixo
-
-Tablet retrato (`sm`):
-- Pode manter empilhado se largura apertar; usar `sm:flex-row sm:flex-wrap sm:items-center` com `Select sm:w-44`, datas `sm:w-40`, botão `sm:w-auto sm:ml-auto`.
-
-Desktop (`lg`):
-- Tudo na mesma linha (já fica com `sm:flex-row` + `lg:` se necessário).
-
-Mudar o container atual `flex flex-col md:flex-row md:items-center` → `flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2`.
-
-### 7. Blocos da Visão Geral (~634)
-
-Grid atual `grid lg:grid-cols-2`:
-- Mobile: 1 coluna (já é).
-- Tablet retrato (<768): 1 coluna.
-- Tablet paisagem / desktop: 2 colunas → manter `lg:grid-cols-2` (cobre desktop) e adicionar `md:grid-cols-2` para tablet paisagem.
-
-Cada card mantém `p-4` no desktop e ganha `p-3` no mobile.
-
-### 8. Alturas e overflow
-
-- `DialogContent` externo: `overflow-hidden`.
-- Wrapper interno de scroll: `overflow-y-auto overflow-x-hidden flex-1 min-h-0`.
-- Mobile usa `100dvh`; tablet/desktop `max-h-[90dvh]`.
-- Garantir que o `<header>` do cliente fique dentro da área de scroll (não fixar), para não consumir altura útil.
-
-### 9. Densidade visual
-
-- Mobile: `p-3`, `gap-2`, `text-sm`/`text-base`, botões `h-9` (size sm) com `w-full` quando primários.
-- Tablet: `p-4`, `gap-3`.
-- Desktop: `p-5`/`p-6`, `gap-3`/`gap-4`.
+Adicionar máscara CSS no wrapper apenas quando a barra é rolável, via Tailwind arbitrary value:
+```
+[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none]
+```
+Aplicado só no mobile. Se causar problema visual com a aba ativa nas bordas, removemos.
 
 ### Fora de escopo
 
-- Conteúdo/lógica das abas Financeiro, Aportes, Arquivos, Timeline, Observações (apenas o container Tabs e a TabsList sticky são tocados; o conteúdo interno fica como está).
-- Queries, mutations, cálculos, regras financeiras.
-- Estilo global, tokens de cor, outras telas.
+- Comportamento de cards, resumo, filtros, métricas, conteúdo das abas.
+- Desktop/tablet (continuam funcionando: o `w-max min-w-full` faz a barra ocupar a largura total quando cabe).
+- Estilo global de scrollbar (já oculto).
 
 ### Validação
 
-Abrir o modal em 360/390/414 (mobile), 768/834/1024 (tablet) e 1280/1536 (desktop) e checar:
-- Mobile fullscreen sem overflow horizontal, header empilhado, cards 2×2, resumo em lista vertical, abas roláveis, filtro empilhado, blocos em 1 coluna, scroll único e fluido.
-- Tablet com modal ~92vw centralizado, cards 2×2, resumo em 2 colunas, blocos em 2 colunas (paisagem) ou 1 (retrato).
-- Desktop com layout amplo, comportamento atual preservado e refinado.
+Abrir o modal em 320/360/390px e arrastar a barra: confirmar que Timeline e Observações aparecem ao deslizar e que a aba ativa (mesmo nas pontas) é totalmente visível. Em ≥1024px todas as 6 abas aparecem sem scroll.
