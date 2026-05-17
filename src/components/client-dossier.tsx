@@ -321,14 +321,16 @@ function ClienteDetalhe({ id }: { id: string }) {
       />
 
       <Tabs defaultValue="overview" className="mt-6">
-        <TabsList className="bg-secondary/40 mb-4 overflow-x-auto justify-start whitespace-nowrap max-w-full -mx-1 px-1 min-h-11">
-          <TabsTrigger value="overview" className="whitespace-nowrap">Visão geral</TabsTrigger>
-          <TabsTrigger value="financeiro" className="whitespace-nowrap">Financeiro</TabsTrigger>
-          <TabsTrigger value="aportes" className="whitespace-nowrap">Aportes</TabsTrigger>
-          <TabsTrigger value="arquivos" className="whitespace-nowrap">Arquivos</TabsTrigger>
-          <TabsTrigger value="timeline" className="whitespace-nowrap">Timeline</TabsTrigger>
-          <TabsTrigger value="observacoes" className="whitespace-nowrap">Observações</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] mb-4 -mx-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none]">
+          <TabsList className="inline-flex w-max min-w-full bg-secondary/40 h-auto p-1 gap-0.5">
+            <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap min-h-9 px-3">Visão geral</TabsTrigger>
+            <TabsTrigger value="financeiro" className="shrink-0 whitespace-nowrap min-h-9 px-3">Financeiro</TabsTrigger>
+            <TabsTrigger value="aportes" className="shrink-0 whitespace-nowrap min-h-9 px-3">Aportes</TabsTrigger>
+            <TabsTrigger value="arquivos" className="shrink-0 whitespace-nowrap min-h-9 px-3">Arquivos</TabsTrigger>
+            <TabsTrigger value="timeline" className="shrink-0 whitespace-nowrap min-h-9 px-3">Timeline</TabsTrigger>
+            <TabsTrigger value="observacoes" className="shrink-0 whitespace-nowrap min-h-9 px-3">Observações</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
           <OverviewTab
