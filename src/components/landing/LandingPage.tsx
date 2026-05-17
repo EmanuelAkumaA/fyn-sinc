@@ -57,7 +57,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import logoFull from "@/assets/logo-full.svg";
+import logoHeader from "@/assets/logo-header.svg";
 
 const NAV = [
   { href: "#inicio", label: "Início" },
@@ -127,7 +127,7 @@ function RequestAccessDialog({
 function Logo({ className }: { className?: string }) {
   return (
     <Link to="/" className={cn("flex items-center", className)} aria-label="Fyn Sinc">
-      <img src={logoFull} alt="Fyn Sinc" className="h-11 w-auto sm:h-12" />
+      <img src={logoHeader} alt="Fyn Sinc" className="h-9 w-auto sm:h-10" />
     </Link>
   );
 }
