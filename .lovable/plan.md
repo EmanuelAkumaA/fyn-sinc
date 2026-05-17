@@ -1,45 +1,65 @@
-## Plano: Scroll horizontal real das abas no mobile
+# Landing page pública do Fyn Sinc
 
-Apenas a `TabsList` em `src/components/client-dossier.tsx` (~324). Sem mexer em cards, resumo, filtros, métricas, regras financeiras, conteúdo das abas, nem em desktop/tablet (o ajuste preserva o comportamento atual quando há espaço).
+## Objetivo
+Criar a página comercial em `/` apresentando o Fyn Sinc como sistema financeiro operacional para empresas de serviço, mantendo a identidade visual dark já existente (tokens em `src/styles.css`), sem alterar o sistema interno (rotas `_app/*`, auth, módulos).
 
-### Causa raiz
+## Mudança de rota raiz
+Hoje `src/routes/index.tsx` redireciona `/` para `/dashboard` ou `/login`. Vou:
+- Substituir `index.tsx` pela landing pública (a landing fica em `/`).
+- Mover o redirect autenticado para `/_app` (já é layout autenticado) ou usar `/app` como atalho visual. O acesso ao sistema continua via `/login` → `/dashboard` (intocado).
+- Botão "Entrar no App" → link para `/login`.
+- Botão "Acessar Admin" → link visual para `/admin` (rota ainda não existe; apenas âncora visual, sem criar rota).
+- Botão "Solicitar acesso" → rola até seção CTA / abre modal simples de interesse (apenas UI, sem backend).
 
-O `TabsList` do shadcn é `inline-flex h-9` com `justify-center`. As classes `overflow-x-auto justify-start whitespace-nowrap max-w-full` foram aplicadas direto nele, mas como ele é `inline-flex`, ele tenta caber em `max-w-full` e comprime os itens (radix ainda renderiza todos, porém alguns ficam visualmente cortados sem ativar a scrollbar — agravado pelo `scrollbar: none` global). Resultado: Timeline e Observações ficam fora da área visível e o usuário não consegue arrastar.
+## Estrutura de arquivos
+- `src/routes/index.tsx` — página pública (compõe as seções).
+- `src/components/landing/Header.tsx` — header fixo com nav e menu mobile (Sheet).
+- `src/components/landing/Hero.tsx` — título, subtítulo, CTAs e mockup do dashboard (cards componentizados, sem imagem).
+- `src/components/landing/ProblemSection.tsx` — grid de dores.
+- `src/components/landing/TransformationSection.tsx` — comparativo Antes × Depois em duas colunas.
+- `src/components/landing/HowItWorksSection.tsx` — 4 passos numerados.
+- `src/components/landing/FeaturesSection.tsx` — grid de 10 cards de módulos com ícones lucide.
+- `src/components/landing/ComparisonSection.tsx` — cards mês atual/anterior + gráfico simples (Recharts já no projeto? se não, SVG inline ou divs com altura proporcional para evitar dependência).
+- `src/components/landing/AudienceSection.tsx` — cards "Para quem é".
+- `src/components/landing/DifferentialsSection.tsx` — cards de diferenciais.
+- `src/components/landing/AccessSection.tsx` — dois cards (App / Admin) + Solicitar acesso.
+- `src/components/landing/FinalCTA.tsx` — bloco CTA final.
+- `src/components/landing/Footer.tsx` — rodapé.
+- `src/components/landing/RequestAccessDialog.tsx` — modal simples (nome, empresa, e-mail) sem submit real (apenas toast de confirmação).
 
-### Solução
+Reuso de UI: `Button`, `Card`, `Dialog`/`Sheet`, `Input` do `src/components/ui/*` já existentes (shadcn). Ícones: `lucide-react`.
 
-Separar o "container que rola" do "trilho dos itens":
+## Design system
+- Usar exclusivamente tokens semânticos (`bg-background`, `text-foreground`, `text-primary`, `border-border`, `bg-card`, etc.).
+- Glass: reaproveitar classe `.glass` e `--gradient-surface` já em `styles.css`.
+- Acentos: `--primary` (verde petróleo) como cor principal; tom ciano via `--chart-1`/gradiente para apoio.
+- Tipografia: títulos com `font-display` (Sora), corpo Inter (default).
+- Adicionar, se necessário, utilitários extras em `styles.css` (ex.: gradiente de texto hero) usando tokens existentes — sem novas cores hardcoded.
 
-1. Envolver o `TabsList` em uma `<div>` wrapper de scroll:
-   - `w-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch]`
-   - `mb-4` (move o margin atual pra cá)
-   - `-mx-3 px-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6` para alinhar com o padding interno do modal (`p-3 sm:p-5 lg:p-6`) e permitir que a barra encoste nas bordas da área de scroll, com padding interno garantindo que a primeira/última aba não fiquem coladas.
+## Responsividade
+- Mobile-first; grids com `grid-cols-1 md:grid-cols-2 lg:grid-cols-3/4`.
+- Header: nav horizontal em `md+`, `Sheet` lateral no mobile com mesmos links.
+- Hero: stack vertical no mobile, 2 colunas (texto + mockup) em `lg+`.
+- Tipografia escalonada (`text-4xl md:text-5xl lg:text-6xl`).
 
-2. Ajustar o `TabsList`:
-   - `inline-flex w-max min-w-full bg-secondary/40 h-auto p-1 gap-0.5` (não `max-w-full`, não `overflow`)
-   - Remove `overflow-x-auto`, `max-w-full` e `justify-start whitespace-nowrap` daqui (vai pro wrapper).
+## SEO / head
+- `head()` na rota `/` com `title`, `description`, `og:title`, `og:description` específicos do Fyn Sinc, em pt-BR.
+- Um `<h1>` único na Hero; demais seções com `<h2>`.
 
-3. Ajustar cada `TabsTrigger`:
-   - Adicionar `shrink-0 whitespace-nowrap min-h-9 px-3` para garantir boa área de toque no mobile e nenhum item ser comprimido. (O `whitespace-nowrap` já existe; reforça-se o `shrink-0` e `min-h-9`.)
+## Animações
+- Transições suaves Tailwind (`transition`, `hover:`), `animate-in`/`fade-in` via `tw-animate-css` já importado.
+- Sem dependências novas. Sem Motion/GSAP.
 
-### Verificação de containers pais
+## Mockup do dashboard (Hero)
+Composição de cards (sem dados reais): "Receita própria", "Repasses", "Lucro líquido", "Recorrências ativas", "Clientes" com números fictícios e mini-sparkline em SVG inline.
 
-O `<DialogContent>` é `overflow-hidden` e o wrapper interno do `ClientDossier` é `overflow-y-auto overflow-x-hidden` — o `overflow-x-hidden` aqui não impede o filho de ter seu próprio `overflow-x-auto` (ele só impede o eixo X do próprio container). Portanto não há container pai que precise mudar. Cards e demais blocos continuam respeitando a largura.
+## Seção comparativa
+Cards (mês atual/anterior/Δ%) + gráfico de barras simples feito com divs (altura proporcional) para não introduzir dependência. Se Recharts já estiver instalado, posso usar; caso contrário, mantém SVG/divs.
 
-### Fade lateral opcional
+## Fora de escopo
+- Auth real, backend do "Solicitar acesso", rota `/admin`, alterações em `_app/*`, novos módulos.
+- Tradução; tudo em pt-BR.
 
-Adicionar máscara CSS no wrapper apenas quando a barra é rolável, via Tailwind arbitrary value:
-```
-[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)] sm:[mask-image:none]
-```
-Aplicado só no mobile. Se causar problema visual com a aba ativa nas bordas, removemos.
-
-### Fora de escopo
-
-- Comportamento de cards, resumo, filtros, métricas, conteúdo das abas.
-- Desktop/tablet (continuam funcionando: o `w-max min-w-full` faz a barra ocupar a largura total quando cabe).
-- Estilo global de scrollbar (já oculto).
-
-### Validação
-
-Abrir o modal em 320/360/390px e arrastar a barra: confirmar que Timeline e Observações aparecem ao deslizar e que a aba ativa (mesmo nas pontas) é totalmente visível. Em ≥1024px todas as 6 abas aparecem sem scroll.
+## Riscos / pontos de atenção
+- Trocar o comportamento de `/` afeta usuários logados que esperavam ir direto pro dashboard. Mitigação: header com botão "Entrar" sempre visível apontando para `/login` (que já redireciona logados). Posso, opcionalmente, manter detecção de sessão e mostrar "Ir para o painel" se houver sessão — confirmo na implementação.
+- Verificar se `Sheet` e `Dialog` já existem em `src/components/ui/` (shadcn padrão). Se faltarem, adiciono via shadcn na build.
