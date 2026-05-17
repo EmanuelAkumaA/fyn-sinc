@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_app/dashboard")({
 });
 
 function DashboardPage() {
+  const [openOp, setOpenOp] = useState(false);
   const { data: tx = [] } = useQuery({
     queryKey: ["dashboard-transactions"],
     queryFn: async () => {
