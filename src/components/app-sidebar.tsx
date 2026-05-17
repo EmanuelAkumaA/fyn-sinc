@@ -59,7 +59,7 @@ export function AppSidebar() {
 
       <button
         onClick={logout}
-        className="m-3 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+        className="m-3 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
       >
         <LogOut className="h-[18px] w-[18px]" />
         Sair
