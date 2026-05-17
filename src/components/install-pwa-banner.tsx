@@ -118,10 +118,7 @@ export function InstallPwaBanner() {
   };
 
   if (!canInstall || dismissed) {
-    // still render the instructions dialog if it was opened from elsewhere
-    return (
-      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />
-    );
+    return <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />;
   }
 
   return (
@@ -153,31 +150,38 @@ export function InstallPwaBanner() {
         </div>
       </div>
 
-      <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Adicionar à Tela de Início</DialogTitle>
-          </DialogHeader>
-          <ol className="space-y-3 text-sm">
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">1</span>
-              <span className="flex-1">
-                Toque no botão <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">2</span>
-              <span className="flex-1">
-                Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">3</span>
-              <span className="flex-1">Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</span>
-            </li>
-          </ol>
-        </DialogContent>
-      </Dialog>
+      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />
     </>
   );
 }
+
+function InstallInstructionsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Adicionar à Tela de Início</DialogTitle>
+        </DialogHeader>
+        <ol className="space-y-3 text-sm">
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">1</span>
+            <span className="flex-1">
+              Toque no botão <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">2</span>
+            <span className="flex-1">
+              Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">3</span>
+            <span className="flex-1">Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</span>
+          </li>
+        </ol>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
