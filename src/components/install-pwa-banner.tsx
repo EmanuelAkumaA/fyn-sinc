@@ -110,8 +110,10 @@ export function InstallPwaProvider({ children }: { children: ReactNode }) {
       setDeferred(null);
       return;
     }
-    if (isIOS) setShowInstructions(true);
-  }, [deferred, isIOS]);
+    // Sem prompt nativo (iOS Safari, navegador sem suporte, preview em iframe):
+    // mostra instruções manuais.
+    setShowInstructions(true);
+  }, [deferred]);
 
   const dismiss = useCallback(() => {
     try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
