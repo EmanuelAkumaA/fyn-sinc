@@ -45,36 +45,37 @@ function recentlyDismissed(): boolean {
   }
 }
 
-export function InstallPwaBanner() {
+export function useInstallPwa() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
-  const [iosVisible, setIosVisible] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
-  const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isInIframe() || isStandalone()) return;
-    if (localStorage.getItem(INSTALLED_KEY)) return;
-    if (recentlyDismissed()) return;
+    if (isInIframe() || isStandalone()) {
+      setInstalled(true);
+      return;
+    }
+    if (localStorage.getItem(INSTALLED_KEY)) {
+      setInstalled(true);
+      return;
+    }
 
     const onBIP = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BIPEvent);
-      setHidden(false);
     };
     const onInstalled = () => {
       try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* ignore */ }
-      setHidden(true);
+      setInstalled(true);
       setDeferred(null);
     };
 
     window.addEventListener("beforeinstallprompt", onBIP);
     window.addEventListener("appinstalled", onInstalled);
 
-    if (isIOSSafari()) {
-      setIosVisible(true);
-      setHidden(false);
-    }
+    if (isIOSSafari()) setIsIOS(true);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBIP);
@@ -82,34 +83,43 @@ export function InstallPwaBanner() {
     };
   }, []);
 
-  const dismiss = () => {
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
-    setHidden(true);
-  };
-
-  const handleInstall = async () => {
+  const promptInstall = async () => {
     if (deferred) {
       try {
         await deferred.prompt();
         const choice = await deferred.userChoice;
         if (choice.outcome === "accepted") {
           try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* ignore */ }
-          setHidden(true);
-        } else {
-          dismiss();
+          setInstalled(true);
         }
-      } catch {
-        dismiss();
-      }
+      } catch { /* ignore */ }
       setDeferred(null);
       return;
     }
-    if (iosVisible) {
-      setShowInstructions(true);
-    }
+    if (isIOS) setShowInstructions(true);
   };
 
-  if (hidden || (!deferred && !iosVisible)) return null;
+  const canInstall = !installed && (deferred !== null || isIOS);
+
+  return { canInstall, isIOS, promptInstall, showInstructions, setShowInstructions };
+}
+
+export function InstallPwaBanner() {
+  const { canInstall, promptInstall, showInstructions, setShowInstructions } = useInstallPwa();
+  const [dismissed, setDismissed] = useState(() => recentlyDismissed());
+
+  const dismiss = () => {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
+    setDismissed(true);
+  };
+
+  const handleInstall = async () => {
+    await promptInstall();
+  };
+
+  if (!canInstall || dismissed) {
+    return <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />;
+  }
 
   return (
     <>
@@ -140,31 +150,38 @@ export function InstallPwaBanner() {
         </div>
       </div>
 
-      <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Adicionar à Tela de Início</DialogTitle>
-          </DialogHeader>
-          <ol className="space-y-3 text-sm">
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">1</span>
-              <span className="flex-1">
-                Toque no botão <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">2</span>
-              <span className="flex-1">
-                Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">3</span>
-              <span className="flex-1">Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</span>
-            </li>
-          </ol>
-        </DialogContent>
-      </Dialog>
+      <InstallInstructionsDialog open={showInstructions} onOpenChange={setShowInstructions} />
     </>
   );
 }
+
+function InstallInstructionsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Adicionar à Tela de Início</DialogTitle>
+        </DialogHeader>
+        <ol className="space-y-3 text-sm">
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">1</span>
+            <span className="flex-1">
+              Toque no botão <span className="inline-flex items-center gap-1 font-medium"><Share className="h-3.5 w-3.5" /> Compartilhar</span> na barra do Safari.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">2</span>
+            <span className="flex-1">
+              Role e escolha <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3.5 w-3.5" /> Adicionar à Tela de Início</span>.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-full bg-secondary flex items-center justify-center font-semibold">3</span>
+            <span className="flex-1">Toque em <strong>Adicionar</strong>. Pronto — o Fyn Sinc abre como app.</span>
+          </li>
+        </ol>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

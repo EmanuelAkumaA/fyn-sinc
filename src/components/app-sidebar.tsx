@@ -1,9 +1,10 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Wallet, Repeat, ArrowLeftRight,
-  Package, Briefcase, Building2, Settings, LogOut,
+  Package, Briefcase, Building2, Settings, LogOut, Download,
 } from "lucide-react";
 import { signOutAndRedirect } from "@/lib/session";
+import { useInstallPwa } from "@/components/install-pwa-banner";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo-full.svg";
 
@@ -22,6 +23,7 @@ const NAV = [
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
+  const { canInstall, promptInstall } = useInstallPwa();
 
   async function logout() {
     await signOutAndRedirect(navigate, { reason: "manual" });
@@ -57,13 +59,24 @@ export function AppSidebar() {
         </nav>
       </div>
 
-      <button
-        onClick={logout}
-        className="m-3 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-      >
-        <LogOut className="h-[18px] w-[18px]" />
-        Sair
-      </button>
+      <div className="m-3 space-y-1">
+        {canInstall && (
+          <button
+            onClick={() => { void promptInstall(); }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+          >
+            <Download className="h-[18px] w-[18px]" />
+            Instalar app
+          </button>
+        )}
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+        >
+          <LogOut className="h-[18px] w-[18px]" />
+          Sair
+        </button>
+      </div>
     </aside>
   );
 }
