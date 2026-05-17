@@ -53,7 +53,13 @@ function LoginPage() {
     }
     startSessionTimer();
     toast.success("Bem-vindo de volta");
-    navigate({ to: (next ?? "/dashboard") as "/dashboard" });
+    if (next) {
+      // Hard navigate para garantir que beforeLoad do destino (ex.: /admin)
+      // rode com a sessão recém-criada já hidratada.
+      window.location.assign(next);
+      return;
+    }
+    navigate({ to: "/dashboard" });
   }
 
   return (
