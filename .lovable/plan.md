@@ -1,53 +1,113 @@
-## Plano: Melhorar responsividade do modal de detalhes do cliente (mobile)
+## Plano: Responsividade do modal de detalhe do cliente
 
-Foco: `src/components/client-dossier.tsx` + uma pequena ajuste no wrapper do modal em `src/routes/_app/clientes.tsx`. Sem mudar lógica nem dados.
+Foco em `src/routes/_app/clientes.tsx` (wrapper do Dialog) e `src/components/client-dossier.tsx` (header, resumo, abas, filtros, blocos da visão geral). Sem mudar lógica, queries, cálculos, regras financeiras nem cards principais (apenas o layout deles).
 
-### Problemas observados no print (390px)
-- Cards "Total a receber" e "Saldo de aporte" aparecem cortados na direita (paddings + tamanho do valor estouram a coluna).
-- Cabeçalho do cliente com botão "Editar cliente" empurrando layout.
-- Linhas do "Resumo do cliente" com valores truncados à direita.
-- Filtro do tab "Visão geral" com `Select w-44` + inputs de data `w-40` não cabem bem.
-- Padding interno do modal (`p-4`) ainda generoso em telas estreitas.
+Breakpoints alvo:
+- Mobile: até 639px (`< sm`)
+- Tablet: 640–1023px (`sm` a `< lg`)
+- Desktop: ≥ 1024px (`lg+`)
 
-### Alterações
+### 1. Wrapper do Dialog (`clientes.tsx` ~208)
 
-1. **Wrapper do Dialog** (`src/routes/_app/clientes.tsx` linha 208)
-   - `p-4 md:p-6` → `p-3 md:p-6`
-   - Acrescentar `overflow-x-hidden` em conjunto com o `overflow-y-auto` existente.
+Reestruturar o `DialogContent` para 3 comportamentos distintos:
 
-2. **Header do cliente** (`client-dossier.tsx` ~262)
-   - `p-5 md:p-6` → `p-4 md:p-6`
-   - Título `text-2xl md:text-3xl` → `text-xl md:text-3xl`
-   - Bloco direito (`shrink-0 flex flex-col md:items-end`): no mobile virar largura cheia abaixo dos dados, com botão "Editar cliente" `w-full md:w-auto`.
-   - Adicionar `break-all` no email para não estourar.
+- Mobile: fullscreen real (`w-screen h-[100dvh] max-w-none max-h-none rounded-none p-0`).
+- Tablet (`sm`): `sm:w-[92vw] sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl sm:max-w-3xl`.
+- Desktop (`lg`): `lg:max-w-6xl`.
 
-3. **MainMetrics cards** (`MetricBig`, ~488)
-   - `p-5` → `p-3 md:p-5`
-   - Ícone `h-9 w-9` → `h-8 w-8 md:h-9 md:w-9`
-   - Valor `text-2xl md:text-3xl` → `text-lg md:text-3xl` + `truncate` no contêiner do valor + `min-w-0` no card.
-   - Label com `truncate` para não quebrar layout.
+Estrutura interna:
+- container externo `overflow-hidden flex flex-col`
+- área de conteúdo interna única `flex-1 overflow-y-auto overflow-x-hidden` com padding `p-3 sm:p-5 lg:p-6`
+- evitar duplo scroll: remover `overflow-y-auto` do `DialogContent` raiz, mover para o wrapper interno do `ClientDossier`.
 
-4. **ClientSummaryBlock** (~568)
-   - `p-4 md:p-5` → `p-3 md:p-5`.
-   - Linhas: no mobile empilhar (label em cima, valor embaixo) — substituir `flex items-center justify-between` por `flex flex-col md:flex-row md:items-center md:justify-between`.
-   - Remover `truncate` da `<span>` do valor e usar `break-words text-left md:text-right` para evitar corte.
+Para isso o `ClientDossier` passa a renderizar um `<div className="flex flex-col h-full min-h-0">` com header + scroll area, em vez de fragmento `<>...</>`.
 
-5. **Tabs** (`TabsList`, ~324)
-   - Já tem `overflow-x-auto`; com scrollbar global oculto, a rolagem horizontal continua mas sem barra visível. Adicionar `px-1 -mx-1` para garantir que o primeiro/último item não fiquem colados na borda.
+### 2. Header do cliente (`client-dossier.tsx` ~262)
 
-6. **OverviewTab filtros** (~609)
-   - Linha do filtro: trocar larguras fixas por responsivas:
-     - Select: `w-44` → `w-full sm:w-44`
-     - Inputs de data: `w-40` → `w-full sm:w-40`
-   - Botão "Comparar período": adicionar `w-full md:w-auto`.
+Mobile (`flex-col`):
+- Logo + nome empilhados (logo no topo)
+- Badges (Ativo / Em dia) abaixo dos dados, em linha
+- Botão "Editar cliente" `w-full` ao final
+- Tipografia: `text-lg` no nome
+- Padding `p-4`
 
-7. **Cards de listas (Próximos vencimentos / Últimas movimentações)** (~635, 651)
-   - Adicionar `shrink-0` ao valor `<span>` e garantir `min-w-0` no contêiner pai do texto (já tem) — apenas reforçar.
+Tablet (`sm`):
+- Logo à esquerda, dados ao lado (`sm:flex-row sm:items-center`)
+- Badges + botão alinhados à direita, mas com `sm:flex-row` ao invés de coluna empilhada
+- Nome `sm:text-2xl`
+
+Desktop (`lg`):
+- Mantém o atual, com nome `lg:text-3xl` e botão `lg:w-auto`
+
+Trocar breakpoints `md:` por `sm:`/`lg:` onde necessário para alinhar com a nova divisão (mobile/tablet/desktop).
+
+### 3. Cards principais — MainMetrics (~477)
+
+Manter conteúdo. Ajustar grid e densidade:
+- `grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3`
+- `MetricBig`: `p-3 sm:p-4 lg:p-5`, ícone `h-8 w-8 lg:h-9 lg:w-9`, valor `text-base sm:text-xl lg:text-3xl`, label mantém `text-xs`
+
+### 4. Resumo do cliente — ClientSummaryBlock (~568)
+
+- Mobile (`grid-cols-1`): cada item em linha vertical (label em cima, valor embaixo), divisores entre todos os itens, padding `p-3`.
+- Tablet (`sm:grid-cols-2`): 2 colunas; itens com label à esquerda e valor à direita (`sm:flex-row sm:items-center sm:justify-between`).
+- Desktop: mantém `sm:grid-cols-2` (visual já amplo dentro do modal grande).
+
+Ajustar a regra atual `md:` → `sm:` para que o tablet pegue 2 colunas.
+
+### 5. TabsList (~324)
+
+- Mobile/Tablet: `overflow-x-auto whitespace-nowrap` (já existe; scrollbar oculto pelo CSS global), garantir `-mx-1 px-1` para o primeiro/último não colarem na borda, e `min-h-11` para boa área de toque.
+- Tornar a TabsList `sticky top-0 z-10 bg-background/95 backdrop-blur` dentro da área de scroll, para ficar visível ao rolar (regra opcional aplicada apenas se estável — manter por enquanto, pode ser revertido se causar problema visual).
+- Desktop: comportamento normal.
+
+### 6. Filtro de período + Comparar período (OverviewTab ~609)
+
+Mobile (empilhado):
+- `flex flex-col gap-2`
+- Select de período `w-full`
+- Em modo `custom`: data inicial `w-full`, separador some ou vira label, data final `w-full`
+- Botão "Comparar período" `w-full` abaixo
+
+Tablet retrato (`sm`):
+- Pode manter empilhado se largura apertar; usar `sm:flex-row sm:flex-wrap sm:items-center` com `Select sm:w-44`, datas `sm:w-40`, botão `sm:w-auto sm:ml-auto`.
+
+Desktop (`lg`):
+- Tudo na mesma linha (já fica com `sm:flex-row` + `lg:` se necessário).
+
+Mudar o container atual `flex flex-col md:flex-row md:items-center` → `flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2`.
+
+### 7. Blocos da Visão Geral (~634)
+
+Grid atual `grid lg:grid-cols-2`:
+- Mobile: 1 coluna (já é).
+- Tablet retrato (<768): 1 coluna.
+- Tablet paisagem / desktop: 2 colunas → manter `lg:grid-cols-2` (cobre desktop) e adicionar `md:grid-cols-2` para tablet paisagem.
+
+Cada card mantém `p-4` no desktop e ganha `p-3` no mobile.
+
+### 8. Alturas e overflow
+
+- `DialogContent` externo: `overflow-hidden`.
+- Wrapper interno de scroll: `overflow-y-auto overflow-x-hidden flex-1 min-h-0`.
+- Mobile usa `100dvh`; tablet/desktop `max-h-[90dvh]`.
+- Garantir que o `<header>` do cliente fique dentro da área de scroll (não fixar), para não consumir altura útil.
+
+### 9. Densidade visual
+
+- Mobile: `p-3`, `gap-2`, `text-sm`/`text-base`, botões `h-9` (size sm) com `w-full` quando primários.
+- Tablet: `p-4`, `gap-3`.
+- Desktop: `p-5`/`p-6`, `gap-3`/`gap-4`.
 
 ### Fora de escopo
-- Lógica de períodos, queries, dados, métricas.
-- Outras telas (Dashboard, Financeiro, Aportes, Bancos, etc.).
-- Estilos globais e tokens de cor.
+
+- Conteúdo/lógica das abas Financeiro, Aportes, Arquivos, Timeline, Observações (apenas o container Tabs e a TabsList sticky são tocados; o conteúdo interno fica como está).
+- Queries, mutations, cálculos, regras financeiras.
+- Estilo global, tokens de cor, outras telas.
 
 ### Validação
-Depois das mudanças, abrir o modal em 390px (mobile) e em 768px+ (tablet/desktop) e conferir: sem overflow horizontal, cards inteiros visíveis, header organizado, resumo legível, tabs roláveis sem barra.
+
+Abrir o modal em 360/390/414 (mobile), 768/834/1024 (tablet) e 1280/1536 (desktop) e checar:
+- Mobile fullscreen sem overflow horizontal, header empilhado, cards 2×2, resumo em lista vertical, abas roláveis, filtro empilhado, blocos em 1 coluna, scroll único e fluido.
+- Tablet com modal ~92vw centralizado, cards 2×2, resumo em 2 colunas, blocos em 2 colunas (paisagem) ou 1 (retrato).
+- Desktop com layout amplo, comportamento atual preservado e refinado.

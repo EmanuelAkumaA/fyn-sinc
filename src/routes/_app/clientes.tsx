@@ -205,8 +205,12 @@ function ClientesPage() {
       )}
 
       <Dialog open={!!viewingId} onOpenChange={(v) => !v && setViewingId(null)}>
-        <DialogContent className="p-3 md:p-6 overflow-y-auto overflow-x-hidden w-screen h-[100dvh] max-w-none max-h-none rounded-none md:w-[95vw] md:h-auto md:max-w-6xl md:max-h-[92vh] md:rounded-2xl">
-          {viewingId && <ClientDossier clientId={viewingId} />}
+        <DialogContent className="p-0 overflow-hidden flex flex-col w-screen h-[100dvh] max-w-none max-h-none rounded-none sm:w-[92vw] sm:h-auto sm:max-h-[90dvh] sm:max-w-3xl sm:rounded-2xl lg:max-w-6xl">
+          {viewingId && (
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-6">
+              <ClientDossier clientId={viewingId} />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
