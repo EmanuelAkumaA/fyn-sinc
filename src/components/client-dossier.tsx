@@ -328,8 +328,17 @@ function ClienteDetalhe({ id }: { id: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!client) {
+  if (clientLoading) {
     return <p className="text-muted-foreground">Carregando...</p>;
+  }
+  if (!client) {
+    // Cliente não existe OU pertence a outra organização (RLS filtrou).
+    return (
+      <div className="glass rounded-2xl p-8 text-center space-y-2">
+        <h2 className="text-lg font-display font-semibold">Acesso negado</h2>
+        <p className="text-sm text-muted-foreground">Você não tem permissão para acessar este registro.</p>
+      </div>
+    );
   }
 
   const color = getBrandColor(client);
