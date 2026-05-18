@@ -98,9 +98,12 @@ function AuthSync() {
   const queryClient = useQueryClient();
   const router = useRouter();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      queryClient.invalidateQueries();
-      router.invalidate();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      queueMicrotask(() => {
+        queryClient.invalidateQueries();
+        router.invalidate();
+      });
     });
     return () => subscription.unsubscribe();
   }, [queryClient, router]);
