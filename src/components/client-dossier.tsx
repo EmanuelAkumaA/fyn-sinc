@@ -22,6 +22,7 @@ import { ClientForm, type ClientRow, type ClientFormState } from "@/components/c
 import { getBrandColor, hexToRgba } from "@/lib/client-brand";
 import { invalidateClientCaches } from "@/lib/client-cache";
 import { validateDocumentFile } from "@/lib/upload-validation";
+import { documentUploadSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
