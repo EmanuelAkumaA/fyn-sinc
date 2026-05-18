@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { startSessionTimer } from "@/lib/session";
+import { getRememberedEmail, setRememberPreference, shouldRememberSession } from "@/lib/remember";
 import logoUrl from "@/assets/logo-full.svg";
-
-const REMEMBER_EMAIL_KEY = "fynsinc:remembered_email";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -33,11 +32,9 @@ function LoginPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
-    if (saved) {
-      setEmail(saved);
-      setRemember(true);
-    }
+    const saved = getRememberedEmail();
+    if (saved) setEmail(saved);
+    setRemember(shouldRememberSession());
     // Só auto-redireciona quando a página recebeu um destino explícito.
     // Em /login normal, deixar o formulário disponível evita loop com sessão antiga.
     if (!next) return;
@@ -64,8 +61,7 @@ function LoginPage() {
     if (error) return toast.error(error.message);
 
     if (typeof window !== "undefined") {
-      if (remember) window.localStorage.setItem(REMEMBER_EMAIL_KEY, email);
-      else window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      setRememberPreference(remember, email);
     }
     startSessionTimer();
     toast.success("Bem-vindo de volta");
@@ -98,7 +94,7 @@ function LoginPage() {
           <div className="flex items-center space-x-2">
             <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
             <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Lembrar meu e-mail
+              Lembrar-me neste dispositivo
             </Label>
           </div>
           <p className="text-[11px] text-muted-foreground -mt-2">

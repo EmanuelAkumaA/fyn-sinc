@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
 import { clearSessionTimer, isSessionExpired } from "@/lib/session";
+import { isStaleUnrememberedSession, markTabAlive, clearRememberState } from "@/lib/remember";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
 import { getCurrentOrgIdLocal } from "@/lib/current-org";
@@ -38,6 +39,17 @@ function AppLayout() {
     let active = true;
 
     const evaluate = async () => {
+      // "Lembrar-me" desligado + nova aba/janela => derrubar a sessão antes de
+      // qualquer hidratação, para não cair em loop conecta/desconecta.
+      if (isStaleUnrememberedSession()) {
+        try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+        clearSessionTimer();
+        clearRememberState();
+        if (active) navigate({ to: "/login" });
+        return;
+      }
+      markTabAlive();
+
       if (isSessionExpired()) {
         try { await supabase.auth.signOut(); } catch { /* ignore */ }
         clearSessionTimer();
