@@ -99,16 +99,14 @@ export function ClientForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.brand_color.trim() && !isValidHex(form.brand_color.trim())) {
-      toast.error("Cor da marca inválida. Use o formato HEX (ex.: #14B8A6).");
+    // Validação Zod centralizada — falha rápida com mensagem amigável.
+    const parsed = clientSchema.safeParse(form);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
       return;
     }
     if (form.document.trim() && !isValidDocument(form.document, form.type)) {
       toast.error(form.type === "PF" ? "CPF inválido. Use 11 dígitos." : "CNPJ inválido. Use 14 dígitos.");
-      return;
-    }
-    if (form.email.trim() && !isValidEmail(form.email)) {
-      toast.error("E-mail inválido.");
       return;
     }
     if (form.phone.trim() && !isValidPhone(form.phone)) {
