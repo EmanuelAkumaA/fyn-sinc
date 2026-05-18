@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,6 +11,31 @@ import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
 import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
 export const Route = createFileRoute("/_app")({
+  beforeLoad: async ({ location }) => {
+    // Só roda no browser — durante SSR/prerender pulamos a checagem para
+    // não redirecionar antes do client hidratar a sessão.
+    if (typeof window === "undefined") return;
+
+    // "Lembrar-me" desligado em nova aba/janela: derruba sessão local antes
+    // de qualquer hidratação para evitar ciclo conecta/desconecta.
+    if (isStaleUnrememberedSession()) {
+      try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+      clearSessionTimer();
+      clearRememberState();
+      throw redirect({ to: "/login", search: { next: location.pathname } as never });
+    }
+
+    if (isSessionExpired()) {
+      try { await supabase.auth.signOut(); } catch { /* ignore */ }
+      clearSessionTimer();
+      throw redirect({ to: "/login", search: { next: location.pathname } as never });
+    }
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session) {
+      throw redirect({ to: "/login", search: { next: location.pathname } as never });
+    }
+  },
   component: AppLayout,
 });
 
