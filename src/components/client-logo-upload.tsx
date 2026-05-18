@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { extractBrandColor } from "@/lib/extract-brand-color";
+import { validateLogoFile } from "@/lib/upload-validation";
 
 type Props = {
   value: string;
@@ -11,8 +12,6 @@ type Props = {
   onChange: (url: string, extractedColor?: string | null) => void;
   onRemove: () => void;
 };
-
-const MAX_BYTES = 2 * 1024 * 1024;
 
 export function ClientLogoUpload({ value, orgId, onChange, onRemove }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,8 +23,9 @@ export function ClientLogoUpload({ value, orgId, onChange, onRemove }: Props) {
       toast.error("Organização não encontrada");
       return;
     }
-    if (file.size > MAX_BYTES) {
-      toast.error("Imagem muito grande (máx. 2 MB).");
+    const v = validateLogoFile(file);
+    if (!v.ok) {
+      toast.error(v.reason);
       return;
     }
     setUploading(true);

@@ -21,6 +21,8 @@ import { ClientLogo } from "@/components/client-logo";
 import { ClientForm, type ClientRow, type ClientFormState } from "@/components/client-form";
 import { getBrandColor, hexToRgba } from "@/lib/client-brand";
 import { invalidateClientCaches } from "@/lib/client-cache";
+import { validateDocumentFile } from "@/lib/upload-validation";
+import { documentUploadSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
@@ -211,7 +213,7 @@ const DOC_TYPES: { value: string; label: string }[] = [
 function ClienteDetalhe({ id }: { id: string }) {
   const qc = useQueryClient();
 
-  const { data: client } = useQuery({
+  const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ["client", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("clients").select("*").eq("id", id).maybeSingle();
@@ -327,8 +329,17 @@ function ClienteDetalhe({ id }: { id: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!client) {
+  if (clientLoading) {
     return <p className="text-muted-foreground">Carregando...</p>;
+  }
+  if (!client) {
+    // Cliente não existe OU pertence a outra organização (RLS filtrou).
+    return (
+      <div className="glass rounded-2xl p-8 text-center space-y-2">
+        <h2 className="text-lg font-display font-semibold">Acesso negado</h2>
+        <p className="text-sm text-muted-foreground">Você não tem permissão para acessar este registro.</p>
+      </div>
+    );
   }
 
   const color = getBrandColor(client);
@@ -1070,6 +1081,7 @@ function ArquivosTab({ clientId, orgId, docs, tx }: {
   });
 
   const download = async (d: DocRow) => {
+    // Sempre gerar URL assinada on-demand (60s). Nunca usar file_url legado.
     const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
     if (error || !data) { toast.error("Falha ao gerar link"); return; }
     window.open(data.signedUrl, "_blank");
@@ -1132,7 +1144,10 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
 
   const submit = async () => {
     if (!file) { toast.error("Selecione um arquivo"); return; }
-    if (!title.trim()) { toast.error("Informe um título"); return; }
+    const meta = documentUploadSchema.safeParse({ title, document_type: docType, description, document_date: date });
+    if (!meta.success) { toast.error(meta.error.issues[0]?.message ?? "Dados inválidos"); return; }
+    const v = validateDocumentFile(file);
+    if (!v.ok) { toast.error(v.reason); return; }
     setBusy(true);
     try {
       const org = orgId ?? (await getCurrentOrgId());
@@ -1141,7 +1156,6 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
       const path = `${org}/${clientId}/${Date.now()}-${safeName}`;
       const up = await supabase.storage.from("client-documents").upload(path, file, { upsert: false, contentType: file.type });
       if (up.error) throw up.error;
-      const { data: signed } = await supabase.storage.from("client-documents").createSignedUrl(path, 60);
 
       const { error } = await supabase.from("client_documents").insert({
         organization_id: org,
@@ -1149,7 +1163,8 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
         document_type: docType,
         title: title.trim(),
         description: description.trim() || null,
-        file_url: signed?.signedUrl ?? path,
+        // file_url é legado — guardamos apenas o file_path. Signed URL é gerada on-demand.
+        file_url: path,
         file_path: path,
         file_name: file.name,
         file_size: file.size,
