@@ -111,12 +111,34 @@ function AuthSync() {
   return null;
 }
 
+function PwaServiceWorker() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
+    // Não registra dentro do iframe do preview do Lovable — apenas em janela top-level.
+    let inIframe = false;
+    try { inIframe = window.self !== window.top; } catch { inIframe = true; }
+    const host = window.location.hostname;
+    const isPreviewHost = host.includes("id-preview--") || host.includes("lovableproject.com");
+    if (inIframe || isPreviewHost) {
+      // Limpa qualquer SW que possa ter sido registrado anteriormente em contexto de preview.
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((r) => r.unregister());
+      }).catch(() => { /* ignore */ });
+      return;
+    }
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* ignore */ });
+  }, []);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <InstallPwaProvider>
         <AuthSync />
+        <PwaServiceWorker />
         <Outlet />
         <InstallPwaBanner />
         <Toaster />
