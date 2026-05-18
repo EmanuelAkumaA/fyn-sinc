@@ -212,7 +212,7 @@ const DOC_TYPES: { value: string; label: string }[] = [
 function ClienteDetalhe({ id }: { id: string }) {
   const qc = useQueryClient();
 
-  const { data: client } = useQuery({
+  const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ["client", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("clients").select("*").eq("id", id).maybeSingle();
