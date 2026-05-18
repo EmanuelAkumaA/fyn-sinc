@@ -44,8 +44,13 @@ function AppLayout() {
         if (active) navigate({ to: "/login" });
         return;
       }
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
       if (!active) return;
+      if (error) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        if (active) navigate({ to: "/login" });
+        return;
+      }
       if (!data.session) {
         navigate({ to: "/login" });
         return;
@@ -75,7 +80,10 @@ function AppLayout() {
     // o que causava redirecionamento indevido para /login logo após o login.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        if (active) navigate({ to: "/login" });
+        queueMicrotask(async () => {
+          const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (active && !data.session) navigate({ to: "/login" });
+        });
         return;
       }
       if (session && (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
