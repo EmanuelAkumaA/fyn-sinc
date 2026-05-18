@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientCard } from "@/components/client-card";
 import { ClientLogoUpload } from "@/components/client-logo-upload";
 import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
-import { maskDocument, maskPhone, isValidDocument, isValidPhone, isValidEmail } from "@/lib/masks";
+import { maskDocument, maskPhone, isValidDocument, isValidEmail, isValidPhone } from "@/lib/masks";
+import { clientSchema } from "@/lib/schemas";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 
 export type ClientRow = {
