@@ -21,6 +21,7 @@ import { ClientLogo } from "@/components/client-logo";
 import { ClientForm, type ClientRow, type ClientFormState } from "@/components/client-form";
 import { getBrandColor, hexToRgba } from "@/lib/client-brand";
 import { invalidateClientCaches } from "@/lib/client-cache";
+import { validateDocumentFile } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
