@@ -61,8 +61,7 @@ function LoginPage() {
     if (error) return toast.error(error.message);
 
     if (typeof window !== "undefined") {
-      if (remember) window.localStorage.setItem(REMEMBER_EMAIL_KEY, email);
-      else window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      setRememberPreference(remember, email);
     }
     startSessionTimer();
     toast.success("Bem-vindo de volta");
