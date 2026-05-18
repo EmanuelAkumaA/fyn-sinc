@@ -1134,6 +1134,8 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
   const submit = async () => {
     if (!file) { toast.error("Selecione um arquivo"); return; }
     if (!title.trim()) { toast.error("Informe um título"); return; }
+    const v = validateDocumentFile(file);
+    if (!v.ok) { toast.error(v.reason); return; }
     setBusy(true);
     try {
       const org = orgId ?? (await getCurrentOrgId());
@@ -1142,7 +1144,6 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
       const path = `${org}/${clientId}/${Date.now()}-${safeName}`;
       const up = await supabase.storage.from("client-documents").upload(path, file, { upsert: false, contentType: file.type });
       if (up.error) throw up.error;
-      const { data: signed } = await supabase.storage.from("client-documents").createSignedUrl(path, 60);
 
       const { error } = await supabase.from("client_documents").insert({
         organization_id: org,
@@ -1150,7 +1151,8 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
         document_type: docType,
         title: title.trim(),
         description: description.trim() || null,
-        file_url: signed?.signedUrl ?? path,
+        // file_url é legado — guardamos apenas o file_path. Signed URL é gerada on-demand.
+        file_url: path,
         file_path: path,
         file_name: file.name,
         file_size: file.size,
