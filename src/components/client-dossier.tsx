@@ -1144,7 +1144,8 @@ function UploadDialog({ open, onOpenChange, clientId, orgId, tx }: {
 
   const submit = async () => {
     if (!file) { toast.error("Selecione um arquivo"); return; }
-    if (!title.trim()) { toast.error("Informe um título"); return; }
+    const meta = documentUploadSchema.safeParse({ title, document_type: docType, description, document_date: date });
+    if (!meta.success) { toast.error(meta.error.issues[0]?.message ?? "Dados inválidos"); return; }
     const v = validateDocumentFile(file);
     if (!v.ok) { toast.error(v.reason); return; }
     setBusy(true);
