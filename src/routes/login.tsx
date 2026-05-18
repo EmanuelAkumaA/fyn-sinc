@@ -32,11 +32,9 @@ function LoginPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
-    if (saved) {
-      setEmail(saved);
-      setRemember(true);
-    }
+    const saved = getRememberedEmail();
+    if (saved) setEmail(saved);
+    setRemember(shouldRememberSession());
     // Só auto-redireciona quando a página recebeu um destino explícito.
     // Em /login normal, deixar o formulário disponível evita loop com sessão antiga.
     if (!next) return;
