@@ -1070,6 +1070,7 @@ function ArquivosTab({ clientId, orgId, docs, tx }: {
   });
 
   const download = async (d: DocRow) => {
+    // Sempre gerar URL assinada on-demand (60s). Nunca usar file_url legado.
     const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
     if (error || !data) { toast.error("Falha ao gerar link"); return; }
     window.open(data.signedUrl, "_blank");
