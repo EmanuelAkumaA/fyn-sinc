@@ -94,7 +94,7 @@ function LoginPage() {
           <div className="flex items-center space-x-2">
             <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
             <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Lembrar meu e-mail
+              Lembrar-me neste dispositivo
             </Label>
           </div>
           <p className="text-[11px] text-muted-foreground -mt-2">
