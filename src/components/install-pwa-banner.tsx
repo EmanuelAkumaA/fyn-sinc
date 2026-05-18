@@ -110,8 +110,16 @@ export function InstallPwaProvider({ children }: { children: ReactNode }) {
       setDeferred(null);
       return;
     }
-    // Sem prompt nativo (iOS Safari, navegador sem suporte, preview em iframe):
-    // mostra instruções manuais.
+    // Dentro do iframe do preview o navegador não dispara beforeinstallprompt.
+    // Abre o app em uma aba real (top-level) — lá o prompt nativo aparece.
+    if (typeof window !== "undefined" && isInIframe() && !isIOSSafari()) {
+      try {
+        const url = window.location.href;
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      } catch { /* ignore */ }
+    }
+    // Sem prompt nativo (iOS Safari, navegador sem suporte): mostra instruções.
     setShowInstructions(true);
   }, [deferred]);
 
