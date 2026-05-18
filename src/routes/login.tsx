@@ -38,12 +38,21 @@ function LoginPage() {
       setEmail(saved);
       setRemember(true);
     }
-    // Se já houver sessão ativa, honrar ?next= imediatamente.
+    // Só auto-redireciona quando a página recebeu um destino explícito.
+    // Em /login normal, deixar o formulário disponível evita loop com sessão antiga.
+    if (!next) return;
+
+    let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        window.location.assign(next ?? "/dashboard");
-      }
+      if (active && data.session) window.location.assign(next);
+    }).catch(() => {
+      // Sessões locais corrompidas/expiradas não devem impedir um novo login.
+      supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     });
+
+    return () => {
+      active = false;
+    };
   }, [next]);
 
   async function handleSubmit(e: React.FormEvent) {
