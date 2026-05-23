@@ -289,13 +289,9 @@ function AportesPage() {
             {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={platformFilter} onValueChange={setPlatformFilter}>
-          <SelectTrigger className="md:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas plataformas</SelectItem>
-            {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="md:w-40">
+          <PlatformSelect value={platformFilter} onChange={setPlatformFilter} includeAll />
+        </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="md:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
