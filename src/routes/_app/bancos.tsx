@@ -113,9 +113,7 @@ function BancosPage() {
             const current = balanceById[b.id]?.current_balance ?? b.initial_balance;
             return (
               <div key={b.id} className="glass rounded-2xl p-4 flex items-start gap-3">
-                <div className="h-11 w-11 rounded-xl bg-secondary/60 flex items-center justify-center" style={b.color ? { color: b.color } : undefined}>
-                  <Building2 className="h-5 w-5" />
-                </div>
+                <ClientLogo client={{ name: b.name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate">{b.name}</span>
