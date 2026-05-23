@@ -3,13 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Wallet, TrendingDown, TrendingUp, Clock, AlertCircle, Banknote,
-  ArrowDownLeft, ArrowUpRight, Award, Percent, ChevronDown,
+  ArrowDownLeft, ArrowUpRight, Award, Percent, ChevronDown, Users, Gift, Receipt,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { FinancialCalendar } from "@/components/financial-calendar";
 import { formatBRL } from "@/lib/fynsinc";
+import { deriveBreakdown, type BankBreakdownRow } from "@/lib/finance";
+import { BankBreakdownChips } from "@/components/bank-breakdown-chips";
+import { ClientLogo } from "@/components/client-logo";
+import { Button } from "@/components/ui/button";
 
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
