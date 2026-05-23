@@ -110,7 +110,8 @@ function DashboardPage() {
     .forEach((t) => byClient.set(t.client_id!, (byClient.get(t.client_id!) || 0) + Number(t.amount_gross)));
   const topClients = [...byClient.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
 
-  const isEmpty = tx.length === 0 && banks.length === 0;
+  const isEmpty = tx.length === 0 && bankRows.length === 0;
+  const topBanks = [...bankRows].sort((a, b) => b.total_balance - a.total_balance).slice(0, 6);
 
   return (
     <>
@@ -130,10 +131,57 @@ function DashboardPage() {
             <MetricCard label="Lucro líquido" value={formatBRL(lucro)} tone={lucro >= 0 ? "primary" : "destructive"} icon={Wallet} />
             <MetricCard label="A receber" value={formatBRL(aReceber)} icon={Clock} />
             <MetricCard label="Inadimplência" value={formatBRL(inadimplencia)} tone="destructive" icon={AlertCircle} />
-            <MetricCard label="Saldo em bancos" value={formatBRL(saldoBancos)} icon={Banknote} />
+            <MetricCard
+              label="Saldo em bancos"
+              value={formatBRL(saldoBancos)}
+              hint={`Kuma: ${formatBRL(kumaLiquido)} • Aportes: ${formatBRL(aportesSaldo)}`}
+              icon={Banknote}
+            />
           </section>
 
           <FinancialCalendar />
+
+          <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground mt-6 mb-3">
+            Composição dos bancos
+          </h3>
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <MetricCard label="Kuma Tech líquido" value={formatBRL(kumaLiquido)} tone={kumaLiquido >= 0 ? "success" : "destructive"} icon={Wallet} />
+            <MetricCard label="Aportes / clientes" value={formatBRL(aportesSaldo)} tone="primary" icon={Users} />
+            <MetricCard label="Cashbacks recebidos" value={formatBRL(cashbacksRecebidos)} tone="success" icon={Gift} />
+            <MetricCard label="Taxas pagas" value={formatBRL(taxasPagas)} tone="destructive" icon={Receipt} />
+          </section>
+
+          {topBanks.length > 0 && (
+            <section className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                  Contas e composição
+                </h3>
+                <Button asChild size="sm" variant="ghost">
+                  <Link to="/bancos">Ver todos os bancos</Link>
+                </Button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {topBanks.map((b) => (
+                  <div key={b.bank_id} className="glass rounded-2xl p-4 flex items-start gap-3">
+                    <ClientLogo client={{ name: b.bank_name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{b.bank_name}</div>
+                      <div className="text-xs text-muted-foreground">{b.bank_type || "Conta operacional"}</div>
+                      <div className="font-display text-xl font-semibold mt-2">{formatBRL(b.total_balance)}</div>
+                      <BankBreakdownChips
+                        kuma={b.kuma_balance}
+                        cliente={b.client_funds_balance}
+                        cashback={Number(b.cashback_total)}
+                        taxas={Number(b.fees_total)}
+                        hideZero
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
 
 
@@ -149,7 +197,7 @@ function DashboardPage() {
           {openOp && (
             <section className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 animate-in fade-in slide-in-from-top-1 duration-200">
               <MetricCard label="Repasses recebidos" value={formatBRL(repassesRecebidos)} icon={ArrowDownLeft} />
-              <MetricCard label="Saldo de repasse" value={formatBRL(saldoRepasse)} hint="disponível dos clientes" tone="primary" icon={Wallet} />
+              <MetricCard label="Saldo de aportes" value={formatBRL(aportesSaldo)} hint="disponível dos clientes" tone="primary" icon={Wallet} />
               <MetricCard label="Aportes utilizados" value={formatBRL(usoRepasse)} icon={ArrowUpRight} />
               <MetricCard label="Comissões" value={formatBRL(comissoes)} tone="success" icon={Award} />
               <MetricCard label="Cashbacks" value={formatBRL(cashbacks)} tone="success" icon={Percent} />
