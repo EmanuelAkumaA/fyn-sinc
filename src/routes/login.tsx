@@ -63,7 +63,7 @@ function LoginPage() {
     if (typeof window !== "undefined") {
       setRememberPreference(remember, email);
     }
-    startSessionTimer();
+    
     toast.success("Bem-vindo de volta");
     if (next) {
       // Hard navigate para garantir que beforeLoad do destino (ex.: /admin)
