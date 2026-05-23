@@ -81,6 +81,7 @@ export function ClientForm({
     if (initial) {
       setForm({
         name: initial.name ?? "",
+        full_name: initial.full_name ?? "",
         type: initial.type ?? "PJ",
         document: initial.document ? maskDocument(initial.document, initial.type ?? "PJ") : "",
         email: initial.email ?? "",
