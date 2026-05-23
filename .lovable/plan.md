@@ -1,96 +1,53 @@
+## Problema
 
-# Plano: Deploy do Fyn Sinc na Hostinger (Node.js App)
+O deploy na Vercel está falhando com:
 
-## Diagnóstico
+> Erro: Nenhum diretório de saída chamado "output" foi encontrado após a conclusão da compilação.
 
-O build atual está gerando saída para Vercel porque o Nitro está configurado com `preset: "vercel"` em `vite.config.ts`. Isso produz `.vercel/output/...`, que a Hostinger não reconhece. Para Hostinger Node.js, precisamos do preset `node-server` do Nitro, que gera `.output/server/index.mjs` — um servidor Node.js standalone pronto para `node .output/server/index.mjs`.
+Causa: o `vite.config.ts` usa o preset Nitro `node-server` por padrão, que gera `.output/server/` (formato Node). A Vercel espera o formato `.vercel/output/` (Build Output API), que só é produzido quando o Nitro roda com o preset `vercel`.
 
-Nada precisa mudar em lógica, rotas, layout ou banco. Apenas configuração de build/start.
+Como a Hostinger será um VPS Node.js, ela continua usando o build atual (`.output/` + `node .output/server/index.mjs`). Precisamos apenas que a Vercel use um preset diferente.
 
----
+## Plano
 
-## 1. Mudanças no código
+### 1. Vercel — usar o preset Nitro `vercel`
 
-### `vite.config.ts`
-Trocar o preset do Nitro para permitir alternar entre Vercel e Node via variável de ambiente, mantendo Node como padrão (que é o que a Hostinger precisa). Vercel continua funcionando se você setar `NITRO_PRESET=vercel` nas envs da Vercel.
-
-```ts
-nitro({ preset: process.env.NITRO_PRESET ?? "node-server" }),
-```
-
-### `package.json` — scripts
-Adicionar `start` e tornar o `build` explícito quanto ao preset Node:
+Editar `vercel.json` para injetar a variável de ambiente no build:
 
 ```json
-"scripts": {
-  "dev": "vite dev",
-  "build": "vite build",
-  "build:dev": "vite build --mode development",
-  "start": "node .output/server/index.mjs",
-  "preview": "vite preview",
-  "lint": "eslint .",
-  "format": "prettier --write ."
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "NITRO_PRESET=vercel bun run build",
+  "outputDirectory": ".vercel/output"
 }
 ```
 
-O Nitro com preset `node-server` já respeita `process.env.PORT` automaticamente — não precisa de flag adicional. Fallback default do Nitro é 3000 quando `PORT` não está setado, então a porta da Hostinger será usada corretamente.
+Mudanças:
+- `framework: null` — desliga a auto-detecção da Vercel (que estava forçando o template TanStack Start e procurando o caminho errado).
+- `buildCommand` passa `NITRO_PRESET=vercel`, fazendo o `nitro/vite` gerar `.vercel/output/` no formato Build Output API que a Vercel entende nativamente.
+- `outputDirectory` confirma o caminho.
 
-### `vercel.json`
-Manter o arquivo, mas adicionar `NITRO_PRESET=vercel` como env de build nas configurações do projeto Vercel (no painel da Vercel, não no arquivo) — assim a Vercel continua gerando `.vercel/output` e a Hostinger gera `.output`. Sem alterações necessárias no arquivo em si.
+Nenhuma outra mudança no `vite.config.ts` é necessária — ele já lê `process.env.NITRO_PRESET ?? "node-server"`.
 
----
+### 2. Hostinger (VPS Node.js)
 
-## 2. Configuração na Hostinger (Node.js App)
+O build padrão (`bun run build` sem `NITRO_PRESET`) já produz `.output/server/index.mjs`, que é exatamente o que o `npm start` (script já existente) executa.
 
-| Campo | Valor |
-|---|---|
-| Node.js version | 20.x (LTS, compatível com Vite 7 / React 19) |
-| Application root | raiz do projeto |
-| Application URL | seu domínio |
-| Application startup file | `.output/server/index.mjs` |
-| Install command | `npm install` (ou `bun install` se a Hostinger suportar) |
-| Build command | `npm run build` |
-| Start command | `npm run start` (equivalente a `node .output/server/index.mjs`) |
-| Output directory | não se aplica para Node SSR — a Hostinger executa o startup file, não serve uma pasta estática. Se o painel exigir, aponte para `.output/public` (assets estáticos), mas o servidor Node serve isso por dentro. |
+Passos no VPS (sem mudança de código):
+1. `git clone` do repositório
+2. `bun install` (ou `npm install`)
+3. `bun run build`
+4. Configurar variáveis de ambiente (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` etc.)
+5. `npm start` (ou usar PM2: `pm2 start "npm start" --name fyn-sinc`)
+6. Configurar Nginx como reverse proxy para a porta 3000
 
----
+Posso adicionar um `ecosystem.config.cjs` (PM2) e um snippet de Nginx ao repositório se quiser — só me avisar.
 
-## 3. Variáveis de ambiente na Hostinger
+### 3. Variáveis de ambiente na Vercel
 
-Configurar no painel "Environment variables" do Node.js App:
+Lembre de cadastrar no painel da Vercel (Settings → Environment Variables) os mesmos secrets que você usa hoje no Lovable Cloud: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, e quaisquer outras chaves usadas nas server functions.
 
-**Públicas (frontend, embutidas no bundle):**
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
+## Arquivos alterados
 
-**Servidor (runtime):**
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (somente se já está em uso por server functions — nunca expor no frontend)
-- Qualquer outra secret usada por `createServerFn` (`LOVABLE_API_KEY`, webhook secrets, etc.)
-
-Importante: variáveis `VITE_*` precisam estar setadas **antes** do `build`, porque o Vite as inlinea no bundle no momento da build.
-
----
-
-## 4. Rotas e SSR
-
-Com preset `node-server`, o servidor Nitro responde a todas as rotas do TanStack Start (incluindo `/login`, `/dashboard`, `/clientes`, `/financeiro`, `/recorrencias`, `/aportes`) com SSR + fallback de SPA. Não precisa de regra de rewrite extra — acesso direto a URL profunda funciona.
-
----
-
-## 5. Vercel continua conectada?
-
-Sim, sem conflito. A condição é setar `NITRO_PRESET=vercel` no painel da Vercel (Environment Variables → Build). Isso faz a Vercel gerar `.vercel/output` como hoje, enquanto a Hostinger (sem essa env) usa o default `node-server` e gera `.output`.
-
----
-
-## Resumo do que muda
-
-1. `vite.config.ts`: preset Nitro passa a ser dinâmico, default `node-server`.
-2. `package.json`: adiciona script `start` apontando para `.output/server/index.mjs`.
-3. `vercel.json`: inalterado; Vercel passa a depender de uma env var de build (`NITRO_PRESET=vercel`) configurada no painel.
-4. Hostinger: configurar Node 20, build `npm run build`, start `npm run start`, startup file `.output/server/index.mjs`, mais as envs listadas acima.
-
-Nada na lógica financeira, layout ou banco é tocado.
+- `vercel.json` — único arquivo modificado.
