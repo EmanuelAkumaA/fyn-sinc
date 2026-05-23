@@ -82,23 +82,36 @@ function RecorrenciasPage() {
     mutationFn: async (p: any) => {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
-      const payload = {
+      const anchor = Number(p.start_date.slice(8, 10));
+      const installmentsTotal = p.installments_total ? Number(p.installments_total) : null;
+      const basePayload: any = {
         client_id: p.client_id,
         service_id: p.service_id || null,
         description: p.description,
         amount: Number(p.amount),
         frequency: p.frequency,
         start_date: p.start_date,
-        next_due_date: p.next_due_date,
         default_bank_id: p.default_bank_id || null,
         notes: p.notes || null,
         status: p.status,
+        anchor_day: anchor,
+        installments_total: installmentsTotal,
       };
       if (editing?.id) {
-        const { error } = await supabase.from("recurring_contracts").update(payload).eq("id", editing.id);
+        // Se a data inicial mudou e ainda não há parcelas geradas, recalcula next_due_date
+        const update: any = { ...basePayload };
+        if ((editing.installments_generated ?? 0) === 0) {
+          update.next_due_date = p.start_date;
+        }
+        const { error } = await supabase.from("recurring_contracts").update(update).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("recurring_contracts").insert({ ...payload, organization_id: org });
+        const { error } = await supabase.from("recurring_contracts").insert({
+          ...basePayload,
+          next_due_date: p.start_date,
+          installments_generated: 0,
+          organization_id: org,
+        });
         if (error) throw error;
       }
     },
