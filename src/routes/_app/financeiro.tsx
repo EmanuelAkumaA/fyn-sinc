@@ -39,6 +39,7 @@ function FinanceiroPage() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [payTx, setPayTx] = useState<any | null>(null);
+  const [toDelete, setToDelete] = useState<any | null>(null);
 
   const { data: tx = [] } = useQuery({
     queryKey: ["transactions"],
