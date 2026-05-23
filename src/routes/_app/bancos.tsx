@@ -56,6 +56,7 @@ function BancosPage() {
         account_type: payload.account_type || null,
         initial_balance: Number(payload.initial_balance || 0),
         color: payload.color || null,
+        logo_url: payload.logo_url || null,
         status: payload.status,
       };
       const result = editing?.id
