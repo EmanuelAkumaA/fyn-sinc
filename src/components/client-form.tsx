@@ -14,6 +14,7 @@ import { getCurrentOrgId } from "@/lib/fynsinc";
 export type ClientRow = {
   id: string;
   name: string;
+  full_name: string | null;
   type: string;
   document: string | null;
   email: string | null;
@@ -29,6 +30,7 @@ export type ClientRow = {
 
 export type ClientFormState = {
   name: string;
+  full_name: string;
   type: string;
   document: string;
   email: string;
@@ -43,6 +45,7 @@ export type ClientFormState = {
 
 export const emptyClientForm: ClientFormState = {
   name: "",
+  full_name: "",
   type: "PJ",
   document: "",
   email: "",
@@ -78,6 +81,7 @@ export function ClientForm({
     if (initial) {
       setForm({
         name: initial.name ?? "",
+        full_name: initial.full_name ?? "",
         type: initial.type ?? "PJ",
         document: initial.document ? maskDocument(initial.document, initial.type ?? "PJ") : "",
         email: initial.email ?? "",
@@ -120,8 +124,25 @@ export function ClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-6 pb-8">
       <div className="space-y-2">
-        <Label>Nome da Empresa *</Label>
-        <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Label>Nome curto *</Label>
+        <Input
+          required
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Ex.: Rac Social"
+          maxLength={60}
+        />
+        <p className="text-xs text-muted-foreground">Aparece no card e nas listas.</p>
+      </div>
+      <div className="space-y-2">
+        <Label>Nome completo</Label>
+        <Input
+          value={form.full_name}
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          placeholder="Ex.: Rac Social Serviços Digitais LTDA"
+          maxLength={255}
+        />
+        <p className="text-xs text-muted-foreground">Uso interno em relatórios e dossiês.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
@@ -210,9 +231,10 @@ export function ClientForm({
                 setForm((prev) => ({
                   ...prev,
                   logo_url: url,
-                  brand_color:
-                    extractedColor && !brandColorTouched ? extractedColor : prev.brand_color,
+                  // Sempre que uma nova logo for enviada, aplicar a cor extraída.
+                  brand_color: extractedColor ? extractedColor : prev.brand_color,
                 }));
+                if (extractedColor) setBrandColorTouched(false);
               }}
               onRemove={() => setForm((prev) => ({ ...prev, logo_url: "" }))}
             />
