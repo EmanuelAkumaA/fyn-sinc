@@ -35,20 +35,47 @@ const TX_TYPES = [
   { v: "transferencia", l: "Transferência" },
 ] as const;
 
+function monthRange(offset: number) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: fmt(start), to: fmt(end) };
+}
+
 function FinanceiroPage() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [payTx, setPayTx] = useState<any | null>(null);
   const [toDelete, setToDelete] = useState<any | null>(null);
 
+  // Filtros
+  const [period, setPeriod] = useState<string>("this_month");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
+
+  const range: { from: string | null; to: string | null } =
+    period === "this_month" ? monthRange(0)
+    : period === "last_month" ? monthRange(-1)
+    : period === "next_month" ? monthRange(1)
+    : period === "custom" ? { from: customFrom || null, to: customTo || null }
+    : { from: null, to: null };
+
   const { data: tx = [] } = useQuery({
-    queryKey: ["transactions"],
+    queryKey: ["transactions", period, typeFilter, statusFilter, range.from, range.to],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("financial_transactions")
         .select("*")
         .order("due_date", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(500);
+      if (range.from) q = q.gte("due_date", range.from);
+      if (range.to) q = q.lte("due_date", range.to);
+      if (typeFilter !== "all") q = q.eq("type", typeFilter as any);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -127,8 +154,58 @@ function FinanceiroPage() {
         }
       />
 
+      <div className="glass rounded-xl p-3 md:p-4 mb-3 flex flex-wrap items-end gap-3">
+        <div className="space-y-1 min-w-[160px]">
+          <Label className="text-xs">Período</Label>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="this_month">Este mês</SelectItem>
+              <SelectItem value="last_month">Mês anterior</SelectItem>
+              <SelectItem value="next_month">Próximo mês</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {period === "custom" && (
+          <>
+            <div className="space-y-1">
+              <Label className="text-xs">De</Label>
+              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Até</Label>
+              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </div>
+          </>
+        )}
+        <div className="space-y-1 min-w-[160px]">
+          <Label className="text-xs">Tipo</Label>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {TX_TYPES.map((t) => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1 min-w-[140px]">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="pago">Pago</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {tx.length === 0 ? (
-        <EmptyState icon={<Wallet className="h-6 w-6" />} title="Sem lançamentos" description="Crie o primeiro lançamento financeiro." />
+        <EmptyState icon={<Wallet className="h-6 w-6" />} title="Sem lançamentos" description="Nenhum lançamento encontrado para os filtros selecionados." />
       ) : (
         <div className="space-y-2">
           {tx.map((t) => {
