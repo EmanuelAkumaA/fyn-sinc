@@ -52,6 +52,33 @@ export function addPeriod(dateStr: string, freq: RecurrenceFreq): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Avança a partir de `dateStr` respeitando a frequência e mantendo o dia ancorado.
+ * Se `anchorDay` não existir no mês resultante, usa o último dia daquele mês.
+ * Frequências em dias (semanal/quinzenal) ignoram o anchorDay.
+ */
+export function nextAnchoredDate(
+  dateStr: string,
+  freq: RecurrenceFreq,
+  anchorDay: number | null | undefined,
+): string {
+  const d = new Date(dateStr + "T00:00:00");
+  if (freq === "semanal") { d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); }
+  if (freq === "quinzenal") { d.setDate(d.getDate() + 15); return d.toISOString().slice(0, 10); }
+
+  const monthsMap: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
+  const add = monthsMap[freq] ?? 1;
+
+  const totalMonths = d.getFullYear() * 12 + d.getMonth() + add;
+  const targetYear = Math.floor(totalMonths / 12);
+  const targetMonth = ((totalMonths % 12) + 12) % 12;
+  const anchor = anchorDay ?? d.getDate();
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const day = Math.min(anchor, lastDay);
+  const result = new Date(targetYear, targetMonth, day);
+  return result.toISOString().slice(0, 10);
+}
+
 export const PLATFORMS = [
   "Google Ads",
   "Meta Ads",

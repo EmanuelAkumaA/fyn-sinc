@@ -431,12 +431,15 @@ export type Database = {
       recurring_contracts: {
         Row: {
           amount: number
+          anchor_day: number | null
           client_id: string
           created_at: string
           default_bank_id: string | null
           description: string | null
           frequency: Database["public"]["Enums"]["recurrence_freq"]
           id: string
+          installments_generated: number
+          installments_total: number | null
           next_due_date: string
           notes: string | null
           organization_id: string
@@ -447,12 +450,15 @@ export type Database = {
         }
         Insert: {
           amount: number
+          anchor_day?: number | null
           client_id: string
           created_at?: string
           default_bank_id?: string | null
           description?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_freq"]
           id?: string
+          installments_generated?: number
+          installments_total?: number | null
           next_due_date: string
           notes?: string | null
           organization_id: string
@@ -463,12 +469,15 @@ export type Database = {
         }
         Update: {
           amount?: number
+          anchor_day?: number | null
           client_id?: string
           created_at?: string
           default_bank_id?: string | null
           description?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_freq"]
           id?: string
+          installments_generated?: number
+          installments_total?: number | null
           next_due_date?: string
           notes?: string | null
           organization_id?: string

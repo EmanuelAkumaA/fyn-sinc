@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
-import { formatBRL, formatDate, getCurrentOrgId, addPeriod, RECURRENCE_LABELS, type RecurrenceFreq } from "@/lib/fynsinc";
+import { formatBRL, formatDate, getCurrentOrgId, nextAnchoredDate, RECURRENCE_LABELS, type RecurrenceFreq } from "@/lib/fynsinc";
 
 export const Route = createFileRoute("/_app/recorrencias")({
   component: RecorrenciasPage,
@@ -82,23 +82,36 @@ function RecorrenciasPage() {
     mutationFn: async (p: any) => {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
-      const payload = {
+      const anchor = Number(p.start_date.slice(8, 10));
+      const installmentsTotal = p.installments_total ? Number(p.installments_total) : null;
+      const basePayload: any = {
         client_id: p.client_id,
         service_id: p.service_id || null,
         description: p.description,
         amount: Number(p.amount),
         frequency: p.frequency,
         start_date: p.start_date,
-        next_due_date: p.next_due_date,
         default_bank_id: p.default_bank_id || null,
         notes: p.notes || null,
         status: p.status,
+        anchor_day: anchor,
+        installments_total: installmentsTotal,
       };
       if (editing?.id) {
-        const { error } = await supabase.from("recurring_contracts").update(payload).eq("id", editing.id);
+        // Se a data inicial mudou e ainda não há parcelas geradas, recalcula next_due_date
+        const update: any = { ...basePayload };
+        if ((editing.installments_generated ?? 0) === 0) {
+          update.next_due_date = p.start_date;
+        }
+        const { error } = await supabase.from("recurring_contracts").update(update).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("recurring_contracts").insert({ ...payload, organization_id: org });
+        const { error } = await supabase.from("recurring_contracts").insert({
+          ...basePayload,
+          next_due_date: p.start_date,
+          installments_generated: 0,
+          organization_id: org,
+        });
         if (error) throw error;
       }
     },
@@ -138,6 +151,9 @@ function RecorrenciasPage() {
   const generateTx = useMutation({
     mutationFn: async (r: any) => {
       if (r.status !== "ativo") throw new Error("Recorrência não está ativa");
+      if (r.installments_total != null && (r.installments_generated ?? 0) >= r.installments_total) {
+        throw new Error("Todas as mensalidades já foram geradas");
+      }
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
 
@@ -169,10 +185,17 @@ function RecorrenciasPage() {
       });
       if (insErr) throw insErr;
 
-      const newNext = addPeriod(r.next_due_date, r.frequency);
+      const generated = (r.installments_generated ?? 0) + 1;
+      const reachedEnd = r.installments_total != null && generated >= r.installments_total;
+      const update: any = { installments_generated: generated };
+      if (reachedEnd) {
+        update.status = "inativo";
+      } else {
+        update.next_due_date = nextAnchoredDate(r.next_due_date, r.frequency, r.anchor_day);
+      }
       const { error: updErr } = await supabase
         .from("recurring_contracts")
-        .update({ next_due_date: newNext })
+        .update(update)
         .eq("id", r.id);
       if (updErr) throw updErr;
     },
@@ -251,11 +274,27 @@ function RecorrenciasPage() {
                   <span>{RECURRENCE_LABELS[r.frequency as RecurrenceFreq]}</span>
                   <span>·</span>
                   <span>Próx.: {formatDate(r.next_due_date)}</span>
+                  {r.installments_total != null && (
+                    <>
+                      <span>·</span>
+                      <span>Geradas: {r.installments_generated ?? 0}/{r.installments_total}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="font-display font-semibold text-lg">{formatBRL(r.amount)}</div>
               <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" title="Gerar transação" onClick={() => generateTx.mutate(r)} disabled={r.status !== "ativo" || generateTx.isPending}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Gerar transação"
+                  onClick={() => generateTx.mutate(r)}
+                  disabled={
+                    r.status !== "ativo" ||
+                    generateTx.isPending ||
+                    (r.installments_total != null && (r.installments_generated ?? 0) >= r.installments_total)
+                  }
+                >
                   <Zap className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="ghost" title={r.status === "ativo" ? "Pausar" : "Ativar"} onClick={() => toggleStatus.mutate(r)}>
@@ -314,11 +353,14 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
     amount: initial?.amount?.toString() ?? "",
     frequency: (initial?.frequency ?? "mensal") as RecurrenceFreq,
     start_date: initial?.start_date ?? today,
-    next_due_date: initial?.next_due_date ?? today,
+    installments_total: initial?.installments_total?.toString() ?? "12",
     default_bank_id: initial?.default_bank_id ?? "",
     notes: initial?.notes ?? "",
     status: initial?.status ?? "ativo",
   });
+
+  const generated = initial?.installments_generated ?? 0;
+  const startDateLocked = generated > 0;
 
   return (
     <form
@@ -326,6 +368,11 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
         e.preventDefault();
         if (!form.client_id) { toast.error("Selecione um cliente"); return; }
         if (!form.amount || Number(form.amount) <= 0) { toast.error("Valor inválido"); return; }
+        const qtd = Number(form.installments_total);
+        if (!Number.isInteger(qtd) || qtd < 1) { toast.error("Quantidade de mensalidades inválida"); return; }
+        if (startDateLocked && qtd < generated) {
+          toast.error(`Quantidade não pode ser menor que ${generated} (já gerada)`); return;
+        }
         onSubmit(form);
       }}
       className="space-y-4 mt-6"
@@ -366,12 +413,31 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label>Início *</Label>
-          <Input required type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value, next_due_date: form.next_due_date || e.target.value })} />
+          <Label>Data da 1ª mensalidade *</Label>
+          <Input
+            required
+            type="date"
+            value={form.start_date}
+            disabled={startDateLocked}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+          />
+          {startDateLocked && (
+            <p className="text-xs text-muted-foreground">Bloqueada: já existem parcelas geradas.</p>
+          )}
         </div>
         <div className="space-y-2">
-          <Label>Próx. vencimento *</Label>
-          <Input required type="date" value={form.next_due_date} onChange={(e) => setForm({ ...form, next_due_date: e.target.value })} />
+          <Label>Qtd. de mensalidades *</Label>
+          <Input
+            required
+            type="number"
+            min="1"
+            step="1"
+            value={form.installments_total}
+            onChange={(e) => setForm({ ...form, installments_total: e.target.value })}
+          />
+          {generated > 0 && (
+            <p className="text-xs text-muted-foreground">Geradas até agora: {generated}</p>
+          )}
         </div>
       </div>
       <div className="space-y-2">
