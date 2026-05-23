@@ -45,6 +45,26 @@ function BancosPage() {
     },
   });
 
+  const { data: clientByBank = {} } = useQuery<Record<string, number>>({
+    queryKey: ["bank-client-balances"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_transactions")
+        .select("bank_id, type, amount_gross")
+        .in("type", ["repasse_recebido", "uso_repasse"])
+        .not("bank_id", "is", null);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of (data ?? []) as any[]) {
+        const id = row.bank_id as string;
+        const amt = Number(row.amount_gross ?? 0);
+        const delta = row.type === "repasse_recebido" ? amt : -amt;
+        map[id] = (map[id] ?? 0) + delta;
+      }
+      return map;
+    },
+  });
+
   const balanceById = useMemo(() => Object.fromEntries(balances.map((b: any) => [b.bank_id, b])), [balances]);
 
   const save = useMutation({
