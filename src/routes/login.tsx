@@ -65,13 +65,14 @@ function LoginPage() {
     }
     
     toast.success("Bem-vindo de volta");
-    if (next) {
-      // Hard navigate para garantir que beforeLoad do destino (ex.: /admin)
-      // rode com a sessão recém-criada já hidratada.
-      window.location.assign(next);
+    // Hard navigate sempre — garante que o beforeLoad do destino rode com a
+    // sessão recém-criada já hidratada (evita bounce de volta para /login
+    // dentro do iframe do preview).
+    if (typeof window !== "undefined") {
+      window.location.assign(next ?? "/dashboard");
       return;
     }
-    navigate({ to: "/dashboard" });
+    navigate({ to: next ?? "/dashboard" });
   }
 
   return (
