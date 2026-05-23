@@ -354,6 +354,73 @@ function RecorrenciasPage() {
         </SheetContent>
       </Sheet>
 
+      <Dialog open={!!zapTarget} onOpenChange={(o) => { if (!o) setZapTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar mensalidades</DialogTitle>
+            <DialogDescription>
+              {zapTarget && (
+                <>
+                  {clientById[zapTarget.client_id]?.name ?? "—"} · {zapTarget.description}
+                  <br />
+                  Próx. vencimento: {formatDate(zapTarget.next_due_date)}
+                  {zapTarget.installments_total != null && (
+                    <> · Geradas: {zapTarget.installments_generated ?? 0}/{zapTarget.installments_total}</>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <RadioGroup value={zapMode} onValueChange={(v) => setZapMode(v as "one" | "bulk")} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="one" id="zap-one" />
+              <Label htmlFor="zap-one" className="cursor-pointer">Gerar 1 mensalidade</Label>
+            </div>
+            <div className="flex items-start gap-2">
+              <RadioGroupItem value="bulk" id="zap-bulk" className="mt-2" />
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="zap-bulk" className="cursor-pointer">Gerar em massa</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={zapTarget?.installments_total != null
+                    ? Math.max(1, zapTarget.installments_total - (zapTarget.installments_generated ?? 0))
+                    : 60}
+                  step={1}
+                  value={zapQty}
+                  onChange={(e) => setZapQty(e.target.value)}
+                  onFocus={() => setZapMode("bulk")}
+                  disabled={zapMode !== "bulk"}
+                />
+                {zapTarget?.installments_total != null && (
+                  <p className="text-xs text-muted-foreground">
+                    Restam {Math.max(0, zapTarget.installments_total - (zapTarget.installments_generated ?? 0))}.
+                  </p>
+                )}
+              </div>
+            </div>
+          </RadioGroup>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setZapTarget(null)}>Cancelar</Button>
+            <Button
+              disabled={generateTx.isPending}
+              onClick={() => {
+                if (!zapTarget) return;
+                const count = zapMode === "one" ? 1 : Number(zapQty);
+                generateTx.mutate({ contract: zapTarget, count });
+              }}
+              style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
+            >
+              {generateTx.isPending ? "Gerando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
