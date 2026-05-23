@@ -22,7 +22,7 @@ export function ClientLogo({ client, size = "md", glow = false, className }: Cli
 
   const baseStyle: React.CSSProperties = {
     borderColor: hasLogo ? "rgba(247, 249, 250, 0.10)" : color,
-    backgroundColor: hasLogo ? "rgba(0,0,0,0.25)" : hexToRgba(color, 0.18),
+    backgroundColor: hasLogo ? "rgba(255,255,255,0.04)" : hexToRgba(color, 0.18),
     filter: glow ? `drop-shadow(0 0 8px ${hexToRgba(color, 0.5)})` : undefined,
   };
 
@@ -40,7 +40,7 @@ export function ClientLogo({ client, size = "md", glow = false, className }: Cli
           src={client.logo_url!}
           alt={client.name}
           onError={() => setFailed(true)}
-          className="h-full w-full object-contain p-1.5"
+          className="h-full w-full object-contain"
         />
       ) : (
         <span className="font-display font-semibold text-white">{getInitials(client.name)}</span>
