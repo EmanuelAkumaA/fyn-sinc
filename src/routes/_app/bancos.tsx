@@ -13,7 +13,7 @@ import { PageHeader, EmptyState, StatusBadge } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
 import { ClientLogo } from "@/components/client-logo";
 import { ClientLogoUpload } from "@/components/client-logo-upload";
-import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
+import { DEFAULT_BRAND_COLOR, getBrandColor, hexToRgba, isValidHex } from "@/lib/client-brand";
 import { formatBRL, getCurrentOrgId } from "@/lib/fynsinc";
 
 export const Route = createFileRoute("/_app/bancos")({
