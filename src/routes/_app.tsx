@@ -18,14 +18,10 @@ export const Route = createFileRoute("/_app")({
     // de qualquer hidratação para evitar ciclo conecta/desconecta.
     if (isStaleUnrememberedSession()) {
       try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-      clearSessionTimer();
       clearRememberState();
       throw redirect({ to: "/login", search: { next: location.pathname } as never });
     }
 
-    if (isSessionExpired()) {
-      try { await supabase.auth.signOut(); } catch { /* ignore */ }
-      clearSessionTimer();
       throw redirect({ to: "/login", search: { next: location.pathname } as never });
     }
 
