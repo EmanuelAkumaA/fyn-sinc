@@ -178,9 +178,9 @@ function BankForm({ initial, loading, onSubmit }: { initial: any | null; loading
           orgId={orgId}
           bucket="bank-logos"
           onChange={(url, extractedColor) =>
-            setForm((f) => ({ ...f, logo_url: url, color: extractedColor && !f.color ? extractedColor : f.color }))
+            setForm((f) => ({ ...f, logo_url: url, color: extractedColor ?? f.color }))
           }
-          onRemove={() => setForm((f) => ({ ...f, logo_url: "" }))}
+          onRemove={() => setForm((f) => ({ ...f, logo_url: "", color: "" }))}
         />
       </div>
 
