@@ -8,7 +8,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
+import { FinancialCalendar } from "@/components/financial-calendar";
 import { formatBRL } from "@/lib/fynsinc";
+
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, LineChart, Line,
@@ -127,6 +129,10 @@ function DashboardPage() {
             <MetricCard label="Inadimplência" value={formatBRL(inadimplencia)} tone="destructive" icon={AlertCircle} />
             <MetricCard label="Saldo em bancos" value={formatBRL(saldoBancos)} icon={Banknote} />
           </section>
+
+          <FinancialCalendar />
+
+
 
           <button
             type="button"
