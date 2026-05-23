@@ -154,64 +154,80 @@ function RecorrenciasPage() {
   });
 
   const generateTx = useMutation({
-    mutationFn: async (r: any) => {
+    mutationFn: async ({ contract: r, count }: { contract: any; count: number }) => {
       if (r.status !== "ativo") throw new Error("Recorrência não está ativa");
-      if (r.installments_total != null && (r.installments_generated ?? 0) >= r.installments_total) {
+      const already = r.installments_generated ?? 0;
+      if (r.installments_total != null && already >= r.installments_total) {
         throw new Error("Todas as mensalidades já foram geradas");
+      }
+      if (!Number.isInteger(count) || count < 1) throw new Error("Quantidade inválida");
+      if (r.installments_total != null && already + count > r.installments_total) {
+        throw new Error(`Excede o total. Restam ${r.installments_total - already}.`);
       }
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
 
-      // Evita duplicidade: mesma recorrência + mesmo due_date pendente
+      const dueDates: string[] = [];
+      let cur = r.next_due_date;
+      for (let i = 0; i < count; i++) {
+        dueDates.push(cur);
+        cur = nextAnchoredDate(cur, r.frequency, r.anchor_day);
+      }
+
       const { data: existing } = await supabase
         .from("financial_transactions")
-        .select("id")
+        .select("id, due_date")
         .eq("recurring_contract_id", r.id)
-        .eq("due_date", r.next_due_date)
-        .limit(1);
+        .in("due_date", dueDates);
       if (existing && existing.length > 0) {
-        throw new Error("Já existe transação para esta data");
+        throw new Error(`Já existem transações para ${existing.length} data(s) deste lote`);
       }
 
       const amt = Number(r.amount);
-      const { error: insErr } = await supabase.from("financial_transactions").insert({
+      const rows = dueDates.map((d) => ({
         organization_id: org,
-        type: "receita_propria",
-        status: "pendente",
+        type: "receita_propria" as const,
+        status: "pendente" as const,
         description: r.description,
         category: "Recorrência",
         amount_gross: amt,
         amount_net: amt,
-        due_date: r.next_due_date,
+        due_date: d,
         client_id: r.client_id,
         service_id: r.service_id,
         bank_id: r.default_bank_id,
         recurring_contract_id: r.id,
-      });
+      }));
+      const { error: insErr } = await supabase.from("financial_transactions").insert(rows);
       if (insErr) throw insErr;
 
-      const generated = (r.installments_generated ?? 0) + 1;
+      const generated = already + count;
       const reachedEnd = r.installments_total != null && generated >= r.installments_total;
       const update: any = { installments_generated: generated };
       if (reachedEnd) {
         update.status = "inativo";
+        update.next_due_date = dueDates[dueDates.length - 1];
       } else {
-        update.next_due_date = nextAnchoredDate(r.next_due_date, r.frequency, r.anchor_day);
+        update.next_due_date = cur;
       }
       const { error: updErr } = await supabase
         .from("recurring_contracts")
         .update(update)
         .eq("id", r.id);
       if (updErr) throw updErr;
+
+      return count;
     },
-    onSuccess: () => {
-      toast.success("Transação gerada no Financeiro");
+    onSuccess: (count) => {
+      toast.success(count === 1 ? "1 mensalidade gerada no Financeiro" : `${count} mensalidades geradas no Financeiro`);
       qc.invalidateQueries({ queryKey: ["recorrencias"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setZapTarget(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   return (
     <>
