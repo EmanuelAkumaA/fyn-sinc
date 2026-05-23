@@ -25,6 +25,12 @@ import { invalidateClientCaches } from "@/lib/client-cache";
 import { validateDocumentFile } from "@/lib/upload-validation";
 import { documentUploadSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
   return <ClienteDetalhe id={id} />;
