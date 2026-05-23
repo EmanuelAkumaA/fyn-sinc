@@ -130,7 +130,9 @@ function BancosPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {filtered.map((b: any) => {
-            const current = balanceById[b.id]?.current_balance ?? b.initial_balance;
+            const current = Number(balanceById[b.id]?.current_balance ?? b.initial_balance ?? 0);
+            const cliente = Number(clientByBank[b.id] ?? 0);
+            const kuma = current - cliente;
             const color = getBrandColor({ brand_color: b.color });
             return (
               <div
@@ -150,6 +152,22 @@ function BancosPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">{b.account_type || "Conta operacional"}</div>
                   <div className="font-display text-2xl font-semibold mt-3">{formatBRL(current)}</div>
+                  {cliente !== 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border ${
+                          kuma >= 0
+                            ? "bg-success/10 text-success border-success/20"
+                            : "bg-destructive/10 text-destructive border-destructive/20"
+                        }`}
+                      >
+                        Kuma · {formatBRL(kuma)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border bg-primary/10 text-primary border-primary/20">
+                        Cliente · {formatBRL(cliente)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}>
                   <Pencil className="h-4 w-4" />
