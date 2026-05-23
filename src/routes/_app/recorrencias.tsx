@@ -309,7 +309,14 @@ function RecorrenciasPage() {
                   size="sm"
                   variant="ghost"
                   title="Gerar transação"
-                  onClick={() => generateTx.mutate(r)}
+                  onClick={() => {
+                    const remaining = r.installments_total != null
+                      ? Math.max(1, r.installments_total - (r.installments_generated ?? 0))
+                      : 1;
+                    setZapMode("one");
+                    setZapQty(String(remaining));
+                    setZapTarget(r);
+                  }}
                   disabled={
                     r.status !== "ativo" ||
                     generateTx.isPending ||
