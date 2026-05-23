@@ -116,7 +116,7 @@ function BancosPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Building2 className="h-6 w-6" />} title="Nenhum banco" description="Cadastre contas para registrar pagamentos, taxas e transferências." />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-3 md:grid-cols-2">
           {filtered.map((b: any) => {
             const br = breakdownById[b.id];
             const current = br?.total_balance ?? Number(b.initial_balance ?? 0);
@@ -124,31 +124,42 @@ function BancosPage() {
             return (
               <div
                 key={b.id}
-                className="client-card p-4 flex items-start gap-3"
+                className="client-card relative p-4 sm:p-5"
                 style={{
                   ["--client-color" as any]: color,
                   ["--client-glow" as any]: hexToRgba(color, 0.28),
                   ["--client-tint" as any]: hexToRgba(color, 0.06),
                 }}
               >
-                <ClientLogo client={{ name: b.name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{b.name}</span>
-                    <StatusBadge status={b.status} />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{b.account_type || "Conta operacional"}</div>
-                  <div className="font-display text-2xl font-semibold mt-3">{formatBRL(current)}</div>
-                  <BankBreakdownChips
-                    kuma={br?.kuma_balance ?? 0}
-                    cliente={br?.client_funds_balance ?? 0}
-                    cashback={br?.cashback_total ?? 0}
-                    taxas={br?.fees_total ?? 0}
-                  />
-                </div>
-                <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => { setEditing(b); setOpen(true); }}
+                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-foreground"
+                >
                   <Pencil className="h-4 w-4" />
                 </Button>
+                <div className="flex items-start gap-3 pr-8">
+                  <ClientLogo client={{ name: b.name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-base sm:text-lg truncate">{b.name}</span>
+                      <StatusBadge status={b.status} />
+                    </div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5">
+                      {b.account_type || "Conta operacional"}
+                    </div>
+                  </div>
+                </div>
+                <div className="font-display text-2xl sm:text-3xl font-semibold mt-4 tabular-nums">
+                  {formatBRL(current)}
+                </div>
+                <BankBreakdownChips
+                  kuma={br?.kuma_balance ?? 0}
+                  cliente={br?.client_funds_balance ?? 0}
+                  cashback={br?.cashback_total ?? 0}
+                  taxas={br?.fees_total ?? 0}
+                />
               </div>
             );
           })}
