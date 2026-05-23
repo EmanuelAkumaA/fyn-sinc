@@ -1,10 +1,13 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   LayoutDashboard, Users, Wallet, Repeat, ArrowLeftRight,
   Package, Briefcase, Building2, Settings, LogOut, Download,
+  MoreHorizontal,
 } from "lucide-react";
 import { signOutAndRedirect } from "@/lib/session";
 import { useInstallPwa } from "@/components/install-pwa-banner";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo-full.svg";
 
@@ -79,36 +82,118 @@ export function AppSidebar() {
   );
 }
 
+const MORE_ITEMS = [
+  { to: "/recorrencias", label: "Recorrências", icon: Repeat },
+  { to: "/planos", label: "Planos/Ferramentas", icon: Package },
+  { to: "/servicos", label: "Serviços", icon: Briefcase },
+  { to: "/bancos", label: "Bancos", icon: Building2 },
+  { to: "/configuracoes", label: "Configurações", icon: Settings },
+] as const;
+
 export function MobileBottomNav() {
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
+  const { promptInstall } = useInstallPwa();
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const items = [
     { to: "/dashboard", label: "Início", icon: LayoutDashboard },
     { to: "/clientes", label: "Clientes", icon: Users },
     { to: "/financeiro", label: "Financeiro", icon: Wallet },
     { to: "/aportes", label: "Aportes", icon: ArrowLeftRight },
-    { to: "/configuracoes", label: "Mais", icon: Settings },
   ] as const;
 
+  const moreActive = MORE_ITEMS.some(
+    (i) => path === i.to || path.startsWith(i.to + "/")
+  );
+
+  async function logout() {
+    setMoreOpen(false);
+    await signOutAndRedirect(navigate, { reason: "manual" });
+  }
+
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-5">
-        {items.map(({ to, label, icon: Icon }) => {
-          const active = path === to || path.startsWith(to + "/");
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={cn(
-                "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
+    <>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-5">
+          {items.map(({ to, label, icon: Icon }) => {
+            const active = path === to || path.startsWith(to + "/");
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={cn(
+                  "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={cn(
+              "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+              moreActive ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            Mais
+          </button>
+        </div>
+      </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl pb-[env(safe-area-inset-bottom)] max-h-[85vh] overflow-y-auto"
+        >
+          <SheetHeader>
+            <SheetTitle>Mais opções</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-1">
+            {MORE_ITEMS.map(({ to, label, icon: Icon }) => {
+              const active = path === to || path.startsWith(to + "/");
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition",
+                    active
+                      ? "bg-sidebar-accent text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  {label}
+                </Link>
+              );
+            })}
+
+            <div className="h-px bg-border my-2" />
+
+            <button
+              onClick={() => { setMoreOpen(false); void promptInstall(); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
             >
-              <Icon className="h-5 w-5" />
-              {label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+              <Download className="h-[18px] w-[18px]" />
+              Instalar app
+            </button>
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+            >
+              <LogOut className="h-[18px] w-[18px]" />
+              Sair
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
