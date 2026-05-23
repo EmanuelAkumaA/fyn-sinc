@@ -105,7 +105,15 @@ function RecorrenciasPage() {
       if (editing?.id) {
         // Se a data inicial mudou e ainda não há parcelas geradas, recalcula next_due_date
         const update: any = { ...basePayload };
-        if ((editing.installments_generated ?? 0) === 0) {
+        const generatedNow = editing.installments_generated ?? 0;
+        const wasCompleted =
+          editing.installments_total != null && generatedNow >= editing.installments_total;
+        const startChanged = p.start_date !== editing.start_date;
+        if (wasCompleted && startChanged) {
+          update.next_due_date = p.start_date;
+          update.installments_generated = 0;
+          update.status = "ativo";
+        } else if (generatedNow === 0) {
           update.next_due_date = p.start_date;
         }
         const { error } = await supabase.from("recurring_contracts").update(update).eq("id", editing.id);
@@ -455,7 +463,8 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
   });
 
   const generated = initial?.installments_generated ?? 0;
-  const startDateLocked = generated > 0;
+  const isCompleted = initial?.installments_total != null && generated >= initial.installments_total;
+  const startDateLocked = generated > 0 && !isCompleted;
 
   return (
     <form
@@ -518,6 +527,9 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
           />
           {startDateLocked && (
             <p className="text-xs text-muted-foreground">Bloqueada: já existem parcelas geradas.</p>
+          )}
+          {isCompleted && (
+            <p className="text-xs text-muted-foreground">Recorrência concluída. Altere a data para reiniciar a geração.</p>
           )}
         </div>
         <div className="space-y-2">

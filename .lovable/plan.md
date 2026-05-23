@@ -1,51 +1,46 @@
 ## Objetivo
 
-Ao clicar no botão **Zap** de uma recorrência, abrir um diálogo perguntando se o usuário quer gerar **1 mensalidade** (comportamento atual) ou **gerar em massa** uma quantidade definida de mensalidades de uma vez.
+Quando todas as mensalidades de uma recorrência forem geradas (status fica `inativo` e `installments_generated >= installments_total`), o campo "Data da 1ª mensalidade" deve voltar a ser editável. Ao alterar a data e salvar, a recorrência é reativada e o botão Zap volta a gerar mensalidades a partir da nova data — sem precisar recriar do zero.
 
 ## Mudanças
 
-### 1. `src/routes/_app/recorrencias.tsx`
+**Arquivo:** `src/routes/_app/recorrencias.tsx` (apenas)
 
-**Novo estado de UI**
-- `zapTarget`: recorrência selecionada (abre o diálogo quando definida).
-- `zapMode`: `"one" | "bulk"`.
-- `zapQty`: número de parcelas a gerar quando modo = bulk.
+### 1. Formulário de edição (`RecForm`)
 
-**Novo diálogo (AlertDialog ou Dialog)** disparado pelo botão Zap:
-- Mostra: cliente, descrição, próx. vencimento, geradas/total.
-- Opção 1 (radio): **Gerar 1 mensalidade** (data = `next_due_date`).
-- Opção 2 (radio): **Gerar em massa** — input numérico de quantidade.
-  - Default: restante (`installments_total - installments_generated`) ou `1` se sem limite.
-  - Máximo: restante (quando houver `installments_total`); sem limite hard quando `installments_total = null`, mas validar ≥ 1 e ≤ 60 para segurança.
-- Botões: Cancelar / Confirmar.
+- Calcular `isCompleted = initial?.installments_total != null && generated >= initial.installments_total`.
+- Trocar `startDateLocked = generated > 0` por `startDateLocked = generated > 0 && !isCompleted`.
+- Quando `isCompleted`, trocar o texto de ajuda abaixo do campo para algo como: *"Recorrência concluída. Altere a data para reiniciar a geração."*
+- Manter a validação de quantidade ≥ geradas apenas quando `startDateLocked` (ciclo em andamento). Quando `isCompleted`, permitir qualquer `qtd ≥ 1` (será um novo ciclo).
 
-**Refatorar `generateTx` para suportar lote**
+### 2. Mutation de atualização (linhas ~105-112)
 
-Substituir a mutation atual por uma que aceita `{ contract, count }`:
-1. Valida: `status === "ativo"` e, se `installments_total != null`, `generated + count <= installments_total`.
-2. Itera `count` vezes a partir de `r.next_due_date`:
-   - Para cada iteração, calcula `dueDate` (na 1ª = `next_due_date`, depois `nextAnchoredDate` do anterior).
-   - Verifica duplicidade por `recurring_contract_id + due_date` (consulta única `in('due_date', dueDates)` antes do loop para eficiência); se algum já existir, aborta com mensagem.
-   - Monta o array de inserts e faz **um único** `supabase.from("financial_transactions").insert(rows)`.
-3. Atualiza o contrato uma única vez:
-   - `installments_generated = generated + count`
-   - Se atingiu o total → `status = "inativo"`, mantém `next_due_date` no último gerado.
-   - Senão → `next_due_date = nextAnchoredDate(últimoGerado, frequency, anchor_day)`.
-4. Toast: "1 mensalidade gerada" ou "N mensalidades geradas".
-5. Invalida queries `recorrencias`, `transactions`, `dashboard`.
+Adicionar caminho para "reset por nova data" quando o contrato estiver concluído:
 
-**Botão Zap**
-- Continua desabilitado quando inativo ou total atingido.
-- `onClick` agora abre o diálogo em vez de chamar a mutation direto.
+```ts
+const generatedNow = editing.installments_generated ?? 0;
+const wasCompleted =
+  editing.installments_total != null && generatedNow >= editing.installments_total;
+const startChanged = p.start_date !== editing.start_date;
 
-### Sem mudanças
-- Migração de banco (estrutura atual já suporta).
-- `src/lib/fynsinc.ts` (usa `nextAnchoredDate` existente).
-- Outras telas (Financeiro, Dashboard) — só consomem as transações geradas.
+if (wasCompleted && startChanged) {
+  // Reiniciar ciclo: novas mensalidades começam da nova data
+  update.next_due_date = p.start_date;
+  update.installments_generated = 0;
+  update.status = "ativo";
+} else if (generatedNow === 0) {
+  update.next_due_date = p.start_date;
+}
+```
 
-## Arquivo afetado
-- `src/routes/_app/recorrencias.tsx` (único)
+Isso mantém as transações já geradas no histórico financeiro (não apaga nada) e simplesmente abre um novo ciclo na recorrência. O botão Zap volta a funcionar normalmente porque `status="ativo"` e `installments_generated=0`.
+
+### 3. Card da listagem
+
+Sem alterações de comportamento. Após salvar com nova data, o card volta a aparecer como "Ativo" com `Geradas: 0/N` e o botão Zap habilitado.
 
 ## Fora de escopo
-- Gerar mensalidades pulando datas/manualmente escolhidas.
-- Geração automática agendada (cron).
+
+- Apagar/regenerar mensalidades antigas.
+- Histórico de ciclos anteriores.
+- Alteração automática sem o usuário trocar a data (manter exigência de mudar a data para reativar).
