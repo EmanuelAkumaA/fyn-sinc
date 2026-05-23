@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertTriangle, ArrowDownCircle, ArrowUpCircle, Banknote,
-  CalendarClock, ChevronLeft, ChevronRight, Clock, Download, FileText, Filter, Gift, Mail, Pencil, Phone,
+  CalendarClock, ChevronLeft, ChevronRight, Clock, Download, FileText, Filter, Gift, Mail, MoreHorizontal, PauseCircle, Pencil, Phone,
   Plus, Receipt, Repeat, ShoppingBag, Trash2, TrendingUp, Upload, Wallet,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,12 @@ import { invalidateClientCaches } from "@/lib/client-cache";
 import { validateDocumentFile } from "@/lib/upload-validation";
 import { documentUploadSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 export function ClientDossier({ clientId: id }: { clientId: string }) {
   return <ClienteDetalhe id={id} />;
@@ -429,6 +436,7 @@ function ClienteDetalhe({ id }: { id: string }) {
 
         <TabsContent value="overview">
           <OverviewTab
+            clientId={id}
             tx={tx}
             recurring={recurring}
             inadimplente={inadimplente}
@@ -441,6 +449,7 @@ function ClienteDetalhe({ id }: { id: string }) {
             range={range}
           />
         </TabsContent>
+
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
         </TabsContent>
@@ -680,13 +689,15 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus, range, pe
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
-function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customStart, setCustomStart, customEnd, setCustomEnd, range }: {
+function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod, customStart, setCustomStart, customEnd, setCustomEnd, range }: {
+  clientId: string;
   tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
   period: Period; setPeriod: (p: Period) => void;
   customStart: string; setCustomStart: (s: string) => void;
   customEnd: string; setCustomEnd: (s: string) => void;
   range: Range;
 }) {
+
   void inadimplente;
   const [compareOpen, setCompareOpen] = useState(false);
   const today = isoDate(new Date());
@@ -767,19 +778,12 @@ function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customSta
           <Card title="Mensalidades ativas">
             <ul className="divide-y divide-border/50">
               {ativas.map((r) => (
-                <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{r.description ?? "Mensalidade"}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency} · próximo {formatDate(r.next_due_date)}
-                    </div>
-                  </div>
-                  <span className="font-display font-semibold text-primary">{formatBRL(Number(r.amount))}</span>
-                </li>
+                <MensalidadeAtivaItem key={r.id} r={r} clientId={clientId} />
               ))}
             </ul>
           </Card>
         )}
+
       </div>
 
       <ComparePeriodSheet open={compareOpen} onOpenChange={setCompareOpen} tx={tx} range={range} />
@@ -787,7 +791,96 @@ function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customSta
   );
 }
 
+function MensalidadeAtivaItem({ r, clientId }: { r: Recurring; clientId: string }) {
+  const qc = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const pause = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("recurring_contracts")
+        .update({ status: "pausado" } as never)
+        .eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Mensalidade pausada");
+      invalidateClientCaches(qc, clientId);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("recurring_contracts").delete().eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Mensalidade removida");
+      invalidateClientCaches(qc, clientId);
+      setConfirmDelete(false);
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setConfirmDelete(false);
+    },
+  });
+
+  return (
+    <li className="flex items-center justify-between py-2 text-sm gap-2">
+      <div className="min-w-0 flex-1">
+        <div className="font-medium truncate">{r.description ?? "Mensalidade"}</div>
+        <div className="text-xs text-muted-foreground">
+          {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency} · próximo {formatDate(r.next_due_date)}
+        </div>
+      </div>
+      <span className="font-display font-semibold text-primary shrink-0">{formatBRL(Number(r.amount))}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Ações">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => pause.mutate()} disabled={pause.isPending}>
+            <PauseCircle className="h-4 w-4 mr-2" /> Pausar
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setConfirmDelete(true)}
+            className="text-[color:var(--destructive)] focus:text-[color:var(--destructive)]"
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Remover
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover mensalidade?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{r.description ?? "Mensalidade"}" será removida. Lançamentos financeiros já gerados serão mantidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => { e.preventDefault(); remove.mutate(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {remove.isPending ? "Removendo..." : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </li>
+  );
+}
+
 const incomeTypes = new Set(["receita_propria", "comissao", "cashback", "repasse_recebido"]);
+
 
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
