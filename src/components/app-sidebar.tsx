@@ -149,7 +149,7 @@ export function MobileBottomNav() {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent
           side="bottom"
-          className="rounded-t-2xl pb-[env(safe-area-inset-bottom)] max-h-[85vh] overflow-y-auto"
+          className="rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1.5rem)] max-h-[85vh] overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>Mais opções</SheetTitle>
