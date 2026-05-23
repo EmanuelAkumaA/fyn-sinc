@@ -130,6 +130,10 @@ function DashboardPage() {
             <MetricCard label="Saldo em bancos" value={formatBRL(saldoBancos)} icon={Banknote} />
           </section>
 
+          <FinancialCalendar />
+
+
+
           <button
             type="button"
             onClick={() => setOpenOp((v) => !v)}
