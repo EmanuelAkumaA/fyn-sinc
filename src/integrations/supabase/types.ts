@@ -428,6 +428,27 @@ export type Database = {
         }
         Relationships: []
       }
+      platforms: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+        }
+        Relationships: []
+      }
       recurring_contracts: {
         Row: {
           amount: number
