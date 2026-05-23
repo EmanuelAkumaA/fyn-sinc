@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui-helpers";
 import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
+import { PayTransactionDialog } from "@/components/pay-transaction-dialog";
+
 
 export const Route = createFileRoute("/_app/financeiro")({
   component: FinanceiroPage,
