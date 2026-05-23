@@ -97,9 +97,6 @@ function LoginPage() {
               Lembrar-me neste dispositivo
             </Label>
           </div>
-          <p className="text-[11px] text-muted-foreground -mt-2">
-            Por segurança, sua sessão expira automaticamente após 1 hora.
-          </p>
           <Button type="submit" disabled={loading} className="w-full h-11 text-base font-medium" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>
