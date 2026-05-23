@@ -102,7 +102,6 @@ function TrialPage() {
         password: parsed.data.password,
       });
       if (error) throw error;
-      startSessionTimer();
       toast.success("Trial criado! Bem-vindo ao Fyn Sinc.");
       navigate({ to: "/dashboard" });
     } catch (err) {
