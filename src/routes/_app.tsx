@@ -4,9 +4,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
-import { clearSessionTimer, isSessionExpired } from "@/lib/session";
 import { isStaleUnrememberedSession, markTabAlive, clearRememberState } from "@/lib/remember";
-import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
 import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
