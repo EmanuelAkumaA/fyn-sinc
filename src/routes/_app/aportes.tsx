@@ -432,10 +432,8 @@ function AporteForm({ clients, banks, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2">
         <Label>Plataforma *</Label>
-        <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <PlatformSelect value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} />
+
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
