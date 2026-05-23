@@ -23,16 +23,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export async function extractBrandColor(source: File | string): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
-  const url = typeof source === "string" ? source : URL.createObjectURL(source);
+  let url: string;
+  if (typeof source === "string") {
+    // Cache-bust para evitar reaproveitar uma resposta cacheada SEM cabeçalhos CORS
+    url = source + (source.includes("?") ? "&" : "?") + "cbc=" + Date.now();
+  } else {
+    url = URL.createObjectURL(source);
+  }
   try {
     const img = await loadImage(url);
-    if (img.width < 2 || img.height < 2) return null;
+    // SVGs e algumas imagens podem não ter dimensão intrínseca
+    const iw = img.naturalWidth || img.width || 256;
+    const ih = img.naturalHeight || img.height || 256;
 
-    // Reduz para acelerar e suavizar
     const MAX = 80;
-    const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
-    const w = Math.max(1, Math.round(img.width * ratio));
-    const h = Math.max(1, Math.round(img.height * ratio));
+    const ratio = Math.min(MAX / iw, MAX / ih, 1);
+    const w = Math.max(1, Math.round(iw * ratio));
+    const h = Math.max(1, Math.round(ih * ratio));
 
     const canvas = document.createElement("canvas");
     canvas.width = w;
