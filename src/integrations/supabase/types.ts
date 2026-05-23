@@ -127,6 +127,7 @@ export type Database = {
           document: string | null
           email: string | null
           financial_status: string
+          full_name: string | null
           id: string
           logo_url: string | null
           name: string
@@ -145,6 +146,7 @@ export type Database = {
           document?: string | null
           email?: string | null
           financial_status?: string
+          full_name?: string | null
           id?: string
           logo_url?: string | null
           name: string
@@ -163,6 +165,7 @@ export type Database = {
           document?: string | null
           email?: string | null
           financial_status?: string
+          full_name?: string | null
           id?: string
           logo_url?: string | null
           name?: string
