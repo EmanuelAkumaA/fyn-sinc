@@ -154,54 +154,56 @@ function FinanceiroPage() {
         }
       />
 
-      <div className="glass rounded-xl p-3 md:p-4 mb-3 flex flex-wrap items-end gap-3">
-        <div className="space-y-1 min-w-[160px]">
-          <Label className="text-xs">Período</Label>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="this_month">Este mês</SelectItem>
-              <SelectItem value="last_month">Mês anterior</SelectItem>
-              <SelectItem value="next_month">Próximo mês</SelectItem>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="glass rounded-xl p-3 md:p-4 mb-3 space-y-2 sm:space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px]">Período</Label>
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="this_month">Este mês</SelectItem>
+                <SelectItem value="last_month">Mês anterior</SelectItem>
+                <SelectItem value="next_month">Próximo mês</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px]">Tipo</Label>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {TX_TYPES.map((t) => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 col-span-2 sm:col-span-1">
+            <Label className="text-[11px]">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pago">Pago</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         {period === "custom" && (
-          <>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">De</Label>
+              <Label className="text-[11px]">De</Label>
               <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Até</Label>
+              <Label className="text-[11px]">Até</Label>
               <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
             </div>
-          </>
+          </div>
         )}
-        <div className="space-y-1 min-w-[160px]">
-          <Label className="text-xs">Tipo</Label>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {TX_TYPES.map((t) => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1 min-w-[140px]">
-          <Label className="text-xs">Status</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="pago">Pago</SelectItem>
-              <SelectItem value="cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {tx.length === 0 ? (
