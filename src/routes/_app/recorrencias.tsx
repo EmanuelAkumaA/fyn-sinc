@@ -463,7 +463,8 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
   });
 
   const generated = initial?.installments_generated ?? 0;
-  const startDateLocked = generated > 0;
+  const isCompleted = initial?.installments_total != null && generated >= initial.installments_total;
+  const startDateLocked = generated > 0 && !isCompleted;
 
   return (
     <form
