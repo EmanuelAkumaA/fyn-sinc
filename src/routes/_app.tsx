@@ -22,8 +22,7 @@ export const Route = createFileRoute("/_app")({
       throw redirect({ to: "/login", search: { next: location.pathname } as never });
     }
 
-      throw redirect({ to: "/login", search: { next: location.pathname } as never });
-    }
+
 
     const { data, error } = await supabase.auth.getSession();
     if (error || !data.session) {
