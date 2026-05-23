@@ -237,13 +237,8 @@ function FinanceiroPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <PayTransactionDialog tx={payTx} onOpenChange={(o) => !o && setPayTx(null)} />
 
-      <Dialog open={!!payTx} onOpenChange={(o) => !o && setPayTx(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Marcar como pago</DialogTitle></DialogHeader>
-          {payTx && <MarkPaidForm tx={payTx} banks={banks} onSubmit={(d: any) => markPaid.mutate(d)} loading={markPaid.isPending} />}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
