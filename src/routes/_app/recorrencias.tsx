@@ -30,6 +30,9 @@ function RecorrenciasPage() {
   const [openSheet, setOpenSheet] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [toDelete, setToDelete] = useState<any | null>(null);
+  const [zapTarget, setZapTarget] = useState<any | null>(null);
+  const [zapMode, setZapMode] = useState<"one" | "bulk">("one");
+  const [zapQty, setZapQty] = useState<string>("1");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [freqFilter, setFreqFilter] = useState<string>("all");
