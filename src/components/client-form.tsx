@@ -14,6 +14,7 @@ import { getCurrentOrgId } from "@/lib/fynsinc";
 export type ClientRow = {
   id: string;
   name: string;
+  full_name: string | null;
   type: string;
   document: string | null;
   email: string | null;
@@ -29,6 +30,7 @@ export type ClientRow = {
 
 export type ClientFormState = {
   name: string;
+  full_name: string;
   type: string;
   document: string;
   email: string;
@@ -43,6 +45,7 @@ export type ClientFormState = {
 
 export const emptyClientForm: ClientFormState = {
   name: "",
+  full_name: "",
   type: "PJ",
   document: "",
   email: "",
