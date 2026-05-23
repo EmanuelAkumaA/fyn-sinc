@@ -185,15 +185,48 @@ function FinanceiroPage() {
                 </div>
                 <StatusBadge status={t.status} />
                 {t.status !== "pago" && (
-                  <Button size="icon" variant="ghost" onClick={() => setPayTx(t)}>
+                  <Button size="icon" variant="ghost" onClick={() => setPayTx(t)} aria-label="Marcar como pago">
                     <CheckCircle2 className="h-4 w-4" />
                   </Button>
                 )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setToDelete(t)}
+                  aria-label="Excluir lançamento"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             );
           })}
         </div>
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete ? `"${toDelete.description}" será removido. Esta ação não pode ser desfeita.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (toDelete) remove.mutate(toDelete.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {remove.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!payTx} onOpenChange={(o) => !o && setPayTx(null)}>
         <DialogContent>
