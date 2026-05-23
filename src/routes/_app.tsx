@@ -41,7 +41,6 @@ function isOrgBlocked(org: MyOrg): boolean {
 }
 
 function AppLayout() {
-  useSessionTimeout();
   const navigate = useNavigate();
   const fetchOrgs = useServerFn(listMyOrganizations);
   const [ready, setReady] = useState(false);
@@ -61,19 +60,13 @@ function AppLayout() {
       // qualquer hidratação, para não cair em loop conecta/desconecta.
       if (isStaleUnrememberedSession()) {
         try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-        clearSessionTimer();
         clearRememberState();
         if (active) navigate({ to: "/login" });
         return;
       }
       markTabAlive();
 
-      if (isSessionExpired()) {
-        try { await supabase.auth.signOut(); } catch { /* ignore */ }
-        clearSessionTimer();
-        if (active) navigate({ to: "/login" });
-        return;
-      }
+
       const { data, error } = await supabase.auth.getSession();
       if (!active) return;
       if (error) {
