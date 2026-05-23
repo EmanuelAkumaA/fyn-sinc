@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           id: string
           initial_balance: number
+          logo_url: string | null
           name: string
           organization_id: string
           status: Database["public"]["Enums"]["entity_status"]
@@ -32,6 +33,7 @@ export type Database = {
           created_at?: string
           id?: string
           initial_balance?: number
+          logo_url?: string | null
           name: string
           organization_id: string
           status?: Database["public"]["Enums"]["entity_status"]
@@ -43,6 +45,7 @@ export type Database = {
           created_at?: string
           id?: string
           initial_balance?: number
+          logo_url?: string | null
           name?: string
           organization_id?: string
           status?: Database["public"]["Enums"]["entity_status"]

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Building2, Pencil, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PageHeader, EmptyState, StatusBadge } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
+import { ClientLogo } from "@/components/client-logo";
+import { ClientLogoUpload } from "@/components/client-logo-upload";
+import { DEFAULT_BRAND_COLOR, isValidHex } from "@/lib/client-brand";
 import { formatBRL, getCurrentOrgId } from "@/lib/fynsinc";
 
 export const Route = createFileRoute("/_app/bancos")({
@@ -53,6 +56,7 @@ function BancosPage() {
         account_type: payload.account_type || null,
         initial_balance: Number(payload.initial_balance || 0),
         color: payload.color || null,
+        logo_url: payload.logo_url || null,
         status: payload.status,
       };
       const result = editing?.id
@@ -109,9 +113,7 @@ function BancosPage() {
             const current = balanceById[b.id]?.current_balance ?? b.initial_balance;
             return (
               <div key={b.id} className="glass rounded-2xl p-4 flex items-start gap-3">
-                <div className="h-11 w-11 rounded-xl bg-secondary/60 flex items-center justify-center" style={b.color ? { color: b.color } : undefined}>
-                  <Building2 className="h-5 w-5" />
-                </div>
+                <ClientLogo client={{ name: b.name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate">{b.name}</span>
@@ -140,21 +142,56 @@ function BancosPage() {
 }
 
 function BankForm({ initial, loading, onSubmit }: { initial: any | null; loading: boolean; onSubmit: (data: any) => void }) {
+  const [orgId, setOrgId] = useState<string | null>(null);
+  useEffect(() => { getCurrentOrgId().then(setOrgId); }, []);
+
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     account_type: initial?.account_type ?? "",
     initial_balance: initial?.initial_balance?.toString() ?? "0",
     color: initial?.color ?? "",
+    logo_url: initial?.logo_url ?? "",
     status: initial?.status ?? "ativo",
   });
+
+  const colorInvalid = form.color.trim() !== "" && !isValidHex(form.color);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4 mt-6">
       <div className="space-y-2"><Label>Nome *</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
       <div className="space-y-2"><Label>Tipo de conta</Label><Input value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })} placeholder="Conta corrente, gateway, carteira..." /></div>
       <div className="space-y-2"><Label>Saldo inicial</Label><Input type="number" step="0.01" value={form.initial_balance} onChange={(e) => setForm({ ...form, initial_balance: e.target.value })} /></div>
+
+      <div className="space-y-2">
+        <Label>Logo</Label>
+        <ClientLogoUpload
+          value={form.logo_url}
+          orgId={orgId}
+          bucket="bank-logos"
+          onChange={(url, extractedColor) =>
+            setForm((f) => ({ ...f, logo_url: url, color: extractedColor && !f.color ? extractedColor : f.color }))
+          }
+          onRemove={() => setForm((f) => ({ ...f, logo_url: "" }))}
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Cor</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="#22c55e" /></div>
+        <div className="space-y-2">
+          <Label>Cor (HEX)</Label>
+          <div className="flex items-center gap-2">
+            <span
+              className="h-9 w-9 rounded-md border border-input shrink-0"
+              style={{ background: isValidHex(form.color) ? form.color : DEFAULT_BRAND_COLOR }}
+            />
+            <Input
+              value={form.color}
+              onChange={(e) => setForm({ ...form, color: e.target.value })}
+              placeholder="#14B8A6"
+              maxLength={7}
+            />
+          </div>
+          {colorInvalid && <p className="text-xs text-destructive">Use formato HEX, ex.: #14B8A6</p>}
+        </div>
         <div className="space-y-2">
           <Label>Status</Label>
           <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
@@ -166,7 +203,7 @@ function BankForm({ initial, loading, onSubmit }: { initial: any | null; loading
           </Select>
         </div>
       </div>
-      <Button type="submit" disabled={loading} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
+      <Button type="submit" disabled={loading || colorInvalid} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
         {loading ? "Salvando..." : "Salvar banco"}
       </Button>
     </form>
