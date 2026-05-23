@@ -9,6 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { getCurrentOrgId } from "@/lib/fynsinc";
 import { ClientCard } from "@/components/client-card";
@@ -29,6 +39,7 @@ function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClientRow | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<ClientRow | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
@@ -72,6 +83,22 @@ function ClientesPage() {
       closeSheet();
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente excluído");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      setToDelete(null);
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setToDelete(null);
+    },
   });
 
   const onlyDigits = (s: string) => s.replace(/\D/g, "");
@@ -199,6 +226,7 @@ function ClientesPage() {
                 setEditing(client as ClientRow);
                 setOpen(true);
               }}
+              onDelete={(client) => setToDelete(client as ClientRow)}
             />
           ))}
         </div>
@@ -213,6 +241,30 @@ function ClientesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(v) => !v && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete ? `"${toDelete.name}" será removido. Esta ação não pode ser desfeita.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (toDelete) remove.mutate(toDelete.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {remove.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

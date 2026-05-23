@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Wallet, CheckCircle2 } from "lucide-react";
+import { Plus, Wallet, CheckCircle2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui-helpers";
 import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
 
@@ -29,6 +39,7 @@ function FinanceiroPage() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [payTx, setPayTx] = useState<any | null>(null);
+  const [toDelete, setToDelete] = useState<any | null>(null);
 
   const { data: tx = [] } = useQuery({
     queryKey: ["transactions"],
@@ -109,6 +120,22 @@ function FinanceiroPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_transactions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Lançamento excluído");
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      setToDelete(null);
+    },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setToDelete(null);
+    },
+  });
+
   return (
     <>
       <PageHeader
@@ -158,15 +185,48 @@ function FinanceiroPage() {
                 </div>
                 <StatusBadge status={t.status} />
                 {t.status !== "pago" && (
-                  <Button size="icon" variant="ghost" onClick={() => setPayTx(t)}>
+                  <Button size="icon" variant="ghost" onClick={() => setPayTx(t)} aria-label="Marcar como pago">
                     <CheckCircle2 className="h-4 w-4" />
                   </Button>
                 )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setToDelete(t)}
+                  aria-label="Excluir lançamento"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             );
           })}
         </div>
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete ? `"${toDelete.description}" será removido. Esta ação não pode ser desfeita.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (toDelete) remove.mutate(toDelete.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {remove.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!payTx} onOpenChange={(o) => !o && setPayTx(null)}>
         <DialogContent>
