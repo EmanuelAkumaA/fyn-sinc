@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { startSessionTimer } from "@/lib/session";
 import logoUrl from "@/assets/logo-full.svg";
 
 export const Route = createFileRoute("/trial")({
@@ -103,7 +102,6 @@ function TrialPage() {
         password: parsed.data.password,
       });
       if (error) throw error;
-      startSessionTimer();
       toast.success("Trial criado! Bem-vindo ao Fyn Sinc.");
       navigate({ to: "/dashboard" });
     } catch (err) {

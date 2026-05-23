@@ -4,9 +4,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
-import { clearSessionTimer, isSessionExpired } from "@/lib/session";
 import { isStaleUnrememberedSession, markTabAlive, clearRememberState } from "@/lib/remember";
-import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
 import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
@@ -20,16 +18,11 @@ export const Route = createFileRoute("/_app")({
     // de qualquer hidratação para evitar ciclo conecta/desconecta.
     if (isStaleUnrememberedSession()) {
       try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-      clearSessionTimer();
       clearRememberState();
       throw redirect({ to: "/login", search: { next: location.pathname } as never });
     }
 
-    if (isSessionExpired()) {
-      try { await supabase.auth.signOut(); } catch { /* ignore */ }
-      clearSessionTimer();
-      throw redirect({ to: "/login", search: { next: location.pathname } as never });
-    }
+
 
     const { data, error } = await supabase.auth.getSession();
     if (error || !data.session) {
@@ -48,7 +41,6 @@ function isOrgBlocked(org: MyOrg): boolean {
 }
 
 function AppLayout() {
-  useSessionTimeout();
   const navigate = useNavigate();
   const fetchOrgs = useServerFn(listMyOrganizations);
   const [ready, setReady] = useState(false);
@@ -68,19 +60,13 @@ function AppLayout() {
       // qualquer hidratação, para não cair em loop conecta/desconecta.
       if (isStaleUnrememberedSession()) {
         try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-        clearSessionTimer();
         clearRememberState();
         if (active) navigate({ to: "/login" });
         return;
       }
       markTabAlive();
 
-      if (isSessionExpired()) {
-        try { await supabase.auth.signOut(); } catch { /* ignore */ }
-        clearSessionTimer();
-        if (active) navigate({ to: "/login" });
-        return;
-      }
+
       const { data, error } = await supabase.auth.getSession();
       if (!active) return;
       if (error) {

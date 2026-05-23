@@ -1,8 +1,7 @@
 import { createFileRoute, Outlet, Link, useRouterState, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { signOutAndRedirect, isSessionExpired, clearSessionTimer } from "@/lib/session";
-import { useSessionTimeout } from "@/hooks/use-session-timeout";
+import { signOutAndRedirect } from "@/lib/session";
 import { LayoutDashboard, Building2, Users, Clock4, ShieldCheck, LogOut, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,21 +37,14 @@ const NAV = [
 ] as const;
 
 function AdminLayout() {
-  useSessionTimeout();
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(true);
 
   useEffect(() => {
-    if (isSessionExpired()) {
-      supabase.auth.signOut().finally(() => {
-        clearSessionTimer();
-        navigate({ to: "/login" });
-      });
-      return;
-    }
     setReady(true);
   }, [navigate]);
+
 
   if (!ready) return null;
 
