@@ -85,6 +85,22 @@ function ClientesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente excluído");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      setToDelete(null);
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setToDelete(null);
+    },
+  });
+
   const onlyDigits = (s: string) => s.replace(/\D/g, "");
   const q = search.trim().toLowerCase();
   const qDigits = onlyDigits(q);
