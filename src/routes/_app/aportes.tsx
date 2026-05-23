@@ -219,22 +219,24 @@ function AportesPage() {
           ) : (
             <div className="space-y-2">
               {filteredWallet.map((w: any) => (
-                <div key={`${w.client_id}-${w.platform}`} className="glass rounded-2xl p-4 grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
-                  <div className="col-span-2 md:col-span-2">
-                    <div className="font-medium">{w.client_name}</div>
-                    <div className="text-xs text-muted-foreground">{w.platform}</div>
+                <div key={`${w.client_id}-${w.platform}`} className="glass rounded-2xl p-4 flex flex-col md:grid md:grid-cols-5 gap-3 md:items-center">
+                  <div className="md:col-span-2 min-w-0">
+                    <div className="font-medium truncate">{w.client_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{w.platform}</div>
                   </div>
-                  <div className="text-xs">
-                    <div className="text-muted-foreground">Aportado</div>
-                    <div className="font-medium text-[color:var(--success)]">{formatBRL(w.total_received)}</div>
-                  </div>
-                  <div className="text-xs">
-                    <div className="text-muted-foreground">Utilizado</div>
-                    <div className="font-medium text-[color:var(--destructive)]">{formatBRL(w.total_used)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo</div>
-                    <div className="font-display font-bold text-lg text-primary">{formatBRL(w.available_balance)}</div>
+                  <div className="flex items-end justify-between gap-3 md:contents">
+                    <div className="text-xs min-w-0">
+                      <div className="text-muted-foreground">Aportado</div>
+                      <div className="font-medium text-[color:var(--success)] truncate">{formatBRL(w.total_received)}</div>
+                    </div>
+                    <div className="text-xs min-w-0">
+                      <div className="text-muted-foreground">Utilizado</div>
+                      <div className="font-medium text-[color:var(--destructive)] truncate">{formatBRL(w.total_used)}</div>
+                    </div>
+                    <div className="text-right min-w-0">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo</div>
+                      <div className="font-display font-bold text-lg text-primary truncate">{formatBRL(w.available_balance)}</div>
+                    </div>
                   </div>
                 </div>
               ))}
