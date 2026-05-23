@@ -34,10 +34,10 @@ export function ClientLogoUpload({ value, orgId, onChange, onRemove, bucket = "c
       const ext = (file.name.split(".").pop() || "png").toLowerCase();
       const path = `${orgId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
-        .from("client-logos")
+        .from(bucket)
         .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
       if (error) throw error;
-      const { data: pub } = supabase.storage.from("client-logos").getPublicUrl(path);
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
       const color = await extractBrandColor(file);
       onChange(pub.publicUrl, color);
       toast.success(color ? "Logo enviada e cor extraída" : "Logo enviada");
