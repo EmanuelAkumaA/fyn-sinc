@@ -20,8 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui-helpers";
+import { Switch } from "@/components/ui/switch";
 import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
 import { PayTransactionDialog } from "@/components/pay-transaction-dialog";
+import { upsertCashbackForExpense, invalidateFinanceCaches } from "@/lib/finance";
 
 
 export const Route = createFileRoute("/_app/financeiro")({
@@ -98,12 +100,29 @@ function FinanceiroPage() {
     mutationFn: async (p: any) => {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
-      const { error } = await supabase.from("financial_transactions").insert({ ...p, organization_id: org });
+      const { cashback, ...payload } = p;
+      const { data: inserted, error } = await supabase
+        .from("financial_transactions")
+        .insert({ ...payload, organization_id: org })
+        .select()
+        .single();
       if (error) throw error;
+      if (cashback?.enabled && Number(cashback.amount) > 0) {
+        await upsertCashbackForExpense({
+          organization_id: org,
+          expense_id: inserted.id,
+          bank_id: cashback.bank_id || null,
+          client_id: inserted.client_id,
+          amount: Number(cashback.amount),
+          date: cashback.date,
+          status: cashback.status,
+          expense_description: inserted.description,
+        });
+      }
     },
     onSuccess: () => {
       toast.success("Lançamento criado");
-      qc.invalidateQueries();
+      invalidateFinanceCaches(qc);
       setOpenNew(false);
     },
     onError: (e: any) => toast.error(e.message),
