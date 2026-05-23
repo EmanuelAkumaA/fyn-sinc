@@ -35,20 +35,47 @@ const TX_TYPES = [
   { v: "transferencia", l: "Transferência" },
 ] as const;
 
+function monthRange(offset: number) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: fmt(start), to: fmt(end) };
+}
+
 function FinanceiroPage() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [payTx, setPayTx] = useState<any | null>(null);
   const [toDelete, setToDelete] = useState<any | null>(null);
 
+  // Filtros
+  const [period, setPeriod] = useState<string>("this_month");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
+
+  const range: { from: string | null; to: string | null } =
+    period === "this_month" ? monthRange(0)
+    : period === "last_month" ? monthRange(-1)
+    : period === "next_month" ? monthRange(1)
+    : period === "custom" ? { from: customFrom || null, to: customTo || null }
+    : { from: null, to: null };
+
   const { data: tx = [] } = useQuery({
-    queryKey: ["transactions"],
+    queryKey: ["transactions", period, typeFilter, statusFilter, range.from, range.to],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("financial_transactions")
         .select("*")
         .order("due_date", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(500);
+      if (range.from) q = q.gte("due_date", range.from);
+      if (range.to) q = q.lte("due_date", range.to);
+      if (typeFilter !== "all") q = q.eq("type", typeFilter as any);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
