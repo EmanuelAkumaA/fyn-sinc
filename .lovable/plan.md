@@ -1,53 +1,58 @@
-## Problema
+## Objetivo
 
-O deploy na Vercel está falhando com:
+No formulário de Recorrências, substituir os campos **Início** e **Próx. vencimento** por:
+- **Data da 1ª mensalidade** (data inicial = data de vencimento da primeira parcela)
+- **Quantidade de mensalidades** (nº inteiro > 0)
 
-> Erro: Nenhum diretório de saída chamado "output" foi encontrado após a conclusão da compilação.
+O botão **Zap (Gerar transação)** continua gerando uma a uma, mas para automaticamente quando atingir a quantidade definida. A data sempre respeita o **dia da 1ª mensalidade**, usando o **último dia do mês** quando o mês não tiver aquele dia (ex.: 31/01 → 28/02 → 31/03).
 
-Causa: o `vite.config.ts` usa o preset Nitro `node-server` por padrão, que gera `.output/server/` (formato Node). A Vercel espera o formato `.vercel/output/` (Build Output API), que só é produzido quando o Nitro roda com o preset `vercel`.
+## Mudanças
 
-Como a Hostinger será um VPS Node.js, ela continua usando o build atual (`.output/` + `node .output/server/index.mjs`). Precisamos apenas que a Vercel use um preset diferente.
+### 1. Banco (migration)
+Tabela `recurring_contracts`:
+- Adicionar `installments_total integer` (nullable; null = sem limite, mantém comportamento atual para registros antigos)
+- Adicionar `installments_generated integer not null default 0`
+- Adicionar `anchor_day smallint` (1–31; dia "ideal" do vencimento; preenchido a partir da data da 1ª mensalidade)
+- Backfill: para registros existentes, `anchor_day = extract(day from start_date)`, `installments_generated = nº de transactions já vinculadas via recurring_contract_id`.
 
-## Plano
+Mantemos `start_date` e `next_due_date` (continuam alimentando o ciclo). O campo `next_due_date` deixa de ser editável no formulário — passa a ser calculado a partir da data da 1ª mensalidade.
 
-### 1. Vercel — usar o preset Nitro `vercel`
+### 2. Formulário (`src/routes/_app/recorrencias.tsx`)
+Remover input "Próx. vencimento". Adicionar:
+- **Data da 1ª mensalidade** (date, obrigatório) → grava em `start_date` e, no insert, também em `next_due_date`.
+- **Quantidade de mensalidades** (number, ≥ 1, obrigatório) → grava em `installments_total`.
 
-Editar `vercel.json` para injetar a variável de ambiente no build:
+Ao salvar:
+- `anchor_day = day(start_date)`
+- Em criação: `next_due_date = start_date`, `installments_generated = 0`.
+- Em edição: não mexer em `installments_generated`; recalcular `next_due_date` só se a data inicial for alterada e ainda não houver parcelas geradas.
 
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "buildCommand": "NITRO_PRESET=vercel bun run build",
-  "outputDirectory": ".vercel/output"
-}
+### 3. Lógica do botão Zap (`generateTx` mutation)
+- Bloquear se `installments_total != null && installments_generated >= installments_total` (toast: "Todas as mensalidades já foram geradas").
+- Após inserir a transação:
+  - `installments_generated += 1`
+  - Se atingiu o total → `status = 'inativo'` (recorrência encerrada) e não recalcular próxima data.
+  - Senão → calcular nova `next_due_date` via helper `nextAnchoredDate(current, frequency, anchor_day)` que avança o período e ajusta para o último dia do mês quando `anchor_day` não existir naquele mês.
+
+### 4. Helper de data
+Criar `nextAnchoredDate` em `src/lib/fynsinc.ts` (ou substituir `addPeriod` quando houver `anchor_day`):
 ```
+nextAnchoredDate("2026-01-31", "mensal", 31) → "2026-02-28"
+nextAnchoredDate("2026-02-28", "mensal", 31) → "2026-03-31"
+```
+Algoritmo: avança mês/semana conforme frequência; depois faz `min(anchor_day, último_dia_do_mês_resultante)`.
 
-Mudanças:
-- `framework: null` — desliga a auto-detecção da Vercel (que estava forçando o template TanStack Start e procurando o caminho errado).
-- `buildCommand` passa `NITRO_PRESET=vercel`, fazendo o `nitro/vite` gerar `.vercel/output/` no formato Build Output API que a Vercel entende nativamente.
-- `outputDirectory` confirma o caminho.
+### 5. UI complementar
+- No card da recorrência mostrar `Geradas: X/Y` quando `installments_total` definido.
+- Esconder/desabilitar Zap quando concluída; manter Pausar/Editar/Excluir.
+- MetricCard "Próximo vencimento" e "Contratos ativos" continuam funcionando sem alteração.
 
-Nenhuma outra mudança no `vite.config.ts` é necessária — ele já lê `process.env.NITRO_PRESET ?? "node-server"`.
+## Arquivos afetados
+- Migration nova (adicionar 3 colunas + backfill)
+- `src/routes/_app/recorrencias.tsx` (form + mutations + card)
+- `src/lib/fynsinc.ts` (helper `nextAnchoredDate`)
+- `src/integrations/supabase/types.ts` (regerado após migration)
 
-### 2. Hostinger (VPS Node.js)
-
-O build padrão (`bun run build` sem `NITRO_PRESET`) já produz `.output/server/index.mjs`, que é exatamente o que o `npm start` (script já existente) executa.
-
-Passos no VPS (sem mudança de código):
-1. `git clone` do repositório
-2. `bun install` (ou `npm install`)
-3. `bun run build`
-4. Configurar variáveis de ambiente (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` etc.)
-5. `npm start` (ou usar PM2: `pm2 start "npm start" --name fyn-sinc`)
-6. Configurar Nginx como reverse proxy para a porta 3000
-
-Posso adicionar um `ecosystem.config.cjs` (PM2) e um snippet de Nginx ao repositório se quiser — só me avisar.
-
-### 3. Variáveis de ambiente na Vercel
-
-Lembre de cadastrar no painel da Vercel (Settings → Environment Variables) os mesmos secrets que você usa hoje no Lovable Cloud: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, e quaisquer outras chaves usadas nas server functions.
-
-## Arquivos alterados
-
-- `vercel.json` — único arquivo modificado.
+## Fora de escopo
+- Não cria todas as transações de uma vez (a opção escolhida foi "gerar uma a uma pelo botão Zap").
+- Não altera o módulo Financeiro nem o Dashboard.
