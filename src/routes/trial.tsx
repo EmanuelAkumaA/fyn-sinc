@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { startSessionTimer } from "@/lib/session";
 import logoUrl from "@/assets/logo-full.svg";
 
 export const Route = createFileRoute("/trial")({
