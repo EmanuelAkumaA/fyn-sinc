@@ -771,19 +771,12 @@ function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod,
           <Card title="Mensalidades ativas">
             <ul className="divide-y divide-border/50">
               {ativas.map((r) => (
-                <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{r.description ?? "Mensalidade"}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency} · próximo {formatDate(r.next_due_date)}
-                    </div>
-                  </div>
-                  <span className="font-display font-semibold text-primary">{formatBRL(Number(r.amount))}</span>
-                </li>
+                <MensalidadeAtivaItem key={r.id} r={r} clientId={clientId} />
               ))}
             </ul>
           </Card>
         )}
+
       </div>
 
       <ComparePeriodSheet open={compareOpen} onOpenChange={setCompareOpen} tx={tx} range={range} />
