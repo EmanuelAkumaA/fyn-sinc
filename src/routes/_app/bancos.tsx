@@ -143,7 +143,7 @@ function BancosPage() {
 
 function BankForm({ initial, loading, onSubmit }: { initial: any | null; loading: boolean; onSubmit: (data: any) => void }) {
   const [orgId, setOrgId] = useState<string | null>(null);
-  useMemo(() => { getCurrentOrgId().then(setOrgId); }, []);
+  useEffect(() => { getCurrentOrgId().then(setOrgId); }, []);
 
   const [form, setForm] = useState({
     name: initial?.name ?? "",
