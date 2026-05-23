@@ -231,9 +231,10 @@ export function ClientForm({
                 setForm((prev) => ({
                   ...prev,
                   logo_url: url,
-                  brand_color:
-                    extractedColor && !brandColorTouched ? extractedColor : prev.brand_color,
+                  // Sempre que uma nova logo for enviada, aplicar a cor extraída.
+                  brand_color: extractedColor ? extractedColor : prev.brand_color,
                 }));
+                if (extractedColor) setBrandColorTouched(false);
               }}
               onRemove={() => setForm((prev) => ({ ...prev, logo_url: "" }))}
             />
