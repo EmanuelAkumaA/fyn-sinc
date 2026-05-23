@@ -1,8 +1,7 @@
 import { createFileRoute, Outlet, Link, useRouterState, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { signOutAndRedirect, isSessionExpired, clearSessionTimer } from "@/lib/session";
-import { useSessionTimeout } from "@/hooks/use-session-timeout";
+import { signOutAndRedirect } from "@/lib/session";
 import { LayoutDashboard, Building2, Users, Clock4, ShieldCheck, LogOut, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
