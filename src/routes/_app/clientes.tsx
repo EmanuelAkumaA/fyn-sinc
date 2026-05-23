@@ -226,6 +226,7 @@ function ClientesPage() {
                 setEditing(client as ClientRow);
                 setOpen(true);
               }}
+              onDelete={(client) => setToDelete(client as ClientRow)}
             />
           ))}
         </div>
