@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar, MobileBottomNav } from "@/components/app-sidebar";
-import { isStaleUnrememberedSession, markTabAlive, clearRememberState } from "@/lib/remember";
 import { listMyOrganizations, type MyOrg } from "@/lib/org.functions";
 import { getCurrentOrgIdLocal } from "@/lib/current-org";
 
@@ -14,18 +13,8 @@ export const Route = createFileRoute("/_app")({
     // não redirecionar antes do client hidratar a sessão.
     if (typeof window === "undefined") return;
 
-    // "Lembrar-me" desligado em nova aba/janela: derruba sessão local antes
-    // de qualquer hidratação para evitar ciclo conecta/desconecta.
-    if (isStaleUnrememberedSession()) {
-      try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-      clearRememberState();
-      throw redirect({ to: "/login", search: { next: location.pathname } as never });
-    }
-
-
-
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
       throw redirect({ to: "/login", search: { next: location.pathname } as never });
     }
   },
@@ -56,25 +45,14 @@ function AppLayout() {
     let active = true;
 
     const evaluate = async () => {
-      // "Lembrar-me" desligado + nova aba/janela => derrubar a sessão antes de
-      // qualquer hidratação, para não cair em loop conecta/desconecta.
-      if (isStaleUnrememberedSession()) {
-        try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
-        clearRememberState();
-        if (active) navigate({ to: "/login" });
-        return;
-      }
-      markTabAlive();
-
-
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getUser();
       if (!active) return;
       if (error) {
         await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
         if (active) navigate({ to: "/login" });
         return;
       }
-      if (!data.session) {
+      if (!data.user) {
         navigate({ to: "/login" });
         return;
       }
