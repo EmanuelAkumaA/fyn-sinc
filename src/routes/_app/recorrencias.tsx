@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
-import { formatBRL, formatDate, getCurrentOrgId, addPeriod, RECURRENCE_LABELS, type RecurrenceFreq } from "@/lib/fynsinc";
+import { formatBRL, formatDate, getCurrentOrgId, nextAnchoredDate, RECURRENCE_LABELS, type RecurrenceFreq } from "@/lib/fynsinc";
 
 export const Route = createFileRoute("/_app/recorrencias")({
   component: RecorrenciasPage,
