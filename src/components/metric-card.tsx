@@ -20,16 +20,16 @@ const toneClass: Record<string, string> = {
 
 export function MetricCard({ label, value, hint, trend, icon: Icon, tone = "default", className }: MetricCardProps) {
   return (
-    <div className={cn("glass rounded-2xl p-5 flex flex-col gap-2", className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+    <div className={cn("glass rounded-2xl p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-medium leading-tight">{label}</span>
         {Icon && (
-          <div className="h-8 w-8 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
-            <Icon className="h-4 w-4" />
+          <div className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground">
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
         )}
       </div>
-      <div className={cn("font-display text-2xl md:text-3xl font-bold tracking-tight", toneClass[tone])}>
+      <div className={cn("font-display text-lg sm:text-2xl md:text-3xl font-bold tracking-tight break-words", toneClass[tone])}>
         {value}
       </div>
       {(hint || typeof trend === "number") && (
