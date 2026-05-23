@@ -429,6 +429,7 @@ function ClienteDetalhe({ id }: { id: string }) {
 
         <TabsContent value="overview">
           <OverviewTab
+            clientId={id}
             tx={tx}
             recurring={recurring}
             inadimplente={inadimplente}
@@ -441,6 +442,7 @@ function ClienteDetalhe({ id }: { id: string }) {
             range={range}
           />
         </TabsContent>
+
         <TabsContent value="financeiro">
           <FinanceiroTab tx={tx} banks={banks} />
         </TabsContent>
