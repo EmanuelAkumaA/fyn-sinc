@@ -37,21 +37,14 @@ const NAV = [
 ] as const;
 
 function AdminLayout() {
-  useSessionTimeout();
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(true);
 
   useEffect(() => {
-    if (isSessionExpired()) {
-      supabase.auth.signOut().finally(() => {
-        clearSessionTimer();
-        navigate({ to: "/login" });
-      });
-      return;
-    }
     setReady(true);
   }, [navigate]);
+
 
   if (!ready) return null;
 
