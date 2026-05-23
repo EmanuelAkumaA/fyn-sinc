@@ -490,10 +490,8 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2">
         <Label>Plataforma *</Label>
-        <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <PlatformSelect value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} />
+
       </div>
       {form.client_id && (
         <div className={`rounded-xl px-3 py-2.5 text-sm flex items-center justify-between ${insuficiente ? "bg-[color:var(--destructive)]/10 text-[color:var(--destructive)]" : "bg-secondary/40"}`}>
