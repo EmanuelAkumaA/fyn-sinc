@@ -62,10 +62,10 @@ function ClientCardImpl({ client, onEdit, onOpen, onDelete, className }: ClientC
       <div className="p-3 sm:p-4 md:p-5">
         {/* Linha 1: logo + nome + menu */}
         <div className="flex items-start gap-3">
-          <ClientLogo client={client} size="md" className="client-card__logo" />
+          <ClientLogo client={client} size="md" className="client-card__logo shrink-0" />
 
           <div className="flex-1 min-w-0">
-            <div className="font-display font-semibold text-base truncate">{client.name}</div>
+            <div className="font-display font-semibold text-sm sm:text-base truncate">{client.name}</div>
             {client.company && (
               <div className="text-xs text-muted-foreground truncate">{client.company}</div>
             )}
@@ -105,9 +105,9 @@ function ClientCardImpl({ client, onEdit, onOpen, onDelete, className }: ClientC
           )}
         </div>
 
-        {/* Linha 2: contatos + badges */}
+        {/* Linha 2 (mobile: contatos) + Linha 3 (mobile: badges) — desktop volta a uma linha */}
         {(client.phone || client.email || client.client_status || client.status || client.financial_status) && (
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground min-w-0">
               {client.phone && (
                 <span className="inline-flex items-center gap-1">
@@ -115,13 +115,13 @@ function ClientCardImpl({ client, onEdit, onOpen, onDelete, className }: ClientC
                 </span>
               )}
               {client.email && (
-                <span className="inline-flex items-center gap-1 min-w-0 max-w-[18rem]">
+                <span className="inline-flex items-center gap-1 min-w-0 max-w-full sm:max-w-[18rem]">
                   <Mail className="h-3 w-3 shrink-0" />
                   <span className="truncate">{client.email}</span>
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
               <ClientStatusBadge value={client.client_status ?? client.status} />
               <FinancialStatusBadge value={client.financial_status} />
             </div>
