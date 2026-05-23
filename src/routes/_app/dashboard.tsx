@@ -151,37 +151,8 @@ function DashboardPage() {
             <MetricCard label="Taxas pagas" value={formatBRL(taxasPagas)} tone="destructive" icon={Receipt} />
           </section>
 
-          {topBanks.length > 0 && (
-            <section className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground">
-                  Contas e composição
-                </h3>
-                <Button asChild size="sm" variant="ghost">
-                  <Link to="/bancos">Ver todos os bancos</Link>
-                </Button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {topBanks.map((b) => (
-                  <div key={b.bank_id} className="glass rounded-2xl p-4 flex items-start gap-3">
-                    <ClientLogo client={{ name: b.bank_name, logo_url: b.logo_url, brand_color: b.color }} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{b.bank_name}</div>
-                      <div className="text-xs text-muted-foreground">{b.bank_type || "Conta operacional"}</div>
-                      <div className="font-display text-xl font-semibold mt-2">{formatBRL(b.total_balance)}</div>
-                      <BankBreakdownChips
-                        kuma={b.kuma_balance}
-                        cliente={b.client_funds_balance}
-                        cashback={Number(b.cashback_total)}
-                        taxas={Number(b.fees_total)}
-                        hideZero
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+
+
 
 
 

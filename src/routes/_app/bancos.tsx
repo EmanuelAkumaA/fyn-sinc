@@ -138,13 +138,15 @@ function BancosPage() {
                     <StatusBadge status={b.status} />
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">{b.account_type || "Conta operacional"}</div>
-                  <div className="font-display text-2xl font-semibold mt-3">{formatBRL(current)}</div>
+                  <div className="font-display text-2xl sm:text-3xl font-semibold mt-3 break-words">{formatBRL(current)}</div>
                   <BankBreakdownChips
                     kuma={br?.kuma_balance ?? 0}
                     cliente={br?.client_funds_balance ?? 0}
                     cashback={br?.cashback_total ?? 0}
                     taxas={br?.fees_total ?? 0}
+                    hideZero
                   />
+
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}>
                   <Pencil className="h-4 w-4" />
