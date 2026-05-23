@@ -236,7 +236,14 @@ export function ClientForm({
                 }));
                 if (extractedColor) setBrandColorTouched(false);
               }}
-              onRemove={() => setForm((prev) => ({ ...prev, logo_url: "" }))}
+              onRemove={() => {
+                setForm((prev) => ({
+                  ...prev,
+                  logo_url: "",
+                  brand_color: "",
+                }));
+                setBrandColorTouched(false);
+              }}
             />
             <Input
               type="url"
