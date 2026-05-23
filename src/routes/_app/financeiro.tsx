@@ -318,15 +318,32 @@ function NewTxForm({ clients, banks, services, onSubmit, loading }: any) {
     due_date: new Date().toISOString().slice(0, 10),
     category: "",
   });
+  const [cashback, setCashback] = useState({
+    enabled: false,
+    amount: "",
+    bank_id: "",
+    date: new Date().toISOString().slice(0, 10),
+    status: "pago" as "pago" | "pendente",
+  });
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit({
-      ...form,
-      amount_gross: Number(form.amount_gross),
-      client_id: form.client_id || null,
-      service_id: form.service_id || null,
-      bank_id: form.bank_id || null,
-      transfer_to_bank_id: form.transfer_to_bank_id || null,
-    }); }} className="space-y-4 mt-6">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit({
+          ...form,
+          amount_gross: Number(form.amount_gross),
+          client_id: form.client_id || null,
+          service_id: form.service_id || null,
+          bank_id: form.bank_id || null,
+          transfer_to_bank_id: form.transfer_to_bank_id || null,
+          cashback:
+            form.type === "despesa_propria" && cashback.enabled
+              ? { ...cashback, amount: Number(cashback.amount) }
+              : null,
+        });
+      }}
+      className="space-y-4 mt-6"
+    >
       <div className="space-y-2">
         <Label>Tipo</Label>
         <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -376,6 +393,43 @@ function NewTxForm({ clients, banks, services, onSubmit, loading }: any) {
           </Select>
         </div>
       )}
+
+      {form.type === "despesa_propria" && (
+        <div className="space-y-3 rounded-xl bg-secondary/30 p-3">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="had-cashback" className="cursor-pointer">Essa despesa gerou cashback?</Label>
+            <Switch id="had-cashback" checked={cashback.enabled} onCheckedChange={(v) => setCashback({ ...cashback, enabled: v })} />
+          </div>
+          {cashback.enabled && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Valor do cashback</Label><Input type="number" step="0.01" value={cashback.amount} onChange={(e) => setCashback({ ...cashback, amount: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Data</Label><Input type="date" value={cashback.date} onChange={(e) => setCashback({ ...cashback, date: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Select value={cashback.bank_id} onValueChange={(v) => setCashback({ ...cashback, bank_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>{banks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={cashback.status} onValueChange={(v) => setCashback({ ...cashback, status: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pago">Recebido</SelectItem>
+                      <SelectItem value="pendente">Previsto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <Button type="submit" disabled={loading} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
         {loading ? "Salvando..." : "Criar lançamento"}
       </Button>
