@@ -82,43 +82,8 @@ function FinanceiroPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const markPaid = useMutation({
-    mutationFn: async ({ id, bankId, paidAt, hadFee, feeAmount, feeProvider, orgId }: any) => {
-      const { data: updated, error } = await supabase
-        .from("financial_transactions")
-        .update({ status: "pago", paid_at: paidAt, bank_id: bankId })
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      if (hadFee && feeAmount > 0) {
-        const { error: e2 } = await supabase.from("financial_transactions").insert({
-          organization_id: orgId,
-          type: "taxa",
-          parent_transaction_id: id,
-          client_id: updated.client_id,
-          bank_id: bankId,
-          fornecedor: feeProvider,
-          description: `Taxa ${feeProvider} - ${updated.description}`,
-          amount_gross: feeAmount,
-          due_date: paidAt,
-          paid_at: paidAt,
-          status: "pago",
-        });
-        if (e2) throw e2;
-        await supabase
-          .from("financial_transactions")
-          .update({ amount_net: Number(updated.amount_gross) - Number(feeAmount) })
-          .eq("id", id);
-      }
-    },
-    onSuccess: () => {
-      toast.success("Lançamento marcado como pago");
-      qc.invalidateQueries();
-      setPayTx(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
