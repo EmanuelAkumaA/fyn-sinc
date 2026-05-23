@@ -5,16 +5,13 @@ import {
   Wallet, TrendingDown, TrendingUp, Clock, AlertCircle, Banknote,
   ArrowDownLeft, ArrowUpRight, Award, Percent, ChevronDown, Users, Gift, Receipt,
 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { FinancialCalendar } from "@/components/financial-calendar";
 import { formatBRL } from "@/lib/fynsinc";
 import { deriveBreakdown, type BankBreakdownRow } from "@/lib/finance";
-import { BankBreakdownChips } from "@/components/bank-breakdown-chips";
-import { ClientLogo } from "@/components/client-logo";
-import { Button } from "@/components/ui/button";
+
 
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -111,7 +108,7 @@ function DashboardPage() {
   const topClients = [...byClient.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   const isEmpty = tx.length === 0 && bankRows.length === 0;
-  const topBanks = [...bankRows].sort((a, b) => b.total_balance - a.total_balance).slice(0, 6);
+
 
   return (
     <>
