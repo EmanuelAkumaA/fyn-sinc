@@ -11,9 +11,10 @@ type Props = {
   orgId: string | null;
   onChange: (url: string, extractedColor?: string | null) => void;
   onRemove: () => void;
+  bucket?: string;
 };
 
-export function ClientLogoUpload({ value, orgId, onChange, onRemove }: Props) {
+export function ClientLogoUpload({ value, orgId, onChange, onRemove, bucket = "client-logos" }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
