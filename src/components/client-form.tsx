@@ -124,8 +124,25 @@ export function ClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-6 pb-8">
       <div className="space-y-2">
-        <Label>Nome da Empresa *</Label>
-        <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Label>Nome curto *</Label>
+        <Input
+          required
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Ex.: Rac Social"
+          maxLength={60}
+        />
+        <p className="text-xs text-muted-foreground">Aparece no card e nas listas.</p>
+      </div>
+      <div className="space-y-2">
+        <Label>Nome completo</Label>
+        <Input
+          value={form.full_name}
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          placeholder="Ex.: Rac Social Serviços Digitais LTDA"
+          maxLength={255}
+        />
+        <p className="text-xs text-muted-foreground">Uso interno em relatórios e dossiês.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
