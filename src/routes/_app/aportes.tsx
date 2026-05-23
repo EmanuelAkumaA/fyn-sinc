@@ -8,12 +8,111 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { PageHeader, EmptyState, StatusBadge } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
 import { formatBRL, formatDate, getCurrentOrgId, PLATFORMS } from "@/lib/fynsinc";
+
+function usePlatforms() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["platforms"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("platforms").select("id, name").order("name");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        const org = await getCurrentOrgId();
+        if (org) {
+          await supabase.from("platforms").insert(PLATFORMS.map((name) => ({ organization_id: org, name })));
+          const reload = await supabase.from("platforms").select("id, name").order("name");
+          return reload.data ?? [];
+        }
+      }
+      return data ?? [];
+    },
+  });
+  const create = useMutation({
+    mutationFn: async (name: string) => {
+      const org = await getCurrentOrgId();
+      if (!org) throw new Error("Sem organização");
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Informe um nome");
+      const { error } = await supabase.from("platforms").insert({ organization_id: org, name: trimmed });
+      if (error) {
+        if (error.code === "23505") throw new Error("Esta plataforma já existe");
+        throw error;
+      }
+      return trimmed;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["platforms"] }),
+  });
+  return { platforms: (query.data ?? []) as { id: string; name: string }[], create };
+}
+
+function PlatformSelect({ value, onChange, includeAll = false }: { value: string; onChange: (v: string) => void; includeAll?: boolean }) {
+  const { platforms, create } = usePlatforms();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+
+  const handleCreate = async () => {
+    try {
+      const created = await create.mutateAsync(name);
+      onChange(created);
+      setName("");
+      setOpen(false);
+      toast.success("Plataforma adicionada");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  return (
+    <>
+      <Select
+        value={value}
+        onValueChange={(v) => {
+          if (v === "__new__") {
+            setOpen(true);
+            return;
+          }
+          onChange(v);
+        }}
+      >
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {includeAll && <SelectItem value="all">Todas plataformas</SelectItem>}
+          {platforms.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
+          <SelectSeparator />
+          <SelectItem value="__new__" className="text-primary">+ Nova plataforma</SelectItem>
+        </SelectContent>
+      </Select>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Nova plataforma</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Nome</Label>
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreate(); } }}
+              placeholder="Ex.: Pinterest Ads"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={create.isPending} style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
+              {create.isPending ? "Salvando..." : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 export const Route = createFileRoute("/_app/aportes")({
   component: AportesPage,
@@ -190,13 +289,9 @@ function AportesPage() {
             {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={platformFilter} onValueChange={setPlatformFilter}>
-          <SelectTrigger className="md:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas plataformas</SelectItem>
-            {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="md:w-40">
+          <PlatformSelect value={platformFilter} onChange={setPlatformFilter} includeAll />
+        </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="md:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -337,10 +432,8 @@ function AporteForm({ clients, banks, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2">
         <Label>Plataforma *</Label>
-        <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <PlatformSelect value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} />
+
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
@@ -397,10 +490,8 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2">
         <Label>Plataforma *</Label>
-        <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <PlatformSelect value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} />
+
       </div>
       {form.client_id && (
         <div className={`rounded-xl px-3 py-2.5 text-sm flex items-center justify-between ${insuficiente ? "bg-[color:var(--destructive)]/10 text-[color:var(--destructive)]" : "bg-secondary/40"}`}>
