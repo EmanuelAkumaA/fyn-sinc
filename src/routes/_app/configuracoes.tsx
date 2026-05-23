@@ -108,8 +108,8 @@ function ConfiguracoesPage() {
                 <p className="text-sm text-muted-foreground">Nenhum membro listado.</p>
               ) : (
                 members.map((m: any) => (
-                  <div key={m.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/30 p-3">
-                    <span className="text-sm truncate">{m.user_id}</span>
+                  <div key={m.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/30 p-3 min-w-0">
+                    <span className="text-sm truncate min-w-0 flex-1">{m.user_id}</span>
                     <StatusBadge status={m.role} />
                   </div>
                 ))
