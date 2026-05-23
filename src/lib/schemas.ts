@@ -5,6 +5,7 @@ const HEX = /^#[0-9A-Fa-f]{6}$/;
 
 export const clientSchema = z.object({
   name: z.string().trim().min(1, "Nome obrigatório").max(200, "Nome muito longo"),
+  full_name: z.string().trim().max(255, "Nome completo muito longo").optional().or(z.literal("")),
   type: z.enum(["PF", "PJ"]),
   document: z.string().trim().max(20).optional().or(z.literal("")),
   email: z.union([z.literal(""), z.string().trim().email("E-mail inválido").max(255)]),
