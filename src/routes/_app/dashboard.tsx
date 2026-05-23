@@ -41,23 +41,15 @@ function DashboardPage() {
     },
   });
 
-  const { data: banks = [] } = useQuery({
-    queryKey: ["dashboard-banks"],
+  const { data: breakdown = [] } = useQuery<BankBreakdownRow[]>({
+    queryKey: ["dashboard-bank-breakdown"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_bank_balance").select("*");
+      const { data, error } = await (supabase as any).from("v_bank_balance_breakdown").select("*");
       if (error) throw error;
-      return data;
+      return (data ?? []) as BankBreakdownRow[];
     },
   });
-
-  const { data: wallets = [] } = useQuery({
-    queryKey: ["dashboard-wallets"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("v_client_wallet").select("*");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const bankRows = breakdown.map(deriveBreakdown);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["dashboard-clients-min"],
@@ -72,26 +64,32 @@ function DashboardPage() {
   const sumBy = (filter: (t: typeof tx[number]) => boolean) =>
     tx.filter(filter).reduce((s, t) => s + Number(t.amount_gross || 0), 0);
 
+  // Receita própria do card principal = receita_propria + comissão (cashback fica em bloco separado)
   const receitaPropria =
     sumBy((t) => t.type === "receita_propria" && t.status === "pago") +
-    sumBy((t) => t.type === "comissao" && t.status === "pago") +
-    sumBy((t) => t.type === "cashback" && t.status === "pago");
+    sumBy((t) => t.type === "comissao" && t.status === "pago");
   const despesas =
     sumBy((t) => t.type === "despesa_propria" && t.status === "pago") +
     sumBy((t) => t.type === "taxa" && t.status === "pago");
-  const lucro = receitaPropria - despesas;
+  const cashbacks = sumBy((t) => t.type === "cashback" && t.status === "pago");
+  const lucro = receitaPropria + cashbacks - despesas;
   const aReceber = sumBy((t) => t.type === "receita_propria" && t.status === "pendente");
   const today = new Date().toISOString().slice(0, 10);
   const inadimplencia = sumBy(
     (t) => t.type === "receita_propria" && t.status === "pendente" && !!t.due_date && t.due_date < today
   );
-  const saldoBancos = banks.reduce((s, b: any) => s + Number(b.current_balance || 0), 0);
+
+  // Composição agregada vinda da view
+  const saldoBancos = bankRows.reduce((s, b) => s + b.total_balance, 0);
+  const kumaLiquido = bankRows.reduce((s, b) => s + b.kuma_balance, 0);
+  const aportesSaldo = bankRows.reduce((s, b) => s + b.client_funds_balance, 0);
+  const cashbacksRecebidos = bankRows.reduce((s, b) => s + Number(b.cashback_total), 0);
+  const taxasPagas = bankRows.reduce((s, b) => s + Number(b.fees_total), 0);
+
   const repassesRecebidos = sumBy((t) => t.type === "repasse_recebido" && t.status === "pago");
-  const saldoRepasse = wallets.reduce((s: number, w: any) => s + Number(w.available_balance || 0), 0);
   const usoRepasse = sumBy((t) => t.type === "uso_repasse" && t.status === "pago");
   const comissoes = sumBy((t) => t.type === "comissao" && t.status === "pago");
-  const cashbacks = sumBy((t) => t.type === "cashback" && t.status === "pago");
-  const taxas = sumBy((t) => t.type === "taxa" && t.status === "pago");
+  const taxas = taxasPagas;
 
   // chart data — last 6 months
   const months = Array.from({ length: 6 }, (_, i) => {
