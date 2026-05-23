@@ -528,6 +528,9 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
           {startDateLocked && (
             <p className="text-xs text-muted-foreground">Bloqueada: já existem parcelas geradas.</p>
           )}
+          {isCompleted && (
+            <p className="text-xs text-muted-foreground">Recorrência concluída. Altere a data para reiniciar a geração.</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Qtd. de mensalidades *</Label>
