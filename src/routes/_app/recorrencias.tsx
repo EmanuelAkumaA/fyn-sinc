@@ -353,11 +353,14 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
     amount: initial?.amount?.toString() ?? "",
     frequency: (initial?.frequency ?? "mensal") as RecurrenceFreq,
     start_date: initial?.start_date ?? today,
-    next_due_date: initial?.next_due_date ?? today,
+    installments_total: initial?.installments_total?.toString() ?? "12",
     default_bank_id: initial?.default_bank_id ?? "",
     notes: initial?.notes ?? "",
     status: initial?.status ?? "ativo",
   });
+
+  const generated = initial?.installments_generated ?? 0;
+  const startDateLocked = generated > 0;
 
   return (
     <form
@@ -365,6 +368,11 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
         e.preventDefault();
         if (!form.client_id) { toast.error("Selecione um cliente"); return; }
         if (!form.amount || Number(form.amount) <= 0) { toast.error("Valor inválido"); return; }
+        const qtd = Number(form.installments_total);
+        if (!Number.isInteger(qtd) || qtd < 1) { toast.error("Quantidade de mensalidades inválida"); return; }
+        if (startDateLocked && qtd < generated) {
+          toast.error(`Quantidade não pode ser menor que ${generated} (já gerada)`); return;
+        }
         onSubmit(form);
       }}
       className="space-y-4 mt-6"
@@ -405,12 +413,31 @@ function RecurrenceForm({ initial, clients, banks, services, onSubmit, loading }
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label>Início *</Label>
-          <Input required type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value, next_due_date: form.next_due_date || e.target.value })} />
+          <Label>Data da 1ª mensalidade *</Label>
+          <Input
+            required
+            type="date"
+            value={form.start_date}
+            disabled={startDateLocked}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+          />
+          {startDateLocked && (
+            <p className="text-xs text-muted-foreground">Bloqueada: já existem parcelas geradas.</p>
+          )}
         </div>
         <div className="space-y-2">
-          <Label>Próx. vencimento *</Label>
-          <Input required type="date" value={form.next_due_date} onChange={(e) => setForm({ ...form, next_due_date: e.target.value })} />
+          <Label>Qtd. de mensalidades *</Label>
+          <Input
+            required
+            type="number"
+            min="1"
+            step="1"
+            value={form.installments_total}
+            onChange={(e) => setForm({ ...form, installments_total: e.target.value })}
+          />
+          {generated > 0 && (
+            <p className="text-xs text-muted-foreground">Geradas até agora: {generated}</p>
+          )}
         </div>
       </div>
       <div className="space-y-2">
