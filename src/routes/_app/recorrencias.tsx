@@ -274,11 +274,27 @@ function RecorrenciasPage() {
                   <span>{RECURRENCE_LABELS[r.frequency as RecurrenceFreq]}</span>
                   <span>·</span>
                   <span>Próx.: {formatDate(r.next_due_date)}</span>
+                  {r.installments_total != null && (
+                    <>
+                      <span>·</span>
+                      <span>Geradas: {r.installments_generated ?? 0}/{r.installments_total}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="font-display font-semibold text-lg">{formatBRL(r.amount)}</div>
               <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" title="Gerar transação" onClick={() => generateTx.mutate(r)} disabled={r.status !== "ativo" || generateTx.isPending}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Gerar transação"
+                  onClick={() => generateTx.mutate(r)}
+                  disabled={
+                    r.status !== "ativo" ||
+                    generateTx.isPending ||
+                    (r.installments_total != null && (r.installments_generated ?? 0) >= r.installments_total)
+                  }
+                >
                   <Zap className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="ghost" title={r.status === "ativo" ? "Pausar" : "Ativar"} onClick={() => toggleStatus.mutate(r)}>
