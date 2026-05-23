@@ -15,6 +15,8 @@ import { ClientLogo } from "@/components/client-logo";
 import { ClientLogoUpload } from "@/components/client-logo-upload";
 import { DEFAULT_BRAND_COLOR, getBrandColor, hexToRgba, isValidHex } from "@/lib/client-brand";
 import { formatBRL, getCurrentOrgId } from "@/lib/fynsinc";
+import { deriveBreakdown, type BankBreakdownRow } from "@/lib/finance";
+import { BankBreakdownChips } from "@/components/bank-breakdown-chips";
 
 export const Route = createFileRoute("/_app/bancos")({
   component: BancosPage,
@@ -36,36 +38,22 @@ function BancosPage() {
     },
   });
 
-  const { data: balances = [] } = useQuery({
-    queryKey: ["bank-balances"],
+  const { data: breakdown = [] } = useQuery<BankBreakdownRow[]>({
+    queryKey: ["bank-breakdown"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_bank_balance").select("*").order("name");
+      const { data, error } = await (supabase as any)
+        .from("v_bank_balance_breakdown")
+        .select("*")
+        .order("bank_name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as BankBreakdownRow[];
     },
   });
 
-  const { data: clientByBank = {} } = useQuery<Record<string, number>>({
-    queryKey: ["bank-client-balances"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financial_transactions")
-        .select("bank_id, type, amount_gross")
-        .in("type", ["repasse_recebido", "uso_repasse"])
-        .not("bank_id", "is", null);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const row of (data ?? []) as any[]) {
-        const id = row.bank_id as string;
-        const amt = Number(row.amount_gross ?? 0);
-        const delta = row.type === "repasse_recebido" ? amt : -amt;
-        map[id] = (map[id] ?? 0) + delta;
-      }
-      return map;
-    },
-  });
-
-  const balanceById = useMemo(() => Object.fromEntries(balances.map((b: any) => [b.bank_id, b])), [balances]);
+  const breakdownById = useMemo(
+    () => Object.fromEntries(breakdown.map((r) => [r.bank_id, deriveBreakdown(r)])),
+    [breakdown],
+  );
 
   const save = useMutation({
     mutationFn: async (payload: any) => {
@@ -88,8 +76,8 @@ function BancosPage() {
       toast.success(editing ? "Banco atualizado" : "Banco criado");
       qc.invalidateQueries({ queryKey: ["banks"] });
       qc.invalidateQueries({ queryKey: ["banks-min"] });
-      qc.invalidateQueries({ queryKey: ["bank-balances"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-banks"] });
+      qc.invalidateQueries({ queryKey: ["bank-breakdown"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-bank-breakdown"] });
       setOpen(false);
       setEditing(null);
     },
@@ -97,7 +85,7 @@ function BancosPage() {
   });
 
   const filtered = banks.filter((b: any) => b.name.toLowerCase().includes(search.toLowerCase()));
-  const totalBalance = balances.reduce((sum: number, b: any) => sum + Number(b.current_balance ?? 0), 0);
+  const totalBalance = breakdown.reduce((sum, r) => sum + deriveBreakdown(r).total_balance, 0);
   const active = banks.filter((b: any) => b.status === "ativo").length;
 
   return (
@@ -130,9 +118,8 @@ function BancosPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {filtered.map((b: any) => {
-            const current = Number(balanceById[b.id]?.current_balance ?? b.initial_balance ?? 0);
-            const cliente = Number(clientByBank[b.id] ?? 0);
-            const kuma = current - cliente;
+            const br = breakdownById[b.id];
+            const current = br?.total_balance ?? Number(b.initial_balance ?? 0);
             const color = getBrandColor({ brand_color: b.color });
             return (
               <div
@@ -152,22 +139,12 @@ function BancosPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">{b.account_type || "Conta operacional"}</div>
                   <div className="font-display text-2xl font-semibold mt-3">{formatBRL(current)}</div>
-                  {cliente !== 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border ${
-                          kuma >= 0
-                            ? "bg-success/10 text-success border-success/20"
-                            : "bg-destructive/10 text-destructive border-destructive/20"
-                        }`}
-                      >
-                        Kuma · {formatBRL(kuma)}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border bg-primary/10 text-primary border-primary/20">
-                        Cliente · {formatBRL(cliente)}
-                      </span>
-                    </div>
-                  )}
+                  <BankBreakdownChips
+                    kuma={br?.kuma_balance ?? 0}
+                    cliente={br?.client_funds_balance ?? 0}
+                    cashback={br?.cashback_total ?? 0}
+                    taxas={br?.fees_total ?? 0}
+                  />
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}>
                   <Pencil className="h-4 w-4" />

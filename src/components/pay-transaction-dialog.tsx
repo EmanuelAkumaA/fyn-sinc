@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatBRL, getCurrentOrgId } from "@/lib/fynsinc";
+import { upsertFeeForReceipt, invalidateFinanceCaches } from "@/lib/finance";
 
 export type PayTx = {
   id: string;
@@ -42,20 +43,16 @@ export function PayTransactionDialog({
         .single();
       if (error) throw error;
       if (hadFee && feeAmount > 0) {
-        const { error: e2 } = await supabase.from("financial_transactions").insert({
+        await upsertFeeForReceipt({
           organization_id: orgId,
-          type: "taxa",
           parent_transaction_id: id,
           client_id: updated.client_id,
           bank_id: bankId,
-          fornecedor: feeProvider,
-          description: `Taxa ${feeProvider} - ${updated.description}`,
-          amount_gross: feeAmount,
-          due_date: paidAt,
+          amount: feeAmount,
           paid_at: paidAt,
-          status: "pago",
+          fornecedor: feeProvider,
+          parent_description: updated.description,
         });
-        if (e2) throw e2;
         await supabase
           .from("financial_transactions")
           .update({ amount_net: Number(updated.amount_gross) - Number(feeAmount) })
@@ -64,7 +61,7 @@ export function PayTransactionDialog({
     },
     onSuccess: () => {
       toast.success("Lançamento marcado como pago");
-      qc.invalidateQueries();
+      invalidateFinanceCaches(qc);
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message),

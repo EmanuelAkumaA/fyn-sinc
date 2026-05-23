@@ -281,6 +281,13 @@ export type Database = {
             referencedColumns: ["bank_id"]
           },
           {
+            foreignKeyName: "financial_transactions_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance_breakdown"
+            referencedColumns: ["bank_id"]
+          },
+          {
             foreignKeyName: "financial_transactions_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -341,6 +348,13 @@ export type Database = {
             columns: ["transfer_to_bank_id"]
             isOneToOne: false
             referencedRelation: "v_bank_balance"
+            referencedColumns: ["bank_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_transfer_to_bank_id_fkey"
+            columns: ["transfer_to_bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance_breakdown"
             referencedColumns: ["bank_id"]
           },
         ]
@@ -544,6 +558,13 @@ export type Database = {
             referencedColumns: ["bank_id"]
           },
           {
+            foreignKeyName: "recurring_contracts_default_bank_id_fkey"
+            columns: ["default_bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance_breakdown"
+            referencedColumns: ["bank_id"]
+          },
+          {
             foreignKeyName: "recurring_contracts_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -686,6 +707,13 @@ export type Database = {
             referencedColumns: ["bank_id"]
           },
           {
+            foreignKeyName: "third_party_plans_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "v_bank_balance_breakdown"
+            referencedColumns: ["bank_id"]
+          },
+          {
             foreignKeyName: "third_party_plans_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -806,6 +834,74 @@ export type Database = {
           current_balance?: never
           name?: string | null
           organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_bank_balance_breakdown: {
+        Row: {
+          bank_id: string | null
+          bank_name: string | null
+          bank_type: string | null
+          cashback_total: number | null
+          color: string | null
+          commission_total: number | null
+          expense_total: number | null
+          fees_total: number | null
+          income_total: number | null
+          initial_balance: number | null
+          logo_url: string | null
+          organization_id: string | null
+          repasse_received_total: number | null
+          repasse_used_total: number | null
+          status: Database["public"]["Enums"]["entity_status"] | null
+          transfer_in_total: number | null
+          transfer_out_total: number | null
+        }
+        Insert: {
+          bank_id?: string | null
+          bank_name?: string | null
+          bank_type?: string | null
+          cashback_total?: never
+          color?: string | null
+          commission_total?: never
+          expense_total?: never
+          fees_total?: never
+          income_total?: never
+          initial_balance?: number | null
+          logo_url?: string | null
+          organization_id?: string | null
+          repasse_received_total?: never
+          repasse_used_total?: never
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          transfer_in_total?: never
+          transfer_out_total?: never
+        }
+        Update: {
+          bank_id?: string | null
+          bank_name?: string | null
+          bank_type?: string | null
+          cashback_total?: never
+          color?: string | null
+          commission_total?: never
+          expense_total?: never
+          fees_total?: never
+          income_total?: never
+          initial_balance?: number | null
+          logo_url?: string | null
+          organization_id?: string | null
+          repasse_received_total?: never
+          repasse_used_total?: never
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          transfer_in_total?: never
+          transfer_out_total?: never
         }
         Relationships: [
           {
