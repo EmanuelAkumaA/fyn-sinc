@@ -105,7 +105,15 @@ function RecorrenciasPage() {
       if (editing?.id) {
         // Se a data inicial mudou e ainda não há parcelas geradas, recalcula next_due_date
         const update: any = { ...basePayload };
-        if ((editing.installments_generated ?? 0) === 0) {
+        const generatedNow = editing.installments_generated ?? 0;
+        const wasCompleted =
+          editing.installments_total != null && generatedNow >= editing.installments_total;
+        const startChanged = p.start_date !== editing.start_date;
+        if (wasCompleted && startChanged) {
+          update.next_due_date = p.start_date;
+          update.installments_generated = 0;
+          update.status = "ativo";
+        } else if (generatedNow === 0) {
           update.next_due_date = p.start_date;
         }
         const { error } = await supabase.from("recurring_contracts").update(update).eq("id", editing.id);
