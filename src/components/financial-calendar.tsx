@@ -214,23 +214,25 @@ export function FinancialCalendar() {
 
   return (
     <section className="mb-6">
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="flex items-center gap-2 font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors self-start"
         >
           <CalendarDays className="w-4 h-4" />
           Calendário financeiro
           <ChevronDown className={cn("w-4 h-4 transition-transform", open && "rotate-180")} />
         </button>
         {open && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 justify-between sm:justify-end">
             <Button size="sm" variant="ghost" onClick={goToday}>Hoje</Button>
-            <Button size="icon" variant="ghost" onClick={goPrev} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="font-display font-medium text-sm min-w-[120px] text-center capitalize">{MONTH_LABEL(cursor)}</span>
-            <Button size="icon" variant="ghost" onClick={goNext} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" onClick={goPrev} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="font-display font-medium text-xs sm:text-sm min-w-[110px] sm:min-w-[120px] text-center capitalize">{MONTH_LABEL(cursor)}</span>
+              <Button size="icon" variant="ghost" onClick={goNext} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
+            </div>
           </div>
         )}
       </div>
@@ -247,23 +249,19 @@ export function FinancialCalendar() {
             <SummaryCard label="A receber" value={summary.areceber} tone="muted" />
           </div>
 
-          {/* Filtros */}
-          <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1">
-            {FILTERS.map((f) => (
-              <button
-                key={f.k}
-                onClick={() => setFilter(f.k)}
-                className={cn(
-                  "shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors",
-                  filter === f.k
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : "bg-secondary/30 text-muted-foreground border-border hover:text-foreground"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
+          {/* Filtro */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">Filtrar lançamentos</span>
+            <Select value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
+              <SelectTrigger className="h-9 w-[180px] sm:w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FILTERS.map((f) => (
+                  <SelectItem key={f.k} value={f.k}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
 
           {visible.length === 0 ? (
             <div className="glass rounded-2xl p-8 text-center">
