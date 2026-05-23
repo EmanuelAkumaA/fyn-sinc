@@ -170,34 +170,44 @@ function FinanceiroPage() {
             const positive = ["receita_propria", "comissao", "cashback", "repasse_recebido"].includes(t.type);
             const client = clients.find((c) => c.id === t.client_id);
             return (
-              <div key={t.id} className="glass rounded-xl p-3 md:p-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{t.description}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    <span className="capitalize">{t.type.replace("_", " ")}</span>
-                    {client && <><span>·</span><span>{client.name}</span></>}
-                    <span>·</span>
-                    <span>{formatDate(t.due_date)}</span>
+              <div key={t.id} className="glass rounded-xl p-3 md:p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  {/* Coluna info */}
+                  <div className="flex items-start justify-between gap-3 sm:flex-1 sm:min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{t.description}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="capitalize">{t.type.replace("_", " ")}</span>
+                        {client && <><span>·</span><span className="truncate max-w-[10rem]">{client.name}</span></>}
+                        <span>·</span>
+                        <span>{formatDate(t.due_date)}</span>
+                      </div>
+                    </div>
+                    {/* Valor — no mobile aparece ao lado da descrição */}
+                    <div className={`font-display font-semibold text-sm md:text-base shrink-0 ${positive ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]"}`}>
+                      {formatBRL(t.amount_gross)}
+                    </div>
+                  </div>
+
+                  {/* Linha de ações (mobile: linha própria) */}
+                  <div className="flex items-center justify-end gap-2 sm:shrink-0">
+                    <StatusBadge status={t.status} />
+                    {t.status !== "pago" && (
+                      <Button size="icon" variant="ghost" onClick={() => setPayTx(t)} aria-label="Marcar como pago">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setToDelete(t)}
+                      aria-label="Excluir lançamento"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className={`font-display font-semibold text-sm md:text-base ${positive ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]"}`}>
-                  {formatBRL(t.amount_gross)}
-                </div>
-                <StatusBadge status={t.status} />
-                {t.status !== "pago" && (
-                  <Button size="icon" variant="ghost" onClick={() => setPayTx(t)} aria-label="Marcar como pago">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setToDelete(t)}
-                  aria-label="Excluir lançamento"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             );
           })}
