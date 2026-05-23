@@ -682,13 +682,15 @@ function ClientSummaryBlock({ summary, tx, recurring, financialStatus, range, pe
 
 /* ----------------------------- OVERVIEW ----------------------------- */
 
-function OverviewTab({ tx, recurring, inadimplente, period, setPeriod, customStart, setCustomStart, customEnd, setCustomEnd, range }: {
+function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod, customStart, setCustomStart, customEnd, setCustomEnd, range }: {
+  clientId: string;
   tx: Tx[]; recurring: Recurring[]; inadimplente: boolean;
   period: Period; setPeriod: (p: Period) => void;
   customStart: string; setCustomStart: (s: string) => void;
   customEnd: string; setCustomEnd: (s: string) => void;
   range: Range;
 }) {
+
   void inadimplente;
   const [compareOpen, setCompareOpen] = useState(false);
   const today = isoDate(new Date());
