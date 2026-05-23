@@ -151,6 +151,9 @@ function RecorrenciasPage() {
   const generateTx = useMutation({
     mutationFn: async (r: any) => {
       if (r.status !== "ativo") throw new Error("Recorrência não está ativa");
+      if (r.installments_total != null && (r.installments_generated ?? 0) >= r.installments_total) {
+        throw new Error("Todas as mensalidades já foram geradas");
+      }
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
 
@@ -182,10 +185,17 @@ function RecorrenciasPage() {
       });
       if (insErr) throw insErr;
 
-      const newNext = addPeriod(r.next_due_date, r.frequency);
+      const generated = (r.installments_generated ?? 0) + 1;
+      const reachedEnd = r.installments_total != null && generated >= r.installments_total;
+      const update: any = { installments_generated: generated };
+      if (reachedEnd) {
+        update.status = "inativo";
+      } else {
+        update.next_due_date = nextAnchoredDate(r.next_due_date, r.frequency, r.anchor_day);
+      }
       const { error: updErr } = await supabase
         .from("recurring_contracts")
-        .update({ next_due_date: newNext })
+        .update(update)
         .eq("id", r.id);
       if (updErr) throw updErr;
     },
