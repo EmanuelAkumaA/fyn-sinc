@@ -10,7 +10,7 @@ type Props = {
 };
 
 const chip =
-  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border whitespace-nowrap";
+  "inline-flex items-center justify-between gap-1 rounded-md border px-2 py-1 text-[11px] sm:text-xs font-medium leading-tight min-w-0";
 
 export function BankBreakdownChips({ kuma, cliente, cashback, taxas, hideZero }: Props) {
   const items = [
@@ -22,10 +22,11 @@ export function BankBreakdownChips({ kuma, cliente, cashback, taxas, hideZero }:
   const visible = hideZero ? items.filter((i) => Math.abs(i.value) > 0.005) : items;
   if (visible.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
+    <div className="grid grid-cols-2 gap-1.5 mt-2 sm:flex sm:flex-wrap">
       {visible.map((i) => (
         <span key={i.label} className={`${chip} ${i.cls}`}>
-          {i.label} · {formatBRL(i.value)}
+          <span className="truncate">{i.label}</span>
+          <span className="tabular-nums shrink-0">{formatBRL(i.value)}</span>
         </span>
       ))}
     </div>
