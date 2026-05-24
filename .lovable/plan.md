@@ -1,37 +1,31 @@
 ## Objetivo
-Separar o saldo de **Aportes (recursos de clientes)** do **saldo total** dos bancos. Aportes não pertencem à empresa, então não devem entrar no consolidado nem no saldo exibido como principal de cada banco. Eles ganham um card próprio.
+No tablet (768–1023px) a aplicação deve se comportar como o mobile: **sem sidebar lateral**, com a **barra de navegação inferior**. No desktop (≥1024px) nada muda. Mobile (<768px) também continua igual.
+
+Hoje o corte é em `md:` (≥768px) — por isso o tablet já mostra a sidebar. A mudança central é trocar esse corte para `lg:` (≥1024px) nos pontos que controlam a navegação e o layout principal, e revisar as páginas para que o conteúdo no tablet use o mesmo padrão mobile (sem assumir sidebar ao lado).
 
 ## Mudanças
 
-### 1. `src/lib/finance.ts` — recalcular `total_balance`
-Mudar a fórmula em `deriveBreakdown` para **excluir** `repasse_received` e `repasse_used` (aportes de clientes):
+### 1. `src/components/app-sidebar.tsx`
+- `AppSidebar` (a `<aside>`): trocar `hidden md:flex` por **`hidden lg:flex`** — some no tablet.
+- `MobileBottomNav` (a `<nav>` inferior): trocar `md:hidden` por **`lg:hidden`** — aparece no tablet.
 
-```
-total_balance = initial + income + commission + cashback + tIn
-              - expense - fees - tOut
-```
+### 2. `src/routes/_app.tsx`
+- `<main>`: `pb-24 md:pb-8` → **`pb-24 lg:pb-8`** (preserva espaço para a bottom nav no tablet).
+- Container interno: `px-4 md:px-8` → **`px-4 lg:px-8`** (mantém o padding mobile no tablet, mais confortável sem sidebar).
 
-`client_funds_balance` (= repRecv − repUsed) continua existindo como hoje e passa a ser o "saldo de aportes" separado.
+### 3. Auditoria de páginas em `src/routes/_app/*.tsx`
+Para cada página (`dashboard`, `clientes`, `financeiro`, `bancos`, `aportes`, `planos`, `servicos`, `recorrencias`):
+- Onde `md:` é usado para **trocar entre layout mobile e layout "com sidebar"** (ex.: `md:hidden` em cards de lista + `hidden md:block` em tabela, toolbars que viram horizontais só com sidebar, headers de página que mudam de stack para row), trocar esses casos pontuais para **`lg:`**, para que o tablet continue usando a versão mobile-friendly.
+- Onde `md:` é usado apenas para **aumentar densidade de grid** (ex.: `grid-cols-1 md:grid-cols-2`, `md:grid-cols-3`, `md:grid-cols-4` em cards de métrica), **manter `md:`** — com a sidebar fora no tablet sobra largura e essas grades ficam melhores, não pior.
+- Critério de decisão por ocorrência: se o elemento ficava cramped no tablet com sidebar presente, agora vai respirar; se o elemento dependia de "ter ao menos a largura de um desktop", subir o breakpoint para `lg:`.
 
-Efeito: o número grande mostrado em cada card de banco e o "Saldo consolidado" passam a representar **apenas dinheiro da empresa (Kuma)**.
-
-### 2. `src/routes/_app/bancos.tsx` — novo card de Aportes
-- Topo da página: o grid de métricas vira `md:grid-cols-4`:
-  1. **Saldo consolidado** (já não inclui aportes)
-  2. **Aportes de clientes** *(novo)* — soma de `client_funds_balance` de todos os bancos, com hint "Recursos de terceiros, não compõem o saldo"
-  3. **Contas ativas**
-  4. **Saldo inicial**
-- Em cada card de banco:
-  - O valor grande continua mostrando `total_balance` (agora já sem aportes).
-  - Logo abaixo do valor, um mini-bloco destacado **"Aportes: R$ X,XX"** quando `client_funds_balance ≠ 0`, visualmente separado dos chips Kuma/Cashback/Taxas.
-  - O chip "Aportes" do `BankBreakdownChips` é removido (passa a ser o card próprio).
-
-### 3. `src/components/bank-breakdown-chips.tsx`
-Remover o item "Aportes" da lista de chips (fica só Kuma, Cashback, Taxas). Aportes agora têm exibição dedicada acima.
-
-### 4. `src/routes/_app/dashboard.tsx`
-Como `total_balance` mudou de semântica, ajustar a métrica **"Saldo em bancos"** para ainda fazer sentido (já não inclui aportes — exatamente o desejado). A variável `aportesSaldo` já existe; vou garantir que a UI deixe claro que aportes estão separados (manter o card de aportes que já existe lá, sem somar no consolidado). Sem mudança de lógica além de remover o chip "Aportes" dos mini-cards de banco do dashboard (mesma alteração do componente `BankBreakdownChips`).
+Não vou listar todas as ocorrências aqui — passo arquivo por arquivo aplicando esse critério. Sem mudanças de lógica, só classes Tailwind.
 
 ## Fora de escopo
-- Views SQL e estrutura do banco (a view `v_bank_balance_breakdown` já entrega `repasse_received_total` e `repasse_used_total` separadamente; só muda o cálculo no client).
-- Página Financeiro, Aportes/Repasses, Calendário, autenticação, navegação.
+- Mobile (<768px) e desktop (≥1024px): nenhuma alteração visual.
+- Lógica de negócio, dados, autenticação, filtros, cálculos: nada muda.
+- Componentes compartilhados que já são responsivos com `md:`/`lg:` corretos (ex.: `bank-breakdown-chips`, `metric-card`) não são tocados a menos que a auditoria mostre regressão no tablet.
+
+## Resultado esperado
+- Tablet (768–1023px): sem sidebar lateral, com barra inferior, conteúdo ocupando a largura total e usando o mesmo padrão visual do mobile (sem layouts de "tabela larga" forçados).
+- Desktop e mobile: idênticos ao atual.

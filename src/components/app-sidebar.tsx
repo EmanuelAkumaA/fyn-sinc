@@ -33,7 +33,7 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0">
+    <aside className="hidden lg:flex flex-col w-64 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0">
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-5 pt-0 pb-0 flex items-center justify-center">
           <img src={logoUrl} alt="Fyn Sinc" className="h-32 object-contain" />
