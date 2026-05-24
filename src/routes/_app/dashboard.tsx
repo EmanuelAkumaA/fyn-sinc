@@ -171,7 +171,6 @@ function DashboardPage() {
                       <div className="font-display text-xl font-semibold mt-2">{formatBRL(b.total_balance)}</div>
                       <BankBreakdownChips
                         kuma={b.kuma_balance}
-                        cliente={b.client_funds_balance}
                         cashback={Number(b.cashback_total)}
                         taxas={Number(b.fees_total)}
                         hideZero
