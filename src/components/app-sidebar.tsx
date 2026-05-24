@@ -114,7 +114,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div className="grid grid-cols-5">
           {items.map(({ to, label, icon: Icon }) => {
             const active = path === to || path.startsWith(to + "/");
