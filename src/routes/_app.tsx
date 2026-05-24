@@ -103,8 +103,8 @@ function AppLayout() {
   return (
     <div className="min-h-screen flex bg-background">
       <AppSidebar />
-      <main className="flex-1 min-w-0 pb-24 md:pb-8">
-        <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+      <main className="flex-1 min-w-0 pb-24 lg:pb-8">
+        <div className="px-4 lg:px-8 py-6 max-w-7xl mx-auto">
           <Outlet />
         </div>
       </main>
