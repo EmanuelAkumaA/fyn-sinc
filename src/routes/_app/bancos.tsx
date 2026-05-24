@@ -85,7 +85,9 @@ function BancosPage() {
   });
 
   const filtered = banks.filter((b: any) => b.name.toLowerCase().includes(search.toLowerCase()));
-  const totalBalance = breakdown.reduce((sum, r) => sum + deriveBreakdown(r).total_balance, 0);
+  const derivedAll = breakdown.map(deriveBreakdown);
+  const totalBalance = derivedAll.reduce((sum, r) => sum + r.total_balance, 0);
+  const aportesTotal = derivedAll.reduce((sum, r) => sum + r.client_funds_balance, 0);
   const active = banks.filter((b: any) => b.status === "ativo").length;
 
   return (
@@ -100,8 +102,9 @@ function BancosPage() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <MetricCard label="Saldo consolidado" value={formatBRL(totalBalance)} hint="Saldo inicial + lançamentos pagos" icon={Banknote} tone={totalBalance >= 0 ? "success" : "destructive"} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <MetricCard label="Saldo consolidado" value={formatBRL(totalBalance)} hint="Sem aportes de clientes" icon={Banknote} tone={totalBalance >= 0 ? "success" : "destructive"} />
+        <MetricCard label="Aportes de clientes" value={formatBRL(aportesTotal)} hint="Recursos de terceiros" icon={Wallet} tone="primary" />
         <MetricCard label="Contas ativas" value={String(active)} hint={`${banks.length} cadastrada(s)`} />
         <MetricCard label="Saldo inicial" value={formatBRL(banks.reduce((sum: number, b: any) => sum + Number(b.initial_balance ?? 0), 0))} hint="Base das contas" />
       </div>
