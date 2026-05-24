@@ -2,14 +2,15 @@ import { formatBRL } from "@/lib/fynsinc";
 
 type Props = {
   kuma: number;
-  cliente: number;
+  /** @deprecated Aportes agora têm card próprio; mantido por compatibilidade. */
+  cliente?: number;
   cashback: number;
   taxas: number;
   /** Se true, esconde chips com valor zero (para o Dashboard). */
   hideZero?: boolean;
 };
 
-export function BankBreakdownChips({ kuma, cliente, cashback, taxas, hideZero }: Props) {
+export function BankBreakdownChips({ kuma, cashback, taxas, hideZero }: Props) {
   const items = [
     {
       label: "Kuma",
@@ -18,11 +19,6 @@ export function BankBreakdownChips({ kuma, cliente, cashback, taxas, hideZero }:
         kuma >= 0
           ? "bg-success/10 text-success border-success/20"
           : "bg-destructive/10 text-destructive border-destructive/20",
-    },
-    {
-      label: "Aportes",
-      value: cliente,
-      cls: "bg-primary/10 text-primary border-primary/20",
     },
     {
       label: "Cashback",
