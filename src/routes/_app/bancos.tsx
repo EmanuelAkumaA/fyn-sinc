@@ -157,9 +157,19 @@ function BancosPage() {
                 <div className="font-display text-2xl sm:text-3xl font-semibold mt-4 tabular-nums">
                   {formatBRL(current)}
                 </div>
+                {Math.abs(br?.client_funds_balance ?? 0) > 0.005 && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Wallet className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium uppercase tracking-wide">Aportes do cliente</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums text-primary">
+                      {formatBRL(br?.client_funds_balance ?? 0)}
+                    </span>
+                  </div>
+                )}
                 <BankBreakdownChips
                   kuma={br?.kuma_balance ?? 0}
-                  cliente={br?.client_funds_balance ?? 0}
                   cashback={br?.cashback_total ?? 0}
                   taxas={br?.fees_total ?? 0}
                 />
