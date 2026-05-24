@@ -55,6 +55,7 @@ function FinanceiroPage() {
   const [period, setPeriod] = useState<string>("this_month");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
 
@@ -66,7 +67,7 @@ function FinanceiroPage() {
     : { from: null, to: null };
 
   const { data: tx = [] } = useQuery({
-    queryKey: ["transactions", period, typeFilter, statusFilter, range.from, range.to],
+    queryKey: ["transactions", period, typeFilter, statusFilter, clientFilter, range.from, range.to],
     queryFn: async () => {
       let q = supabase
         .from("financial_transactions")
@@ -77,6 +78,8 @@ function FinanceiroPage() {
       if (range.to) q = q.lte("due_date", range.to);
       if (typeFilter !== "all") q = q.eq("type", typeFilter as any);
       if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      if (clientFilter === "none") q = q.is("client_id", null);
+      else if (clientFilter !== "all") q = q.eq("client_id", clientFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -174,7 +177,7 @@ function FinanceiroPage() {
       />
 
       <div className="glass rounded-xl p-3 md:p-4 mb-3 space-y-2 sm:space-y-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <div className="space-y-1">
             <Label className="text-[11px]">Período</Label>
             <Select value={period} onValueChange={setPeriod}>
@@ -198,7 +201,7 @@ function FinanceiroPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1 col-span-2 sm:col-span-1">
+          <div className="space-y-1">
             <Label className="text-[11px]">Status</Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -207,6 +210,17 @@ function FinanceiroPage() {
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="pago">Pago</SelectItem>
                 <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px]">Cliente</Label>
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="none">Sem cliente</SelectItem>
+                {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
