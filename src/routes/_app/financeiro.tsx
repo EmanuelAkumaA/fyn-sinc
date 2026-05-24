@@ -67,7 +67,7 @@ function FinanceiroPage() {
     : { from: null, to: null };
 
   const { data: tx = [] } = useQuery({
-    queryKey: ["transactions", period, typeFilter, statusFilter, range.from, range.to],
+    queryKey: ["transactions", period, typeFilter, statusFilter, clientFilter, range.from, range.to],
     queryFn: async () => {
       let q = supabase
         .from("financial_transactions")
@@ -78,6 +78,8 @@ function FinanceiroPage() {
       if (range.to) q = q.lte("due_date", range.to);
       if (typeFilter !== "all") q = q.eq("type", typeFilter as any);
       if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      if (clientFilter === "none") q = q.is("client_id", null);
+      else if (clientFilter !== "all") q = q.eq("client_id", clientFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data;
