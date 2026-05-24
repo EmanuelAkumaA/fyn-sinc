@@ -149,8 +149,9 @@ export function deriveBreakdown(r: BankBreakdownRow): BankBreakdown {
   const tIn = n(r.transfer_in_total);
   const tOut = n(r.transfer_out_total);
   const initial = n(r.initial_balance);
+  // Aportes (repRecv/repUsed) NÃO entram no saldo total — são recursos de terceiros.
   const total_balance =
-    initial + income + commission + cashback + repRecv + tIn - expense - fees - repUsed - tOut;
+    initial + income + commission + cashback + tIn - expense - fees - tOut;
   const kuma_balance = income + commission + cashback - expense - fees;
   const client_funds_balance = repRecv - repUsed;
   return { ...r, total_balance, kuma_balance, client_funds_balance };

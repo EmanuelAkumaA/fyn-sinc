@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Banknote, Building2, Pencil, Plus, Search } from "lucide-react";
+import { Banknote, Building2, Pencil, Plus, Search, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,7 +85,9 @@ function BancosPage() {
   });
 
   const filtered = banks.filter((b: any) => b.name.toLowerCase().includes(search.toLowerCase()));
-  const totalBalance = breakdown.reduce((sum, r) => sum + deriveBreakdown(r).total_balance, 0);
+  const derivedAll = breakdown.map(deriveBreakdown);
+  const totalBalance = derivedAll.reduce((sum, r) => sum + r.total_balance, 0);
+  const aportesTotal = derivedAll.reduce((sum, r) => sum + r.client_funds_balance, 0);
   const active = banks.filter((b: any) => b.status === "ativo").length;
 
   return (
@@ -100,8 +102,9 @@ function BancosPage() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <MetricCard label="Saldo consolidado" value={formatBRL(totalBalance)} hint="Saldo inicial + lançamentos pagos" icon={Banknote} tone={totalBalance >= 0 ? "success" : "destructive"} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <MetricCard label="Saldo consolidado" value={formatBRL(totalBalance)} hint="Sem aportes de clientes" icon={Banknote} tone={totalBalance >= 0 ? "success" : "destructive"} />
+        <MetricCard label="Aportes de clientes" value={formatBRL(aportesTotal)} hint="Recursos de terceiros" icon={Wallet} tone="primary" />
         <MetricCard label="Contas ativas" value={String(active)} hint={`${banks.length} cadastrada(s)`} />
         <MetricCard label="Saldo inicial" value={formatBRL(banks.reduce((sum: number, b: any) => sum + Number(b.initial_balance ?? 0), 0))} hint="Base das contas" />
       </div>
@@ -154,9 +157,19 @@ function BancosPage() {
                 <div className="font-display text-2xl sm:text-3xl font-semibold mt-4 tabular-nums">
                   {formatBRL(current)}
                 </div>
+                {Math.abs(br?.client_funds_balance ?? 0) > 0.005 && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Wallet className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium uppercase tracking-wide">Aportes do cliente</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums text-primary">
+                      {formatBRL(br?.client_funds_balance ?? 0)}
+                    </span>
+                  </div>
+                )}
                 <BankBreakdownChips
                   kuma={br?.kuma_balance ?? 0}
-                  cliente={br?.client_funds_balance ?? 0}
                   cashback={br?.cashback_total ?? 0}
                   taxas={br?.fees_total ?? 0}
                 />
