@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPwaBanner, InstallPwaProvider } from "@/components/install-pwa-banner";
 import { supabase } from "@/integrations/supabase/client";
