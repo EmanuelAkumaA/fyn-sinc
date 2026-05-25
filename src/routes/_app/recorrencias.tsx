@@ -365,7 +365,7 @@ function RecorrenciasPage() {
         </div>
       )}
 
-      <Sheet open={openSheet} onOpenChange={(o) => { setOpenSheet(o); if (!o) setEditing(null); }}>
+      <Sheet open={openSheet} onOpenChange={(o) => { setOpenSheet(o); if (!o) { setEditing(null); setInitialServiceId(null); } }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? "Editar recorrência" : "Nova recorrência"}</SheetTitle></SheetHeader>
           <RecurrenceForm
