@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallPwaBanner, InstallPwaProvider } from "@/components/install-pwa-banner";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +132,34 @@ function PwaServiceWorker() {
   return null;
 }
 
+function PreviewBanner() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (window.self !== window.top) setVisible(true);
+    } catch {
+      setVisible(true);
+    }
+  }, []);
+  if (!visible) return null;
+  return (
+    <div className="fixed top-0 inset-x-0 z-[9999] bg-primary text-primary-foreground px-4 py-2.5 text-sm flex items-center justify-center gap-3 shadow-lg">
+      <span className="font-medium">Você está no preview do Lovable. Para testar o login, abra em uma nova aba:</span>
+      <button
+        onClick={() => {
+          if (typeof window !== "undefined") {
+            window.open(window.location.href, "_blank");
+          }
+        }}
+        className="inline-flex items-center rounded-lg bg-background text-foreground px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+      >
+        Abrir em nova aba
+      </button>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
@@ -139,6 +167,7 @@ function RootComponent() {
       <InstallPwaProvider>
         <AuthSync />
         <PwaServiceWorker />
+        <PreviewBanner />
         <Outlet />
         <InstallPwaBanner />
         <Toaster />
