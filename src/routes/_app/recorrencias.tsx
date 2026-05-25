@@ -32,7 +32,7 @@ const STATUSES = ["ativo", "pausado", "cancelado", "inativo"] as const;
 
 function RecorrenciasPage() {
   const qc = useQueryClient();
-  const search = useSearch({ from: "/_app/recorrencias" });
+  const routeSearch = useSearch({ from: "/_app/recorrencias" });
   const navigate = useNavigate({ from: "/recorrencias" });
   const [openSheet, setOpenSheet] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
