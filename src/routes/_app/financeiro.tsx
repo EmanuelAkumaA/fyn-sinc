@@ -169,6 +169,32 @@ function FinanceiroPage() {
     },
   });
 
+  const [openSection, setOpenSection] = useState<"pendentes" | "vencidos" | "pagos">("pendentes");
+
+  const groups = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const pendentes: any[] = [];
+    const vencidos: any[] = [];
+    const pagos: any[] = [];
+    for (const t of tx) {
+      if (t.status === "pago") {
+        pagos.push(t);
+      } else if (t.status === "cancelado") {
+        continue;
+      } else {
+        const due = t.due_date ? new Date(t.due_date + "T00:00:00") : null;
+        if (due && due < today) vencidos.push(t);
+        else pendentes.push(t);
+      }
+    }
+    const sum = (arr: any[]) => arr.reduce((s, t) => s + Number(t.amount_gross || 0), 0);
+    return {
+      pendentes, vencidos, pagos,
+      totals: { pendentes: sum(pendentes), vencidos: sum(vencidos), pagos: sum(pagos) },
+    };
+  }, [tx]);
+
   return (
     <>
       <PageHeader
