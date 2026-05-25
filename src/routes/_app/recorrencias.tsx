@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_app/recorrencias")({
   component: RecorrenciasPage,
   validateSearch: z.object({
     service_id: z.string().uuid().optional(),
+    client_id: z.string().uuid().optional(),
     new: z.string().optional(),
   }),
   head: () => ({ meta: [{ title: "Recorrências — Fyn Sinc" }] }),
