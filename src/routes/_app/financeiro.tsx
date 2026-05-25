@@ -52,9 +52,21 @@ function monthRange(offset: number) {
 
 function FinanceiroPage() {
   const qc = useQueryClient();
+  const search = useSearch({ from: "/_app/financeiro" });
+  const navigate = useNavigate({ from: "/_app/financeiro" });
   const [openNew, setOpenNew] = useState(false);
+  const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
   const [payTx, setPayTx] = useState<any | null>(null);
   const [toDelete, setToDelete] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (search.new === "1") {
+      setInitialServiceId(search.service_id ?? null);
+      setOpenNew(true);
+      navigate({ search: {} as any, replace: true });
+    }
+  }, [search.new, search.service_id, navigate]);
+
 
   // Filtros
   const [period, setPeriod] = useState<string>("this_month");
