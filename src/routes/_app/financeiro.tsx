@@ -53,7 +53,7 @@ function monthRange(offset: number) {
 function FinanceiroPage() {
   const qc = useQueryClient();
   const search = useSearch({ from: "/_app/financeiro" });
-  const navigate = useNavigate({ from: "/_app/financeiro" });
+  const navigate = useNavigate({ from: "/financeiro" });
   const [openNew, setOpenNew] = useState(false);
   const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
   const [payTx, setPayTx] = useState<any | null>(null);
