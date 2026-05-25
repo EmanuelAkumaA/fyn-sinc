@@ -339,13 +339,13 @@ function FinanceiroPage() {
   );
 }
 
-function NewTxForm({ clients, banks, services, onSubmit, loading }: any) {
+function NewTxForm({ clients, banks, services, initialServiceId, onSubmit, loading }: any) {
   const [form, setForm] = useState({
     type: "receita_propria",
     description: "",
     amount_gross: "",
     client_id: "",
-    service_id: "",
+    service_id: initialServiceId ?? "",
     bank_id: "",
     transfer_to_bank_id: "",
     due_date: new Date().toISOString().slice(0, 10),
