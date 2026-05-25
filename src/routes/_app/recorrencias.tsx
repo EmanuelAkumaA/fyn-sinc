@@ -32,8 +32,20 @@ const STATUSES = ["ativo", "pausado", "cancelado", "inativo"] as const;
 
 function RecorrenciasPage() {
   const qc = useQueryClient();
+  const search = useSearch({ from: "/_app/recorrencias" });
+  const navigate = useNavigate({ from: "/recorrencias" });
   const [openSheet, setOpenSheet] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (search.new === "1") {
+      setEditing(null);
+      setInitialServiceId(search.service_id ?? null);
+      setOpenSheet(true);
+      navigate({ search: {} as any, replace: true });
+    }
+  }, [search.new, search.service_id, navigate]);
   const [toDelete, setToDelete] = useState<any | null>(null);
   const [zapTarget, setZapTarget] = useState<any | null>(null);
   const [zapMode, setZapMode] = useState<"one" | "bulk">("one");
