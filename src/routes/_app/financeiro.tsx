@@ -173,7 +173,7 @@ function FinanceiroPage() {
         title="Financeiro"
         subtitle="Lançamentos, taxas e transferências"
         actions={
-          <Sheet open={openNew} onOpenChange={setOpenNew}>
+          <Sheet open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) setInitialServiceId(null); }}>
             <SheetTrigger asChild>
               <Button className="gap-2" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
                 <Plus className="h-4 w-4" /> Novo lançamento
