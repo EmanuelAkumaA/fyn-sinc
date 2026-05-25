@@ -1,31 +1,65 @@
 ## Objetivo
-No tablet (768–1023px) a aplicação deve se comportar como o mobile: **sem sidebar lateral**, com a **barra de navegação inferior**. No desktop (≥1024px) nada muda. Mobile (<768px) também continua igual.
-
-Hoje o corte é em `md:` (≥768px) — por isso o tablet já mostra a sidebar. A mudança central é trocar esse corte para `lg:` (≥1024px) nos pontos que controlam a navegação e o layout principal, e revisar as páginas para que o conteúdo no tablet use o mesmo padrão mobile (sem assumir sidebar ao lado).
+Evoluir somente o módulo Serviços: enriquecer a listagem com métricas por serviço e criar um **Dossiê do Serviço** (modal/sheet em abas) inspirado no `client-dossier.tsx`, sem tocar em Dashboard, Clientes, Bancos, Calendário, Auth/RLS ou lógica financeira global.
 
 ## Mudanças
 
-### 1. `src/components/app-sidebar.tsx`
-- `AppSidebar` (a `<aside>`): trocar `hidden md:flex` por **`hidden lg:flex`** — some no tablet.
-- `MobileBottomNav` (a `<nav>` inferior): trocar `md:hidden` por **`lg:hidden`** — aparece no tablet.
+### 1. Banco — view `v_service_summary` (migration)
+Criar view em `public` agregando por `service_id` + `organization_id`:
+- `service_id`, `service_name`, `service_type`, `category`, `status`, `default_value`, `organization_id`
+- `active_clients_count` — DISTINCT `client_id` de `recurring_contracts` com `status='ativo'` e `service_id = s.id`
+- `total_clients_count` — DISTINCT `client_id` de `financial_transactions` ∪ `recurring_contracts` por `service_id`
+- `inactive_clients_count` = total − active
+- `total_revenue` — SUM `amount_gross` de `financial_transactions` com `type='receita_propria'`, `status='pago'`, `service_id = s.id`
+- `paid_transactions_count` — COUNT das mesmas
+- `average_ticket` = total_revenue / NULLIF(paid_transactions_count,0)
+- `overdue_amount` — SUM pendentes com `due_date < CURRENT_DATE`
+- `pending_amount` — SUM pendentes (todas)
+- `active_recurring_count` — COUNT recorrências ativas
+- `active_mrr` — SUM(`amount` * fator por `frequency`: semanal=4, quinzenal=2, mensal=1, bimestral=1/2, trimestral=1/3, semestral=1/6, anual=1/12) das recorrências ativas
 
-### 2. `src/routes/_app.tsx`
-- `<main>`: `pb-24 md:pb-8` → **`pb-24 lg:pb-8`** (preserva espaço para a bottom nav no tablet).
-- Container interno: `px-4 md:px-8` → **`px-4 lg:px-8`** (mantém o padding mobile no tablet, mais confortável sem sidebar).
+RLS: criar a view com `security_invoker=true` para herdar políticas das tabelas base (organização já filtrada por `is_org_member`). Não usar service role.
 
-### 3. Auditoria de páginas em `src/routes/_app/*.tsx`
-Para cada página (`dashboard`, `clientes`, `financeiro`, `bancos`, `aportes`, `planos`, `servicos`, `recorrencias`):
-- Onde `md:` é usado para **trocar entre layout mobile e layout "com sidebar"** (ex.: `md:hidden` em cards de lista + `hidden md:block` em tabela, toolbars que viram horizontais só com sidebar, headers de página que mudam de stack para row), trocar esses casos pontuais para **`lg:`**, para que o tablet continue usando a versão mobile-friendly.
-- Onde `md:` é usado apenas para **aumentar densidade de grid** (ex.: `grid-cols-1 md:grid-cols-2`, `md:grid-cols-3`, `md:grid-cols-4` em cards de métrica), **manter `md:`** — com a sidebar fora no tablet sobra largura e essas grades ficam melhores, não pior.
-- Critério de decisão por ocorrência: se o elemento ficava cramped no tablet com sidebar presente, agora vai respirar; se o elemento dependia de "ter ao menos a largura de um desktop", subir o breakpoint para `lg:`.
+Regenerar `src/integrations/supabase/types.ts` após a migration (automático).
 
-Não vou listar todas as ocorrências aqui — passo arquivo por arquivo aplicando esse critério. Sem mudanças de lógica, só classes Tailwind.
+### 2. `src/routes/_app/servicos.tsx` — listagem enriquecida
+- Trocar a query de `services` por `v_service_summary` (com fallback caso a view falhe).
+- Manter header, busca, botão "Novo serviço", Sheet de edição (sem mudar `ServiceForm`).
+- Cards de métricas globais: manter os 3 atuais e acrescentar receita total agregada e MRR total agregado.
+- Cada card de serviço passa a mostrar chips compactos: **Clientes ativos**, **Já compraram**, **Receita**, **MRR** (se `type='recorrente'`) ou **Avulsos pendentes** (se `type='avulso'`), **Ticket médio**.
+- Esconder chip quando valor for 0/sem dado, com fallback discreto "Sem vendas vinculadas ainda" quando todos zerados.
+- Card inteiro vira clicável → abre **`ServiceDossier`**. Botão Editar (lápis) continua isolado com `stopPropagation`.
+
+### 3. Novo componente `src/components/service-dossier.tsx`
+Sheet/modal fullscreen no mobile, grande no desktop. Estrutura espelhando `client-dossier.tsx` (mesmo padrão visual de tabs com scroll horizontal).
+
+Props: `{ serviceId: string; open: boolean; onOpenChange }`.
+
+**Header**: nome, badges (tipo, categoria, status), valor padrão, descrição, botão "Editar serviço" (reaproveita `ServiceForm` em sub-sheet), menu de ações rápidas ("Criar lançamento", "Criar recorrência" — abrem os fluxos existentes pré-preenchendo `service_id`).
+
+**Filtro de período** (Hoje/Semana/Mês/Ano/Personalizado/Todo histórico) afetando Visão geral e Financeiro. Default: Mês atual no Financeiro, Todo histórico no resto. MRR e inadimplência sempre "status atual".
+
+**Abas**:
+1. **Visão geral** — 6 cards principais (Clientes ativos, Já compraram, Receita gerada, MRR ativo / Avulsos pendentes, Ticket médio, Inadimplência) + blocos: Últimas vendas (5), Próximos vencimentos (5), alerta de inadimplência.
+2. **Clientes ativos** — query: `recurring_contracts` ativos por `service_id` agrupado por cliente + join com `clients`; mostra logo, nome, status financeiro, valor/freq, próximo vencimento, último pagamento. Ações: abrir cliente (navegar `/clientes/$id`), criar lançamento, criar recorrência.
+3. **Clientes inativos** — DISTINCT clientes históricos − ativos atuais; mostra última compra, último valor, status. Ações: abrir cliente, nova cobrança, nova recorrência.
+4. **Financeiro** — lista `financial_transactions` por `service_id` com filtros (período, status, tipo, cliente). Mobile: cards; desktop: tabela.
+5. **Recorrências** — lista `recurring_contracts` por `service_id`. Ações: gerar transação, pausar/ativar, editar, abrir cliente (reaproveitar handlers de `recorrencias.tsx`).
+6. **Timeline** — agregação no frontend: merge ordenado de transações, recorrências (criadas/pausadas), eventos derivados (cliente entrou/saiu do serviço). Sem nova tabela.
+
+Estados vazios para cada aba com as mensagens especificadas.
+
+### 4. Pré-preenchimento de `service_id`
+- "Criar lançamento" do dossiê → abrir Sheet de novo lançamento do `financeiro.tsx` com `service_id` pré-selecionado (extrair a Sheet em prop `initialServiceId` ou navegar via state). Implementação mais simples: navegar para `/financeiro?service_id=...&new=1` e ler na página.
+- "Criar recorrência" análogo para `/recorrencias?service_id=...&new=1`.
+
+### 5. Cache
+Adicionar chaves novas em React Query: `["service-summary"]`, `["service", id]`, `["service-clients", id, "active"|"inactive"]`, `["service-transactions", id, filters]`, `["service-recurring", id]`, `["service-timeline", id]`. Invalidar nas mutações já existentes que tocam `financial_transactions` ou `recurring_contracts` (adicionar essas chaves em `src/lib/finance.ts` e `src/lib/client-cache.ts` — única mudança em arquivos compartilhados, sem alterar lógica).
 
 ## Fora de escopo
-- Mobile (<768px) e desktop (≥1024px): nenhuma alteração visual.
-- Lógica de negócio, dados, autenticação, filtros, cálculos: nada muda.
-- Componentes compartilhados que já são responsivos com `md:`/`lg:` corretos (ex.: `bank-breakdown-chips`, `metric-card`) não são tocados a menos que a auditoria mostre regressão no tablet.
+- Dashboard, Clientes, Bancos, Calendário, Aportes, Auth/RLS, Configurações, Admin.
+- Backfill de `service_id` em transações antigas (transações sem `service_id` simplesmente não entram nas métricas).
+- Triggers de auditoria/timeline persistida (timeline é só agregação client-side).
+- Novas colunas em tabelas existentes (a view cobre todas as métricas).
 
 ## Resultado esperado
-- Tablet (768–1023px): sem sidebar lateral, com barra inferior, conteúdo ocupando a largura total e usando o mesmo padrão visual do mobile (sem layouts de "tabela larga" forçados).
-- Desktop e mobile: idênticos ao atual.
+Listagem de Serviços com métricas por card; clique abre Dossiê com 6 abas, filtros de período, ações rápidas que já vinculam `service_id`, tudo responsivo e respeitando RLS por organização.
