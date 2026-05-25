@@ -29,6 +29,10 @@ import { upsertCashbackForExpense, invalidateFinanceCaches } from "@/lib/finance
 
 export const Route = createFileRoute("/_app/financeiro")({
   component: FinanceiroPage,
+  validateSearch: z.object({
+    service_id: z.string().uuid().optional(),
+    new: z.string().optional(),
+  }),
   head: () => ({ meta: [{ title: "Financeiro — Fyn Sinc" }] }),
 });
 
