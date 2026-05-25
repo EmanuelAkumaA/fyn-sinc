@@ -167,7 +167,7 @@ function RootComponent() {
       <InstallPwaProvider>
         <AuthSync />
         <PwaServiceWorker />
-        <PreviewBanner />
+        
         <Outlet />
         <InstallPwaBanner />
         <Toaster />
