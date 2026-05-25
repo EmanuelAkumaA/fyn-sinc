@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import {
   AlertTriangle, ArrowDownCircle, ArrowUpCircle, Briefcase, CalendarClock,
-  ExternalLink, Pencil, Plus, Receipt, Repeat, Users, Wallet, Zap, PauseCircle, PlayCircle,
+  ExternalLink, Pencil, Plus, Receipt, Repeat, Users, Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -13,12 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, EmptyState, FinancialStatusBadge } from "@/components/ui-helpers";
 import { MetricCard } from "@/components/metric-card";
 import { ClientLogo } from "@/components/client-logo";
-import { formatBRL, formatDate, getCurrentOrgId, RECURRENCE_LABELS } from "@/lib/fynsinc";
-import { invalidateFinanceCaches } from "@/lib/finance";
+import { formatBRL, formatDate, RECURRENCE_LABELS } from "@/lib/fynsinc";
 import { cn } from "@/lib/utils";
 
 type Period = "today" | "week" | "month" | "year" | "custom" | "all";
@@ -43,10 +40,6 @@ function periodRange(p: Period, customFrom: string, customTo: string): { from: s
   return { from: null, to: null };
 }
 
-const FREQ_FACTOR: Record<string, number> = {
-  semanal: 4, quinzenal: 2, mensal: 1, bimestral: 0.5, trimestral: 1 / 3, semestral: 1 / 6, anual: 1 / 12,
-};
-
 export function ServiceDossier({
   serviceId, open, onOpenChange, onEdit,
 }: {
@@ -69,14 +62,12 @@ export function ServiceDossier({
 }
 
 function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit?: (s: any) => void; onClose: () => void }) {
-  const qc = useQueryClient();
   const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
   const [period, setPeriod] = useState<Period>("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
-  // Service base
   const { data: service } = useQuery({
     queryKey: ["service", serviceId],
     queryFn: async () => {
@@ -86,7 +77,6 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
     },
   });
 
-  // Summary metrics (from view)
   const { data: summary } = useQuery({
     queryKey: ["service-summary", serviceId],
     queryFn: async () => {
@@ -97,7 +87,6 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
     },
   });
 
-  // All transactions for the service (unfiltered, for visão geral + financeiro)
   const { data: allTx = [] } = useQuery({
     queryKey: ["service-transactions", serviceId],
     queryFn: async () => {
@@ -112,7 +101,6 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
     },
   });
 
-  // Recurring contracts for the service
   const { data: recurring = [] } = useQuery({
     queryKey: ["service-recurring", serviceId],
     queryFn: async () => {
@@ -126,7 +114,6 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
     },
   });
 
-  // Clients lookup
   const clientIds = useMemo(() => {
     const s = new Set<string>();
     allTx.forEach((t: any) => t.client_id && s.add(t.client_id));
@@ -153,69 +140,10 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
   );
 
   const range = periodRange(period, customFrom, customTo);
-  const inRange = (d: string | null) => {
-    if (!d) return false;
-    if (range.from && d < range.from) return false;
-    if (range.to && d > range.to) return false;
-    return true;
-  };
 
-  // ------ Mutations: gerar transação, toggle status ------
-  const toggleRecStatus = useMutation({
-    mutationFn: async (r: any) => {
-      const next = r.status === "ativo" ? "pausado" : "ativo";
-      const { error } = await supabase.from("recurring_contracts").update({ status: next }).eq("id", r.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Status atualizado");
-      qc.invalidateQueries({ queryKey: ["service-recurring", serviceId] });
-      qc.invalidateQueries({ queryKey: ["service-summary", serviceId] });
-      qc.invalidateQueries({ queryKey: ["service-summary"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const generateNext = useMutation({
-    mutationFn: async (r: any) => {
-      if (r.status !== "ativo") throw new Error("Recorrência não está ativa");
-      const org = await getCurrentOrgId();
-      if (!org) throw new Error("Sem organização");
-      const amt = Number(r.amount);
-      const { data: existing } = await supabase
-        .from("financial_transactions")
-        .select("id")
-        .eq("recurring_contract_id", r.id)
-        .eq("due_date", r.next_due_date);
-      if (existing && existing.length > 0) throw new Error("Já existe transação para esta data");
-      const { error } = await supabase.from("financial_transactions").insert({
-        organization_id: org,
-        type: "receita_propria" as const,
-        status: "pendente" as const,
-        description: r.description,
-        category: "Recorrência",
-        amount_gross: amt,
-        amount_net: amt,
-        due_date: r.next_due_date,
-        client_id: r.client_id,
-        service_id: r.service_id,
-        bank_id: r.default_bank_id,
-        recurring_contract_id: r.id,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Mensalidade gerada no Financeiro");
-      invalidateFinanceCaches(qc);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  // ------ Derivações ------
   const paidTx = allTx.filter((t: any) => t.status === "pago" && t.type === "receita_propria");
   const pendingTx = allTx.filter((t: any) => t.status === "pendente" && t.type === "receita_propria");
   const today = new Date().toISOString().slice(0, 10);
-  const overdueTx = pendingTx.filter((t: any) => t.due_date && t.due_date < today);
   const upcomingTx = pendingTx.filter((t: any) => t.due_date && t.due_date >= today)
     .sort((a: any, b: any) => (a.due_date ?? "").localeCompare(b.due_date ?? ""));
 
@@ -230,7 +158,7 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
 
   const isRecurring = service?.type === "recorrente";
 
-  // ------ Clientes ativos x inativos ------
+  // Recorrências ativas por cliente (informação adicional, não define a aba)
   const activeRecByClient = useMemo(() => {
     const m = new Map<string, any[]>();
     recurring.filter((r: any) => r.status === "ativo" && r.client_id).forEach((r: any) => {
@@ -241,17 +169,14 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
     return m;
   }, [recurring]);
 
-  const allClientIds = useMemo(() => {
-    const s = new Set<string>();
-    allTx.forEach((t: any) => t.client_id && s.add(t.client_id));
-    recurring.forEach((r: any) => r.client_id && s.add(r.client_id));
-    return Array.from(s);
-  }, [allTx, recurring]);
-
-  const activeClientIds = useMemo(() => Array.from(activeRecByClient.keys()), [activeRecByClient]);
+  // Classificação Ativo/Inativo baseada em clients.client_status (não em recorrência)
+  const activeClientIds = useMemo(
+    () => clientIds.filter((id) => clientById[id]?.client_status === "ativo"),
+    [clientIds, clientById],
+  );
   const inactiveClientIds = useMemo(
-    () => allClientIds.filter((id) => !activeRecByClient.has(id)),
-    [allClientIds, activeRecByClient],
+    () => clientIds.filter((id) => clientById[id]?.client_status === "inativo"),
+    [clientIds, clientById],
   );
 
   const lastPaidByClient = useMemo(() => {
@@ -262,6 +187,15 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
       });
     return m;
   }, [paidTx]);
+
+  const lastTxByClient = useMemo(() => {
+    const m = new Map<string, any>();
+    [...allTx].sort((a: any, b: any) => (b.due_date ?? "").localeCompare(a.due_date ?? ""))
+      .forEach((t: any) => {
+        if (t.client_id && !m.has(t.client_id)) m.set(t.client_id, t);
+      });
+    return m;
+  }, [allTx]);
 
   const goNewTx = (clientId?: string) => {
     onClose();
@@ -354,8 +288,6 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
             <TabsTrigger value="overview">Visão geral</TabsTrigger>
             <TabsTrigger value="active">Clientes ativos</TabsTrigger>
             <TabsTrigger value="inactive">Clientes inativos</TabsTrigger>
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-            <TabsTrigger value="recurring">Recorrências</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
           </TabsList>
         </div>
@@ -420,15 +352,15 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
           {/* Clientes ativos */}
           <TabsContent value="active" className="mt-0">
             {activeClientIds.length === 0 ? (
-              <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum cliente ativo neste serviço." />
+              <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum cliente ativo com histórico neste serviço." />
             ) : (
               <div className="space-y-2">
                 {activeClientIds.map((cid) => {
                   const c = clientById[cid];
                   const recs = activeRecByClient.get(cid) ?? [];
-                  const total = recs.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
-                  const nextDue = recs.map((r: any) => r.next_due_date).filter(Boolean).sort()[0];
                   const lastPaid = lastPaidByClient.get(cid);
+                  const lastTx = lastTxByClient.get(cid);
+                  const rec = recs[0];
                   return (
                     <div key={cid} className="glass rounded-xl p-3 flex items-center gap-3">
                       <ClientLogo client={c} size="md" />
@@ -436,17 +368,32 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm truncate">{c?.name ?? "Cliente"}</span>
                           <FinancialStatusBadge value={c?.financial_status} />
+                          {rec && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+                              <Repeat className="h-3 w-3" />
+                              Recorrência · {formatBRL(rec.amount)} · {RECURRENCE_LABELS[rec.frequency as keyof typeof RECURRENCE_LABELS] ?? rec.frequency}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 mt-0.5">
-                          <span>{formatBRL(total)} {recs[0]?.frequency ? `· ${RECURRENCE_LABELS[recs[0].frequency as keyof typeof RECURRENCE_LABELS] ?? recs[0].frequency}` : ""}</span>
-                          {nextDue && <span>· Próx: {formatDate(nextDue)}</span>}
-                          {lastPaid && <span>· Últ. pag: {formatDate(lastPaid.paid_at ?? lastPaid.due_date)}</span>}
+                          {lastPaid ? (
+                            <span>Última compra: {formatDate(lastPaid.paid_at ?? lastPaid.due_date)} · {formatBRL(lastPaid.amount_gross)}</span>
+                          ) : lastTx ? (
+                            <span>Última mov.: {formatDate(lastTx.due_date)}</span>
+                          ) : (
+                            <span>Sem movimentações</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button size="sm" variant="ghost" onClick={() => goNewTx(cid)} title="Novo lançamento">
                           <Plus className="h-4 w-4" />
                         </Button>
+                        {isRecurring && (
+                          <Button size="sm" variant="ghost" onClick={() => goNewRec(cid)} title="Nova recorrência">
+                            <Repeat className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => goClient(cid)} title="Abrir cliente">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
@@ -461,14 +408,13 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
           {/* Clientes inativos */}
           <TabsContent value="inactive" className="mt-0">
             {inactiveClientIds.length === 0 ? (
-              <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum cliente inativo encontrado." />
+              <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum cliente inativo com histórico neste serviço." />
             ) : (
               <div className="space-y-2">
                 {inactiveClientIds.map((cid) => {
                   const c = clientById[cid];
                   const lastPaid = lastPaidByClient.get(cid);
-                  const lastTx = allTx.filter((t: any) => t.client_id === cid)
-                    .sort((a: any, b: any) => (b.due_date ?? "").localeCompare(a.due_date ?? ""))[0];
+                  const lastTx = lastTxByClient.get(cid);
                   return (
                     <div key={cid} className="glass rounded-xl p-3 flex items-center gap-3">
                       <ClientLogo client={c} size="md" />
@@ -476,11 +422,18 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm truncate">{c?.name ?? "Cliente"}</span>
                           <FinancialStatusBadge value={c?.financial_status} />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/60 text-muted-foreground">
+                            Inativo no cadastro
+                          </span>
                         </div>
                         <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 mt-0.5">
-                          {lastPaid && <span>Última compra: {formatDate(lastPaid.paid_at ?? lastPaid.due_date)} · {formatBRL(lastPaid.amount_gross)}</span>}
-                          {!lastPaid && lastTx && <span>Última mov.: {formatDate(lastTx.due_date)}</span>}
-                          <span>· Inativo no serviço</span>
+                          {lastPaid ? (
+                            <span>Última compra: {formatDate(lastPaid.paid_at ?? lastPaid.due_date)} · {formatBRL(lastPaid.amount_gross)}</span>
+                          ) : lastTx ? (
+                            <span>Última mov.: {formatDate(lastTx.due_date)}</span>
+                          ) : (
+                            <span>Sem movimentações</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -503,60 +456,9 @@ function DossierBody({ serviceId, onEdit, onClose }: { serviceId: string; onEdit
             )}
           </TabsContent>
 
-          {/* Financeiro */}
-          <TabsContent value="financeiro" className="mt-0">
-            <FinanceiroTab allTx={allTx} clientById={clientById} period={period} range={range} />
-          </TabsContent>
-
-          {/* Recorrências */}
-          <TabsContent value="recurring" className="mt-0">
-            {recurring.length === 0 ? (
-              <EmptyState icon={<Repeat className="h-6 w-6" />} title="Nenhuma recorrência vinculada a este serviço." />
-            ) : (
-              <div className="space-y-2">
-                {recurring.map((r: any) => {
-                  const c = clientById[r.client_id];
-                  return (
-                    <div key={r.id} className="glass rounded-xl p-3 flex items-center gap-3 flex-wrap">
-                      <ClientLogo client={c} size="md" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm truncate">{c?.name ?? "Cliente"}</span>
-                          <StatusBadge status={r.status} />
-                        </div>
-                        <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 mt-0.5">
-                          <span>{r.description}</span>
-                          <span>· {formatBRL(r.amount)}</span>
-                          <span>· {RECURRENCE_LABELS[r.frequency as keyof typeof RECURRENCE_LABELS] ?? r.frequency}</span>
-                          <span>· Próx: {formatDate(r.next_due_date)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {r.status === "ativo" && (
-                          <Button size="sm" variant="ghost" onClick={() => generateNext.mutate(r)} title="Gerar próxima" disabled={generateNext.isPending}>
-                            <Zap className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button size="sm" variant="ghost" onClick={() => toggleRecStatus.mutate(r)} title={r.status === "ativo" ? "Pausar" : "Ativar"}>
-                          {r.status === "ativo" ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => goClient(r.client_id)} title="Abrir cliente">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-                <Button variant="outline" onClick={() => goNewRec()} className="w-full gap-2 mt-2">
-                  <Plus className="h-4 w-4" /> Nova recorrência neste serviço
-                </Button>
-              </div>
-            )}
-          </TabsContent>
-
           {/* Timeline */}
           <TabsContent value="timeline" className="mt-0">
-            <TimelineTab service={service} allTx={allTx} recurring={recurring} clientById={clientById} />
+            <TimelineTab service={service} allTx={allTx} recurring={recurring} clientById={clientById} range={range} period={period} />
           </TabsContent>
         </div>
       </Tabs>
@@ -592,88 +494,9 @@ function TxRow({ t, client, positive }: { t: any; client?: any; positive?: boole
   );
 }
 
-function FinanceiroTab({
-  allTx, clientById, period, range,
-}: {
-  allTx: any[]; clientById: Record<string, any>; period: Period; range: { from: string | null; to: string | null };
-}) {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-
-  const filtered = allTx.filter((t: any) => {
-    if (period !== "all") {
-      if (range.from && (t.due_date ?? "") < range.from) return false;
-      if (range.to && (t.due_date ?? "") > range.to) return false;
-    }
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
-    if (typeFilter !== "all" && t.type !== typeFilter) return false;
-    return true;
-  });
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-[11px]">Status</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="pago">Pago</SelectItem>
-              <SelectItem value="cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Tipo</Label>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="receita_propria">Receita</SelectItem>
-              <SelectItem value="comissao">Comissão</SelectItem>
-              <SelectItem value="cashback">Cashback</SelectItem>
-              <SelectItem value="taxa">Taxa</SelectItem>
-              <SelectItem value="despesa_propria">Despesa</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState icon={<Wallet className="h-6 w-6" />} title="Nenhum lançamento vinculado a este serviço." />
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((t: any) => {
-            const positive = ["receita_propria", "comissao", "cashback"].includes(t.type);
-            const c = clientById[t.client_id];
-            return (
-              <div key={t.id} className="glass rounded-xl p-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{t.description}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
-                    <span className="capitalize">{t.type.replace("_", " ")}</span>
-                    {c && <><span>·</span><span className="truncate max-w-[10rem]">{c.name}</span></>}
-                    <span>·</span><span>{formatDate(t.due_date)}</span>
-                  </div>
-                </div>
-                <StatusBadge status={t.status} />
-                <span className={cn("font-semibold text-sm", positive ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
-                  {formatBRL(t.amount_gross)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function TimelineTab({
-  service, allTx, recurring, clientById,
-}: { service: any; allTx: any[]; recurring: any[]; clientById: Record<string, any> }) {
+  service, allTx, recurring, clientById, range, period,
+}: { service: any; allTx: any[]; recurring: any[]; clientById: Record<string, any>; range: { from: string | null; to: string | null }; period: Period }) {
   type Ev = { date: string; icon: React.ReactNode; title: string; desc?: string; clientName?: string; amount?: number | null };
   const events: Ev[] = [];
 
@@ -703,15 +526,23 @@ function TimelineTab({
     });
   });
 
-  events.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const filtered = events.filter((e) => {
+    if (period === "all") return true;
+    const d = (e.date ?? "").slice(0, 10);
+    if (range.from && d < range.from) return false;
+    if (range.to && d > range.to) return false;
+    return true;
+  });
 
-  if (events.length === 0) {
-    return <EmptyState icon={<CalendarClock className="h-6 w-6" />} title="Nenhum evento encontrado para este serviço." />;
+  filtered.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
+  if (filtered.length === 0) {
+    return <EmptyState icon={<CalendarClock className="h-6 w-6" />} title="Nenhum evento encontrado para este serviço no período." />;
   }
 
   return (
     <ol className="space-y-3">
-      {events.map((e, idx) => (
+      {filtered.map((e, idx) => (
         <li key={idx} className="flex gap-3">
           <div className="h-8 w-8 shrink-0 rounded-full bg-secondary/50 flex items-center justify-center">{e.icon}</div>
           <div className="flex-1 min-w-0">
