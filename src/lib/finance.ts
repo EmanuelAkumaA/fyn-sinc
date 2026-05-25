@@ -18,6 +18,12 @@ export function invalidateFinanceCaches(qc: QueryClient) {
     "client-transactions",
     "wallet",
     "calendar-events",
+    "service-summary",
+    "service-transactions",
+    "service-clients",
+    "service-recurring",
+    "service-timeline",
+    "recorrencias",
   ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
 
