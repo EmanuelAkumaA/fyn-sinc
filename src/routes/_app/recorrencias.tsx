@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Repeat, Play, Pause, Pencil, Trash2, Zap, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,11 @@ import { formatBRL, formatDate, getCurrentOrgId, nextAnchoredDate, RECURRENCE_LA
 
 export const Route = createFileRoute("/_app/recorrencias")({
   component: RecorrenciasPage,
+  validateSearch: z.object({
+    service_id: z.string().uuid().optional(),
+    client_id: z.string().uuid().optional(),
+    new: z.string().optional(),
+  }),
   head: () => ({ meta: [{ title: "Recorrências — Fyn Sinc" }] }),
 });
 
@@ -27,8 +33,20 @@ const STATUSES = ["ativo", "pausado", "cancelado", "inativo"] as const;
 
 function RecorrenciasPage() {
   const qc = useQueryClient();
+  const routeSearch = useSearch({ from: "/_app/recorrencias" });
+  const navigate = useNavigate({ from: "/recorrencias" });
   const [openSheet, setOpenSheet] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (routeSearch.new === "1") {
+      setEditing(null);
+      setInitialServiceId(routeSearch.service_id ?? null);
+      setOpenSheet(true);
+      navigate({ search: {} as any, replace: true });
+    }
+  }, [routeSearch.new, routeSearch.service_id, navigate]);
   const [toDelete, setToDelete] = useState<any | null>(null);
   const [zapTarget, setZapTarget] = useState<any | null>(null);
   const [zapMode, setZapMode] = useState<"one" | "bulk">("one");
@@ -348,11 +366,12 @@ function RecorrenciasPage() {
         </div>
       )}
 
-      <Sheet open={openSheet} onOpenChange={(o) => { setOpenSheet(o); if (!o) setEditing(null); }}>
+      <Sheet open={openSheet} onOpenChange={(o) => { setOpenSheet(o); if (!o) { setEditing(null); setInitialServiceId(null); } }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? "Editar recorrência" : "Nova recorrência"}</SheetTitle></SheetHeader>
           <RecurrenceForm
-            initial={editing}
+            key={editing?.id ?? initialServiceId ?? "blank"}
+            initial={editing ?? (initialServiceId ? { service_id: initialServiceId } : null)}
             clients={clients}
             banks={banks}
             services={services}

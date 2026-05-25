@@ -337,6 +337,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "financial_transactions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_service_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
             foreignKeyName: "financial_transactions_transfer_to_bank_id_fkey"
             columns: ["transfer_to_bank_id"]
             isOneToOne: false
@@ -577,6 +584,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_service_summary"
+            referencedColumns: ["service_id"]
           },
         ]
       }
@@ -955,6 +969,37 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_service_summary: {
+        Row: {
+          active_clients_count: number | null
+          active_mrr: number | null
+          active_recurring_count: number | null
+          average_ticket: number | null
+          category: string | null
+          default_value: number | null
+          description: string | null
+          inactive_clients_count: number | null
+          organization_id: string | null
+          overdue_amount: number | null
+          paid_transactions_count: number | null
+          pending_amount: number | null
+          service_id: string | null
+          service_name: string | null
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          status: Database["public"]["Enums"]["entity_status"] | null
+          total_clients_count: number | null
+          total_revenue: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Wallet, CheckCircle2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,11 @@ import { upsertCashbackForExpense, invalidateFinanceCaches } from "@/lib/finance
 
 export const Route = createFileRoute("/_app/financeiro")({
   component: FinanceiroPage,
+  validateSearch: z.object({
+    service_id: z.string().uuid().optional(),
+    client_id: z.string().uuid().optional(),
+    new: z.string().optional(),
+  }),
   head: () => ({ meta: [{ title: "Financeiro — Fyn Sinc" }] }),
 });
 
@@ -47,9 +53,21 @@ function monthRange(offset: number) {
 
 function FinanceiroPage() {
   const qc = useQueryClient();
+  const search = useSearch({ from: "/_app/financeiro" });
+  const navigate = useNavigate({ from: "/financeiro" });
   const [openNew, setOpenNew] = useState(false);
+  const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
   const [payTx, setPayTx] = useState<any | null>(null);
   const [toDelete, setToDelete] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (search.new === "1") {
+      setInitialServiceId(search.service_id ?? null);
+      setOpenNew(true);
+      navigate({ search: {} as any, replace: true });
+    }
+  }, [search.new, search.service_id, navigate]);
+
 
   // Filtros
   const [period, setPeriod] = useState<string>("this_month");
@@ -156,7 +174,7 @@ function FinanceiroPage() {
         title="Financeiro"
         subtitle="Lançamentos, taxas e transferências"
         actions={
-          <Sheet open={openNew} onOpenChange={setOpenNew}>
+          <Sheet open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) setInitialServiceId(null); }}>
             <SheetTrigger asChild>
               <Button className="gap-2" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
                 <Plus className="h-4 w-4" /> Novo lançamento
@@ -165,9 +183,11 @@ function FinanceiroPage() {
             <SheetContent className="w-full sm:max-w-md overflow-y-auto">
               <SheetHeader><SheetTitle>Novo lançamento</SheetTitle></SheetHeader>
               <NewTxForm
+                key={initialServiceId ?? "blank"}
                 clients={clients}
                 banks={banks}
                 services={services}
+                initialServiceId={initialServiceId}
                 onSubmit={(d: any) => create.mutate(d)}
                 loading={create.isPending}
               />
@@ -320,13 +340,13 @@ function FinanceiroPage() {
   );
 }
 
-function NewTxForm({ clients, banks, services, onSubmit, loading }: any) {
+function NewTxForm({ clients, banks, services, initialServiceId, onSubmit, loading }: any) {
   const [form, setForm] = useState({
     type: "receita_propria",
     description: "",
     amount_gross: "",
     client_id: "",
-    service_id: "",
+    service_id: initialServiceId ?? "",
     bank_id: "",
     transfer_to_bank_id: "",
     due_date: new Date().toISOString().slice(0, 10),
