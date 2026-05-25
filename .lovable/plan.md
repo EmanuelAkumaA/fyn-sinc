@@ -1,68 +1,42 @@
-# Correção do Dossiê do Serviço
+# Agrupar Financeiro em 3 seções colapsáveis
 
-Escopo restrito ao módulo Serviços (view `v_service_summary` + componente `ServiceDossier`). Nada mais é alterado.
+## Objetivo
+Na página `/financeiro`, substituir a lista plana de lançamentos por 3 grupos colapsáveis (`Collapsible` do shadcn) que classificam dinamicamente cada transação conforme seu status e data de vencimento.
 
-## 1. Atualizar a view `v_service_summary`
+## Regras de classificação
+Para cada item de `tx` (já filtrado pelos filtros atuais de Período/Tipo/Status/Cliente):
 
-Migration nova que substitui a view para que a classificação Ativo/Inativo passe a depender de `clients.client_status`, não do status da recorrência.
+- **Pendentes** → `status !== 'pago'` AND `status !== 'cancelado'` AND (`due_date` é nula OU `due_date >= hoje`)
+- **Vencidos** → `status !== 'pago'` AND `status !== 'cancelado'` AND `due_date < hoje`
+- **Pagos** → `status === 'pago'`
 
-- `all_clients`: clientes distintos com histórico no `service_id` (via `financial_transactions` OU `recurring_contracts`), já filtrado por `organization_id` igual ao do serviço.
-- `active_clients_count`: `COUNT(DISTINCT client_id)` entre `all_clients` onde `clients.client_status = 'ativo'`.
-- `inactive_clients_count`: idem com `client_status = 'inativo'`.
-- `total_clients_count`: `COUNT(DISTINCT client_id)` de `all_clients` (independe do status do cliente).
-- Receita, ticket médio, em atraso, pendente, MRR, contagem de recorrências ativas: mantidos como hoje.
-- View continua `security_invoker = true` (respeita RLS, portanto `organization_id`).
+`hoje` = data local truncada (sem hora). Cancelados continuam aparecendo? → seguem o filtro atual de Status; quando o usuário escolher "Todos", cancelados serão tratados como Pendentes neutros (ou podemos ocultá-los do agrupamento). **Decisão proposta:** cancelados ficam fora dos 3 grupos (não aparecem) quando o filtro de status é "Todos", para manter o foco estratégico. Se o usuário filtrar explicitamente por "Cancelado", caem em Pendentes visualmente. Confirme se preferir incluir cancelados em um 4º grupo.
 
-## 2. Ajustar `src/components/service-dossier.tsx`
+A classificação é **derivada no cliente** com `useMemo` a partir do `tx` existente — nenhuma mudança em queries, view do Supabase, ou lógica financeira.
 
-### 2.1 Classificação dos clientes (frontend)
-Hoje "ativo/inativo" usa presença de recorrência ativa. Trocar para usar `clients.client_status`:
+## Comportamento dos dropdowns
+- **Pendentes**: aberto por padrão na montagem.
+- **Vencidos**: fechado por padrão; quando aberto, fecha os outros dois.
+- **Pagos**: fechado por padrão; quando aberto, fecha os outros dois.
+- Comportamento "accordion exclusivo": apenas um aberto por vez. Implementado com um único estado `openSection: 'pendentes' | 'vencidos' | 'pagos'`.
+- Cabeçalho de cada seção mostra: título, contador `(n)`, e soma total em BRL à direita.
+- Vencidos com `count > 0` ganha um indicador visual de alerta (chip vermelho no cabeçalho) para chamar atenção mesmo fechado.
 
-- `clientIds`: união de `client_id` de `allTx` + `recurring` (mantém).
-- Buscar `clients` (já traz `client_status`).
-- `activeClientIds` = clientes com histórico **e** `client_status === 'ativo'`.
-- `inactiveClientIds` = clientes com histórico **e** `client_status === 'inativo'`.
-- Clientes sem histórico no `service_id` não entram (já garantido — só entram via `allTx`/`recurring`).
-- Recorrência ativa vira informação adicional (chip "Recorrência ativa") na linha do cliente ativo, mas não define a aba.
+## Mudanças de arquivo
+Apenas `src/routes/_app/financeiro.tsx`:
 
-### 2.2 Remover abas Financeiro e Recorrências
-- Remover `<TabsTrigger value="financeiro">` e `<TabsTrigger value="recurring">` e seus respectivos `<TabsContent>`.
-- Remover funções `FinanceiroTab` e o bloco de listagem de recorrências (e ícones/imports que ficarem órfãos: `PauseCircle`, `PlayCircle`, `Zap`, etc.).
-- Manter mutations `generateNext` e `toggleRecStatus`? **Remover** — não são mais usadas no modal.
-- Abas finais: **Visão geral · Clientes ativos · Clientes inativos · Timeline**.
+1. Importar `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` de `@/components/ui/collapsible` e `ChevronDown` de `lucide-react`.
+2. Adicionar `useMemo` para derivar `{ pendentes, vencidos, pagos }` a partir de `tx`.
+3. Adicionar estado `openSection` com default `'pendentes'`.
+4. Substituir o bloco `{tx.length === 0 ? <EmptyState/> : <div>{tx.map(...)}</div>}` por 3 `<Collapsible>` empilhados, cada um renderizando a mesma row atual de transação (extrair para um pequeno componente local `TxRow` para evitar duplicação).
+5. Manter `EmptyState` apenas quando os 3 grupos estiverem vazios.
+6. Cabeçalho de cada seção segue o estilo `glass rounded-xl` já usado na página.
 
-### 2.3 Visão geral
-- Manter os MetricCards atuais (Clientes ativos, Já compraram, Receita, MRR/Avulsos pendentes, Ticket médio, Inadimplência) — já cobre o pedido.
-- Métrica "Já compraram" passa a exibir hint com `inactiveClientsCount` vindo da view corrigida.
-- Mantém "Últimas vendas" e "Próximos vencimentos".
+## Fora de escopo
+- Não altera Dashboard, Clientes, Bancos, Calendário, Serviços, Recorrências.
+- Não altera queries, view `v_service_summary`, ou regras financeiras.
+- Não muda os filtros existentes (Período/Tipo/Status/Cliente) — eles continuam aplicando antes do agrupamento.
+- Não altera o modal "Novo lançamento" nem o `PayTransactionDialog`.
 
-### 2.4 Cliente ativo (linha)
-- Logo, nome, badge financeira (`financial_status`).
-- Última movimentação com o serviço (data + valor) — derivada de `allTx` ordenada por `paid_at`/`due_date`.
-- Se tiver recorrência ativa: chip pequeno "Recorrência ativa · {valor} · {frequência}".
-- Ações: abrir cliente, novo lançamento (`goNewTx`), nova recorrência (`goNewRec`, opcional).
-
-### 2.5 Cliente inativo (linha)
-- Logo, nome, badge financeira.
-- Última movimentação com o serviço (data + valor pago ou pendente).
-- Texto "Inativo no cadastro".
-- Ações: abrir cliente, novo lançamento, nova recorrência.
-- (Reativar cliente fica como ação futura — só seria possível alterando o cadastro do cliente, fora do escopo deste modal.)
-
-### 2.6 Timeline
-- Mantém a agregação atual (criação do serviço, lançamentos, pagamentos, recorrências criadas), ordem desc.
-
-## 3. Cache / contadores do card da listagem
-A página `servicos.tsx` lê de `v_service_summary` — assim que a view for atualizada, os chips do card (`Ativos`, `Já compraram`, `Receita`, etc.) ficam coerentes automaticamente. Nenhuma mudança adicional necessária em `servicos.tsx`.
-
-## 4. Segurança / organization_id
-- View segue `security_invoker = true` → RLS de `services`, `financial_transactions`, `recurring_contracts`, `clients` aplicam.
-- Queries do componente já filtram por `service_id` e dependem de RLS por org (sem cross-org). Sem mudanças necessárias.
-
-## Arquivos afetados
-- `supabase/migrations/<novo>.sql` — substitui `v_service_summary` com nova lógica baseada em `clients.client_status`.
-- `src/components/service-dossier.tsx` — nova lógica de classificação, remoção das abas Financeiro/Recorrências, ajustes de linhas.
-- Regenerar `src/integrations/supabase/types.ts` ocorre automaticamente após a migration.
-
-## O que NÃO é alterado
-Dashboard, Clientes, Financeiro, Bancos, Calendário, Recorrências (página), regras financeiras globais, página `servicos.tsx` (exceto consumo automático da view atualizada).
+## Pergunta de confirmação
+Cancelados: ocultar dos 3 grupos (proposta) ou criar um 4º dropdown "Cancelados" no final?
