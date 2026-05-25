@@ -150,7 +150,13 @@ export function ClientForm({
           <Select
             value={form.type}
             onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, type: v, document: prev.document ? maskDocument(prev.document, v) : "" }))
+              setForm((prev) => ({
+                ...prev,
+                type: v,
+                // Re-mascarar usando apenas os dígitos para evitar formatação travada
+                // ao alternar entre PF (CPF) e PJ (CNPJ).
+                document: prev.document ? maskDocument(prev.document.replace(/\D/g, ""), v) : "",
+              }))
             }
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -161,13 +167,15 @@ export function ClientForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>CPF/CNPJ</Label>
+          <Label>{form.type === "PF" ? "CPF" : "CNPJ"}</Label>
           <Input
+            key={form.type}
             value={form.document}
             onChange={(e) => setForm({ ...form, document: maskDocument(e.target.value, form.type) })}
             inputMode="numeric"
             maxLength={form.type === "PF" ? 14 : 18}
             placeholder={form.type === "PF" ? "000.000.000-00" : "00.000.000/0000-00"}
+
           />
         </div>
       </div>

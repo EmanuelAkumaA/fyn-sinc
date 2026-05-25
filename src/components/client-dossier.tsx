@@ -361,21 +361,21 @@ function ClienteDetalhe({ id }: { id: string }) {
   return (
     <>
 
-      <header className="client-header p-4 sm:p-5 lg:p-6 mb-4 sm:mb-6" style={style}>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+      <header className="client-header p-4 sm:p-5 lg:p-6 mb-4 sm:mb-6 overflow-hidden" style={style}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0">
           <ClientLogo client={client} size="lg" glow />
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-bold truncate">{client.name}</h1>
-            <p className="text-sm text-muted-foreground break-words">
+            <p className="text-sm text-muted-foreground truncate">
               {client.type}{client.document && ` · ${client.document}`}
               {client.company && ` · ${client.company}`}
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground min-w-0">
               {client.phone && (
-                <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {client.phone}</span>
+                <span className="inline-flex items-center gap-1 truncate"><Phone className="h-3 w-3 shrink-0" /> {client.phone}</span>
               )}
               {client.email && (
-                <span className="inline-flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /> <span className="break-all">{client.email}</span></span>
+                <span className="inline-flex items-center gap-1 min-w-0 max-w-full"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{client.email}</span></span>
               )}
             </div>
           </div>
@@ -390,6 +390,7 @@ function ClienteDetalhe({ id }: { id: string }) {
           </div>
         </div>
       </header>
+
 
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
