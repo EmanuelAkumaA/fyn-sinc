@@ -286,57 +286,69 @@ function FinanceiroPage() {
         )}
       </div>
 
-      {tx.length === 0 ? (
+      {groups.pendentes.length + groups.vencidos.length + groups.pagos.length === 0 ? (
         <EmptyState icon={<Wallet className="h-6 w-6" />} title="Sem lançamentos" description="Nenhum lançamento encontrado para os filtros selecionados." />
       ) : (
-        <div className="space-y-2">
-          {tx.map((t) => {
-            const positive = ["receita_propria", "comissao", "cashback", "repasse_recebido"].includes(t.type);
-            const client = clients.find((c) => c.id === t.client_id);
+        <div className="space-y-3">
+          {([
+            { key: "pendentes" as const, label: "Pendentes", items: groups.pendentes, total: groups.totals.pendentes, tone: "default" as const },
+            { key: "vencidos" as const, label: "Vencidos", items: groups.vencidos, total: groups.totals.vencidos, tone: "danger" as const },
+            { key: "pagos" as const, label: "Pagos", items: groups.pagos, total: groups.totals.pagos, tone: "success" as const },
+          ]).map((sec) => {
+            const open = openSection === sec.key;
             return (
-              <div key={t.id} className="glass rounded-xl p-3 md:p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  {/* Coluna info */}
-                  <div className="flex items-start justify-between gap-3 sm:flex-1 sm:min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{t.description}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
-                        <span className="capitalize">{t.type.replace("_", " ")}</span>
-                        {client && <><span>·</span><span className="truncate max-w-[10rem]">{client.name}</span></>}
-                        <span>·</span>
-                        <span>{formatDate(t.due_date)}</span>
-                      </div>
+              <Collapsible
+                key={sec.key}
+                open={open}
+                onOpenChange={(o) => setOpenSection(o ? sec.key : (sec.key === "pendentes" ? "vencidos" : "pendentes"))}
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="glass rounded-xl p-3 md:p-4 w-full flex items-center gap-3 text-left hover:bg-secondary/30 transition-colors"
+                  >
+                    <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} />
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="font-medium text-sm">{sec.label}</span>
+                      <span className="text-xs text-muted-foreground">({sec.items.length})</span>
+                      {sec.key === "vencidos" && sec.items.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20 px-2 py-0.5 text-[10px] font-medium">
+                          <AlertTriangle className="h-3 w-3" /> atenção
+                        </span>
+                      )}
                     </div>
-                    {/* Valor — no mobile aparece ao lado da descrição */}
-                    <div className={`font-display font-semibold text-sm md:text-base shrink-0 ${positive ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]"}`}>
-                      {formatBRL(t.amount_gross)}
+                    <span className={`font-display font-semibold text-sm tabular-nums shrink-0 ${
+                      sec.tone === "danger" ? "text-[color:var(--destructive)]" :
+                      sec.tone === "success" ? "text-[color:var(--success)]" :
+                      "text-foreground"
+                    }`}>
+                      {formatBRL(sec.total)}
+                    </span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 space-y-2">
+                  {sec.items.length === 0 ? (
+                    <div className="glass rounded-xl p-4 text-xs text-muted-foreground text-center">
+                      Nenhum lançamento nesta categoria.
                     </div>
-                  </div>
-
-                  {/* Linha de ações (mobile: linha própria) */}
-                  <div className="flex items-center justify-end gap-2 sm:shrink-0">
-                    <StatusBadge status={t.status} />
-                    {t.status !== "pago" && (
-                      <Button size="icon" variant="ghost" onClick={() => setPayTx(t)} aria-label="Marcar como pago">
-                        <CheckCircle2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setToDelete(t)}
-                      aria-label="Excluir lançamento"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                  ) : (
+                    sec.items.map((t) => (
+                      <TxRow
+                        key={t.id}
+                        t={t}
+                        client={clients.find((c) => c.id === t.client_id)}
+                        onPay={() => setPayTx(t)}
+                        onDelete={() => setToDelete(t)}
+                      />
+                    ))
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
       )}
+
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
