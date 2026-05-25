@@ -39,13 +39,13 @@ function RecorrenciasPage() {
   const [initialServiceId, setInitialServiceId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (search.new === "1") {
+    if (routeSearch.new === "1") {
       setEditing(null);
-      setInitialServiceId(search.service_id ?? null);
+      setInitialServiceId(routeSearch.service_id ?? null);
       setOpenSheet(true);
       navigate({ search: {} as any, replace: true });
     }
-  }, [search.new, search.service_id, navigate]);
+  }, [routeSearch.new, routeSearch.service_id, navigate]);
   const [toDelete, setToDelete] = useState<any | null>(null);
   const [zapTarget, setZapTarget] = useState<any | null>(null);
   const [zapMode, setZapMode] = useState<"one" | "bulk">("one");
