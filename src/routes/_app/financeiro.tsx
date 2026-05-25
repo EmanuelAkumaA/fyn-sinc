@@ -182,9 +182,11 @@ function FinanceiroPage() {
             <SheetContent className="w-full sm:max-w-md overflow-y-auto">
               <SheetHeader><SheetTitle>Novo lançamento</SheetTitle></SheetHeader>
               <NewTxForm
+                key={initialServiceId ?? "blank"}
                 clients={clients}
                 banks={banks}
                 services={services}
+                initialServiceId={initialServiceId}
                 onSubmit={(d: any) => create.mutate(d)}
                 loading={create.isPending}
               />
