@@ -369,7 +369,8 @@ function RecorrenciasPage() {
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? "Editar recorrência" : "Nova recorrência"}</SheetTitle></SheetHeader>
           <RecurrenceForm
-            initial={editing}
+            key={editing?.id ?? initialServiceId ?? "blank"}
+            initial={editing ?? (initialServiceId ? { service_id: initialServiceId } : null)}
             clients={clients}
             banks={banks}
             services={services}
