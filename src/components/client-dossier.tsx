@@ -745,12 +745,12 @@ function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod,
           {upcoming.length === 0 ? <Empty>Sem vencimentos próximos.</Empty> : (
             <ul className="divide-y divide-border/50">
               {upcoming.map((t) => (
-                <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{t.description}</div>
-                    <div className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</div>
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <MarqueeText className="font-medium">{t.description}</MarqueeText>
+                    <MarqueeText className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</MarqueeText>
                   </div>
-                  <span className="font-display font-semibold">{formatBRL(Number(t.amount_gross))}</span>
+                  <span className="font-display font-semibold shrink-0 whitespace-nowrap tabular-nums">{formatBRL(Number(t.amount_gross))}</span>
                 </li>
               ))}
             </ul>
@@ -761,12 +761,12 @@ function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod,
           {latest.length === 0 ? <Empty>Nenhuma movimentação no período.</Empty> : (
             <ul className="divide-y divide-border/50">
               {latest.map((t) => (
-                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{t.description}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</div>
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <MarqueeText className="font-medium">{t.description}</MarqueeText>
+                    <MarqueeText className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</MarqueeText>
                   </div>
-                  <span className={cn("font-display font-semibold", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
+                  <span className={cn("font-display font-semibold shrink-0 whitespace-nowrap tabular-nums", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
                     {formatBRL(Number(t.amount_gross))}
                   </span>
                 </li>
@@ -885,13 +885,65 @@ const incomeTypes = new Set(["receita_propria", "comissao", "cashback", "repasse
 
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="glass rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display font-semibold">{title}</h3>
+    <div className="glass rounded-2xl p-4 overflow-hidden">
+      <div className="flex items-center justify-between mb-3 gap-2 min-w-0">
+        <h3 className="font-display font-semibold truncate">{title}</h3>
         {action}
       </div>
       {children}
     </div>
+  );
+}
+
+/**
+ * Texto que respeita o espaço disponível: trunca com "…" por padrão,
+ * mas se o conteúdo realmente exceder, ao passar o mouse roda em
+ * marquee horizontal contínuo. Em telas sem hover (mobile), apenas trunca.
+ */
+function MarqueeText({ children, className }: { children: React.ReactNode; className?: string }) {
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const trackRef = useRef<HTMLSpanElement | null>(null);
+  const [overflow, setOverflow] = useState(false);
+  const [hover, setHover] = useState(false);
+  const [style, setStyle] = useState<CSSProperties>({});
+
+  useEffect(() => {
+    const el = trackRef.current;
+    const wrap = containerRef.current;
+    if (!el || !wrap) return;
+    const check = () => {
+      const isOver = el.scrollWidth - wrap.clientWidth > 1;
+      setOverflow(isOver);
+      if (isOver) {
+        const distancePx = el.scrollWidth - wrap.clientWidth + 24;
+        // ~60px/s; mínimo 4s, máximo 16s
+        const duration = Math.min(16, Math.max(4, distancePx / 60));
+        setStyle({
+          ["--marquee-distance" as string]: `${distancePx}px`,
+          ["--marquee-duration" as string]: `${duration}s`,
+        });
+      }
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(wrap);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children]);
+
+  const running = overflow && hover;
+  return (
+    <span
+      ref={containerRef}
+      className={cn("block overflow-hidden", running ? "marquee-run" : "truncate", className)}
+      style={running ? style : undefined}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span ref={trackRef} className={running ? "marquee-track" : undefined}>
+        {children}
+      </span>
+    </span>
   );
 }
 

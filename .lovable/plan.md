@@ -1,42 +1,30 @@
-# Agrupar Financeiro em 3 seções colapsáveis
+## Problema
 
-## Objetivo
-Na página `/financeiro`, substituir a lista plana de lançamentos por 3 grupos colapsáveis (`Collapsible` do shadcn) que classificam dinamicamente cada transação conforme seu status e data de vencimento.
+No dossiê do cliente, na lista **Últimas movimentações** (e na lista de **Próximos vencimentos** logo ao lado, que usa o mesmo padrão), descrições longas como *"Cashback de Compra de Dominio para Evoluí"* podem escapar do card porque o valor à direita (`R$ 0,60`) não tem `shrink-0` e a `<li>` não força `min-w-0` em toda a cadeia.
 
-## Regras de classificação
-Para cada item de `tx` (já filtrado pelos filtros atuais de Período/Tipo/Status/Cliente):
+## O que vou alterar
 
-- **Pendentes** → `status !== 'pago'` AND `status !== 'cancelado'` AND (`due_date` é nula OU `due_date >= hoje`)
-- **Vencidos** → `status !== 'pago'` AND `status !== 'cancelado'` AND `due_date < hoje`
-- **Pagos** → `status === 'pago'`
+Apenas em `src/components/client-dossier.tsx`, nos itens dessas duas listas:
 
-`hoje` = data local truncada (sem hora). Cancelados continuam aparecendo? → seguem o filtro atual de Status; quando o usuário escolher "Todos", cancelados serão tratados como Pendentes neutros (ou podemos ocultá-los do agrupamento). **Decisão proposta:** cancelados ficam fora dos 3 grupos (não aparecem) quando o filtro de status é "Todos", para manter o foco estratégico. Se o usuário filtrar explicitamente por "Cancelado", caem em Pendentes visualmente. Confirme se preferir incluir cancelados em um 4º grupo.
+1. **Respeitar o espaço do card**
+   - Garantir `min-w-0` na `<li>` e no wrapper de texto.
+   - Adicionar `shrink-0` + `whitespace-nowrap` no valor (`R$ ...`) para ele não empurrar a descrição.
+   - Manter `truncate` na descrição (já existe) e adicionar `truncate` também na linha de tipo/data.
 
-A classificação é **derivada no cliente** com `useMemo` a partir do `tx` existente — nenhuma mudança em queries, view do Supabase, ou lógica financeira.
+2. **Animação de marquee ao passar o mouse**
+   - Criar um pequeno componente `MarqueeText` que:
+     - mede se o texto está realmente truncado (scrollWidth > clientWidth);
+     - se sim, ao `hover` desliza o texto da direita para a esquerda em loop suave (CSS `@keyframes marquee` com `transform: translateX`), pausa quando o mouse sai;
+     - se não, comporta-se como `<span class="truncate">` normal.
+   - Definir o keyframe `marquee` em `src/styles.css` (ex.: `@keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-100%) } }`) e uma classe utilitária `.animate-marquee` com `animation: marquee 8s linear infinite`.
+   - Usar `MarqueeText` na descrição dos itens de **Últimas movimentações** e **Próximos vencimentos** dentro do dossiê.
 
-## Comportamento dos dropdowns
-- **Pendentes**: aberto por padrão na montagem.
-- **Vencidos**: fechado por padrão; quando aberto, fecha os outros dois.
-- **Pagos**: fechado por padrão; quando aberto, fecha os outros dois.
-- Comportamento "accordion exclusivo": apenas um aberto por vez. Implementado com um único estado `openSection: 'pendentes' | 'vencidos' | 'pagos'`.
-- Cabeçalho de cada seção mostra: título, contador `(n)`, e soma total em BRL à direita.
-- Vencidos com `count > 0` ganha um indicador visual de alerta (chip vermelho no cabeçalho) para chamar atenção mesmo fechado.
+## Fora do escopo
 
-## Mudanças de arquivo
-Apenas `src/routes/_app/financeiro.tsx`:
+- Não mexo em outras telas (Financeiro, Dashboard, Bancos, etc.).
+- Não altero dados, queries ou regras de negócio.
+- Não mudo o layout dos cards de métricas no topo.
 
-1. Importar `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` de `@/components/ui/collapsible` e `ChevronDown` de `lucide-react`.
-2. Adicionar `useMemo` para derivar `{ pendentes, vencidos, pagos }` a partir de `tx`.
-3. Adicionar estado `openSection` com default `'pendentes'`.
-4. Substituir o bloco `{tx.length === 0 ? <EmptyState/> : <div>{tx.map(...)}</div>}` por 3 `<Collapsible>` empilhados, cada um renderizando a mesma row atual de transação (extrair para um pequeno componente local `TxRow` para evitar duplicação).
-5. Manter `EmptyState` apenas quando os 3 grupos estiverem vazios.
-6. Cabeçalho de cada seção segue o estilo `glass rounded-xl` já usado na página.
+## Resultado esperado
 
-## Fora de escopo
-- Não altera Dashboard, Clientes, Bancos, Calendário, Serviços, Recorrências.
-- Não altera queries, view `v_service_summary`, ou regras financeiras.
-- Não muda os filtros existentes (Período/Tipo/Status/Cliente) — eles continuam aplicando antes do agrupamento.
-- Não altera o modal "Novo lançamento" nem o `PayTransactionDialog`.
-
-## Pergunta de confirmação
-Cancelados: ocultar dos 3 grupos (proposta) ou criar um 4º dropdown "Cancelados" no final?
+Descrições longas ficam contidas no card, cortadas com `…`. Ao passar o mouse sobre uma descrição truncada, o texto rola horizontalmente em loop até o usuário tirar o cursor.
