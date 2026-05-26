@@ -745,12 +745,12 @@ function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod,
           {upcoming.length === 0 ? <Empty>Sem vencimentos próximos.</Empty> : (
             <ul className="divide-y divide-border/50">
               {upcoming.map((t) => (
-                <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{t.description}</div>
-                    <div className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</div>
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <MarqueeText className="font-medium">{t.description}</MarqueeText>
+                    <MarqueeText className="text-xs text-muted-foreground">vence {formatDate(t.due_date)}</MarqueeText>
                   </div>
-                  <span className="font-display font-semibold">{formatBRL(Number(t.amount_gross))}</span>
+                  <span className="font-display font-semibold shrink-0 whitespace-nowrap tabular-nums">{formatBRL(Number(t.amount_gross))}</span>
                 </li>
               ))}
             </ul>
@@ -761,12 +761,12 @@ function OverviewTab({ clientId, tx, recurring, inadimplente, period, setPeriod,
           {latest.length === 0 ? <Empty>Nenhuma movimentação no período.</Empty> : (
             <ul className="divide-y divide-border/50">
               {latest.map((t) => (
-                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{t.description}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</div>
+                <li key={t.id} className="flex items-center justify-between py-2 text-sm gap-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <MarqueeText className="font-medium">{t.description}</MarqueeText>
+                    <MarqueeText className="text-xs text-muted-foreground capitalize">{t.type.replace(/_/g, " ")} · {formatDate(t.due_date ?? t.paid_at)}</MarqueeText>
                   </div>
-                  <span className={cn("font-display font-semibold", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
+                  <span className={cn("font-display font-semibold shrink-0 whitespace-nowrap tabular-nums", incomeTypes.has(t.type) ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]")}>
                     {formatBRL(Number(t.amount_gross))}
                   </span>
                 </li>
