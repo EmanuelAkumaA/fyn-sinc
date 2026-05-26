@@ -186,3 +186,17 @@
 *::-webkit-scrollbar {
   display: none;                /* Chrome, Safari, Edge */
 }
+
+/* Marquee — usado quando texto está truncado e precisa rolar no hover */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(calc(-1 * var(--marquee-distance, 50%))); }
+}
+.marquee-track {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+.marquee-run .marquee-track {
+  animation: marquee-scroll var(--marquee-duration, 8s) linear infinite;
+}
