@@ -1,30 +1,39 @@
-## Problema
+## Cashback em "Usar aporte"
 
-No dossiê do cliente, na lista **Últimas movimentações** (e na lista de **Próximos vencimentos** logo ao lado, que usa o mesmo padrão), descrições longas como *"Cashback de Compra de Dominio para Evoluí"* podem escapar do card porque o valor à direita (`R$ 0,60`) não tem `shrink-0` e a `<li>` não força `min-w-0` em toda a cadeia.
+Adiciona controle de cashback nos usos de aporte (geralmente pagos no cartão), permitindo registrar o valor esperado e depois marcar como recebido.
 
-## O que vou alterar
+### 1. Banco de dados (migração)
 
-Apenas em `src/components/client-dossier.tsx`, nos itens dessas duas listas:
+Novos campos em `financial_transactions` (usados apenas em `type = 'uso_repasse'`):
 
-1. **Respeitar o espaço do card**
-   - Garantir `min-w-0` na `<li>` e no wrapper de texto.
-   - Adicionar `shrink-0` + `whitespace-nowrap` no valor (`R$ ...`) para ele não empurrar a descrição.
-   - Manter `truncate` na descrição (já existe) e adicionar `truncate` também na linha de tipo/data.
+- `cashback_expected` numeric default 0 — valor previsto
+- `cashback_received` numeric default 0 — valor efetivamente recebido
+- `cashback_received_at` date — data do recebimento
+- `cashback_bank_id` uuid — banco onde caiu o cashback
+- `cashback_status` text default 'nenhum' — `nenhum | pendente | recebido`
 
-2. **Animação de marquee ao passar o mouse**
-   - Criar um pequeno componente `MarqueeText` que:
-     - mede se o texto está realmente truncado (scrollWidth > clientWidth);
-     - se sim, ao `hover` desliza o texto da direita para a esquerda em loop suave (CSS `@keyframes marquee` com `transform: translateX`), pausa quando o mouse sai;
-     - se não, comporta-se como `<span class="truncate">` normal.
-   - Definir o keyframe `marquee` em `src/styles.css` (ex.: `@keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-100%) } }`) e uma classe utilitária `.animate-marquee` com `animation: marquee 8s linear infinite`.
-   - Usar `MarqueeText` na descrição dos itens de **Últimas movimentações** e **Próximos vencimentos** dentro do dossiê.
+### 2. Formulário "Usar aporte" (`src/routes/_app/aportes.tsx` → `UsoForm`)
 
-## Fora do escopo
+Adiciona seção "Cashback (opcional)" sempre visível:
+- Campo `Cashback esperado (R$)` — numérico, opcional
+- Ao salvar, se `cashback_expected > 0` → `cashback_status = 'pendente'`, senão `'nenhum'`
 
-- Não mexo em outras telas (Financeiro, Dashboard, Bancos, etc.).
-- Não altero dados, queries ou regras de negócio.
-- Não mudo o layout dos cards de métricas no topo.
+### 3. Lista de movimentações
 
-## Resultado esperado
+Em cada linha de "uso_repasse" com cashback:
+- Mostrar chip `Cashback: R$ X esperado` (amarelo) ou `Cashback recebido R$ X` (verde)
+- Botão "Receber cashback" abre dialog para informar:
+  - Valor recebido (default = esperado)
+  - Data
+  - Banco de destino
+- Ao confirmar: atualiza `cashback_received`, `cashback_received_at`, `cashback_bank_id`, `cashback_status='recebido'` e cria uma transação auxiliar `type='receita'` no banco escolhido para refletir a entrada (mantém saldo bancário coerente).
 
-Descrições longas ficam contidas no card, cortadas com `…`. Ao passar o mouse sobre uma descrição truncada, o texto rola horizontalmente em loop até o usuário tirar o cursor.
+### 4. Métricas
+
+Novo card no topo: **Cashback pendente** (soma de `cashback_expected - cashback_received` onde status='pendente').
+
+### Fora de escopo
+
+- Não muda fluxo de "Novo aporte"
+- Não toca em third_party_plans (que já tem cashback próprio)
+- Sem mudanças em Financeiro/Dashboard/Bancos
