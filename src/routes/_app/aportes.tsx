@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Plus, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -228,6 +228,7 @@ function AportesPage() {
       const avail = Number(w?.available_balance ?? 0);
       if (amt > avail) throw new Error("Saldo insuficiente para esta plataforma. Registre um novo aporte antes de usar esse valor.");
 
+      const cashbackExp = Number(p.cashback_expected || 0);
       const { error } = await supabase.from("financial_transactions").insert({
         organization_id: org,
         type: "uso_repasse",
@@ -242,6 +243,8 @@ function AportesPage() {
         platform: p.platform,
         fornecedor: p.fornecedor || null,
         notes: p.notes || null,
+        cashback_expected: cashbackExp,
+        cashback_status: cashbackExp > 0 ? "pendente" : "nenhum",
       });
       if (error) throw error;
     },
@@ -252,6 +255,53 @@ function AportesPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const [cashbackTx, setCashbackTx] = useState<any>(null);
+  const receiveCashback = useMutation({
+    mutationFn: async (p: { tx: any; amount: number; date: string; bank_id: string }) => {
+      const org = await getCurrentOrgId();
+      if (!org) throw new Error("Sem organização");
+      const { error } = await supabase
+        .from("financial_transactions")
+        .update({
+          cashback_received: p.amount,
+          cashback_received_at: p.date,
+          cashback_bank_id: p.bank_id,
+          cashback_status: "recebido",
+        })
+        .eq("id", p.tx.id);
+      if (error) throw error;
+      const { error: e2 } = await supabase.from("financial_transactions").insert({
+        organization_id: org,
+        type: "cashback",
+        status: "pago",
+        description: `Cashback — ${p.tx.description}`,
+        amount_gross: p.amount,
+        amount_net: p.amount,
+        due_date: p.date,
+        paid_at: p.date,
+        client_id: p.tx.client_id,
+        bank_id: p.bank_id,
+        platform: p.tx.platform,
+        category: "cashback",
+        notes: `Cashback referente ao uso de aporte ${p.tx.id}`,
+      });
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Cashback recebido");
+      qc.invalidateQueries();
+      setCashbackTx(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const cashbackPendente = tx.reduce((s: number, t: any) => {
+    if (t.type === "uso_repasse" && t.cashback_status === "pendente") {
+      return s + (Number(t.cashback_expected) - Number(t.cashback_received || 0));
+    }
+    return s;
+  }, 0);
 
   return (
     <>
@@ -270,10 +320,11 @@ function AportesPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         <MetricCard label="Total aportado" value={formatBRL(totalAportado)} tone="success" />
         <MetricCard label="Total utilizado" value={formatBRL(totalUsado)} tone="destructive" />
         <MetricCard label="Saldo disponível" value={formatBRL(saldoDisp)} tone="primary" />
+        <MetricCard label="Cashback pendente" value={formatBRL(cashbackPendente)} />
         <MetricCard label="Clientes c/ saldo" value={String(clientesAtivos)} />
       </div>
 
@@ -346,8 +397,11 @@ function AportesPage() {
             <div className="space-y-2">
               {filteredTx.map((t: any) => {
                 const isAporte = t.type === "repasse_recebido";
+                const cbStatus = t.cashback_status as string | undefined;
+                const cbExp = Number(t.cashback_expected ?? 0);
+                const cbRec = Number(t.cashback_received ?? 0);
                 return (
-                  <div key={t.id} className="glass rounded-2xl p-4 flex items-center gap-3">
+                  <div key={t.id} className="glass rounded-2xl p-4 flex items-center gap-3 flex-wrap">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAporte ? "bg-[color:var(--success)]/15 text-[color:var(--success)]" : "bg-[color:var(--destructive)]/15 text-[color:var(--destructive)]"}`}>
                       {isAporte ? <ArrowDownToLine className="h-5 w-5" /> : <ArrowUpFromLine className="h-5 w-5" />}
                     </div>
@@ -364,6 +418,19 @@ function AportesPage() {
                         {t.bank_id && <><span>·</span><span>{bankById[t.bank_id]?.name}</span></>}
                       </div>
                     </div>
+                    {!isAporte && cbStatus === "pendente" && cbExp > 0 && (
+                      <>
+                        <span className="text-xs px-2 py-1 rounded-md bg-[color:var(--warning,theme(colors.amber.500))]/15 text-[color:var(--warning,theme(colors.amber.500))] whitespace-nowrap">
+                          Cashback {formatBRL(cbExp)} esperado
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => setCashbackTx(t)}>Receber cashback</Button>
+                      </>
+                    )}
+                    {!isAporte && cbStatus === "recebido" && (
+                      <span className="text-xs px-2 py-1 rounded-md bg-[color:var(--success)]/15 text-[color:var(--success)] whitespace-nowrap">
+                        Cashback recebido {formatBRL(cbRec)}
+                      </span>
+                    )}
                     <div className={`font-display font-semibold ${isAporte ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]"}`}>
                       {isAporte ? "+" : "−"} {formatBRL(t.amount_gross)}
                     </div>
@@ -389,7 +456,64 @@ function AportesPage() {
           <UsoForm clients={clients} banks={banks} wallet={wallet} onSubmit={(d: any) => createUso.mutate(d)} loading={createUso.isPending} />
         </SheetContent>
       </Sheet>
+      <CashbackDialog tx={cashbackTx} banks={banks} onClose={() => setCashbackTx(null)} onSubmit={(d: any) => receiveCashback.mutate(d)} loading={receiveCashback.isPending} />
     </>
+  );
+}
+
+function CashbackDialog({ tx, banks, onClose, onSubmit, loading }: any) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(today);
+  const [bankId, setBankId] = useState("");
+
+  useEffect(() => {
+    if (tx) {
+      setAmount(String(tx.cashback_expected ?? ""));
+      setDate(today);
+      setBankId(tx.bank_id ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tx?.id]);
+
+  return (
+    <Dialog open={!!tx} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Receber cashback</DialogTitle></DialogHeader>
+        {tx && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Esperado: <span className="font-medium text-foreground">{formatBRL(tx.cashback_expected)}</span>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor recebido *</Label>
+              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Data *</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Banco de destino *</Label>
+              <Select value={bankId} onValueChange={setBankId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar banco" /></SelectTrigger>
+                <SelectContent>{banks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button
+            disabled={loading || !amount || Number(amount) <= 0 || !bankId}
+            onClick={() => onSubmit({ tx, amount: Number(amount), date, bank_id: bankId })}
+            style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
+          >
+            {loading ? "Salvando..." : "Confirmar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -459,6 +583,7 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
     date: today,
     description: "",
     notes: "",
+    cashback_expected: "",
   });
 
   const saldo = useMemo(() => {
@@ -512,6 +637,11 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
         <div className="space-y-2"><Label>Data *</Label><Input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
       </div>
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Pagamento Meta Ads outubro" /></div>
+      <div className="space-y-2">
+        <Label>Cashback esperado (opcional)</Label>
+        <Input type="number" step="0.01" min="0" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} placeholder="Ex.: pago no cartão com 2% de cashback" />
+        <p className="text-xs text-muted-foreground">Informe o valor previsto se o pagamento gera cashback (ex.: cartão).</p>
+      </div>
       <div className="space-y-2"><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} /></div>
       <Button type="submit" disabled={loading || insuficiente} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
         {loading ? "Salvando..." : "Registrar uso"}
