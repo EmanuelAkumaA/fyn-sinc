@@ -467,12 +467,13 @@ function CashbackDialog({ tx, banks, onClose, onSubmit, loading }: any) {
   const [date, setDate] = useState(today);
   const [bankId, setBankId] = useState("");
 
-  useMemo(() => {
+  useEffect(() => {
     if (tx) {
       setAmount(String(tx.cashback_expected ?? ""));
       setDate(today);
       setBankId(tx.bank_id ?? "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tx?.id]);
 
   return (
