@@ -273,7 +273,7 @@ function AportesPage() {
       if (error) throw error;
       const { error: e2 } = await supabase.from("financial_transactions").insert({
         organization_id: org,
-        type: "receita_propria",
+        type: "cashback",
         status: "pago",
         description: `Cashback — ${p.tx.description}`,
         amount_gross: p.amount,
