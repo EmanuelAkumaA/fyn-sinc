@@ -324,7 +324,7 @@ function AportesPage() {
         <MetricCard label="Total aportado" value={formatBRL(totalAportado)} tone="success" />
         <MetricCard label="Total utilizado" value={formatBRL(totalUsado)} tone="destructive" />
         <MetricCard label="Saldo disponível" value={formatBRL(saldoDisp)} tone="primary" />
-        <MetricCard label="Cashback pendente" value={formatBRL(cashbackPendente)} tone="warning" />
+        <MetricCard label="Cashback pendente" value={formatBRL(cashbackPendente)} />
         <MetricCard label="Clientes c/ saldo" value={String(clientesAtivos)} />
       </div>
 
