@@ -456,7 +456,63 @@ function AportesPage() {
           <UsoForm clients={clients} banks={banks} wallet={wallet} onSubmit={(d: any) => createUso.mutate(d)} loading={createUso.isPending} />
         </SheetContent>
       </Sheet>
+      <CashbackDialog tx={cashbackTx} banks={banks} onClose={() => setCashbackTx(null)} onSubmit={(d) => receiveCashback.mutate(d)} loading={receiveCashback.isPending} />
     </>
+  );
+}
+
+function CashbackDialog({ tx, banks, onClose, onSubmit, loading }: any) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(today);
+  const [bankId, setBankId] = useState("");
+
+  useMemo(() => {
+    if (tx) {
+      setAmount(String(tx.cashback_expected ?? ""));
+      setDate(today);
+      setBankId(tx.bank_id ?? "");
+    }
+  }, [tx?.id]);
+
+  return (
+    <Dialog open={!!tx} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Receber cashback</DialogTitle></DialogHeader>
+        {tx && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Esperado: <span className="font-medium text-foreground">{formatBRL(tx.cashback_expected)}</span>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor recebido *</Label>
+              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Data *</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Banco de destino *</Label>
+              <Select value={bankId} onValueChange={setBankId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar banco" /></SelectTrigger>
+                <SelectContent>{banks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button
+            disabled={loading || !amount || Number(amount) <= 0 || !bankId}
+            onClick={() => onSubmit({ tx, amount: Number(amount), date, bank_id: bankId })}
+            style={{ background: "var(--gradient-primary)", color: "var(--background)" }}
+          >
+            {loading ? "Salvando..." : "Confirmar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
