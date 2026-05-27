@@ -456,7 +456,7 @@ function AportesPage() {
           <UsoForm clients={clients} banks={banks} wallet={wallet} onSubmit={(d: any) => createUso.mutate(d)} loading={createUso.isPending} />
         </SheetContent>
       </Sheet>
-      <CashbackDialog tx={cashbackTx} banks={banks} onClose={() => setCashbackTx(null)} onSubmit={(d) => receiveCashback.mutate(d)} loading={receiveCashback.isPending} />
+      <CashbackDialog tx={cashbackTx} banks={banks} onClose={() => setCashbackTx(null)} onSubmit={(d: any) => receiveCashback.mutate(d)} loading={receiveCashback.isPending} />
     </>
   );
 }
