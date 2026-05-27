@@ -228,6 +228,7 @@ function AportesPage() {
       const avail = Number(w?.available_balance ?? 0);
       if (amt > avail) throw new Error("Saldo insuficiente para esta plataforma. Registre um novo aporte antes de usar esse valor.");
 
+      const cashbackExp = Number(p.cashback_expected || 0);
       const { error } = await supabase.from("financial_transactions").insert({
         organization_id: org,
         type: "uso_repasse",
@@ -242,6 +243,8 @@ function AportesPage() {
         platform: p.platform,
         fornecedor: p.fornecedor || null,
         notes: p.notes || null,
+        cashback_expected: cashbackExp,
+        cashback_status: cashbackExp > 0 ? "pendente" : "nenhum",
       });
       if (error) throw error;
     },
@@ -252,6 +255,53 @@ function AportesPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const [cashbackTx, setCashbackTx] = useState<any>(null);
+  const receiveCashback = useMutation({
+    mutationFn: async (p: { tx: any; amount: number; date: string; bank_id: string }) => {
+      const org = await getCurrentOrgId();
+      if (!org) throw new Error("Sem organização");
+      const { error } = await supabase
+        .from("financial_transactions")
+        .update({
+          cashback_received: p.amount,
+          cashback_received_at: p.date,
+          cashback_bank_id: p.bank_id,
+          cashback_status: "recebido",
+        })
+        .eq("id", p.tx.id);
+      if (error) throw error;
+      const { error: e2 } = await supabase.from("financial_transactions").insert({
+        organization_id: org,
+        type: "receita",
+        status: "pago",
+        description: `Cashback — ${p.tx.description}`,
+        amount_gross: p.amount,
+        amount_net: p.amount,
+        due_date: p.date,
+        paid_at: p.date,
+        client_id: p.tx.client_id,
+        bank_id: p.bank_id,
+        platform: p.tx.platform,
+        category: "cashback",
+        notes: `Cashback referente ao uso de aporte ${p.tx.id}`,
+      });
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Cashback recebido");
+      qc.invalidateQueries();
+      setCashbackTx(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const cashbackPendente = tx.reduce((s: number, t: any) => {
+    if (t.type === "uso_repasse" && t.cashback_status === "pendente") {
+      return s + (Number(t.cashback_expected) - Number(t.cashback_received || 0));
+    }
+    return s;
+  }, 0);
 
   return (
     <>
