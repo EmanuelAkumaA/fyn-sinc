@@ -582,6 +582,7 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
     date: today,
     description: "",
     notes: "",
+    cashback_expected: "",
   });
 
   const saldo = useMemo(() => {
