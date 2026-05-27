@@ -397,8 +397,11 @@ function AportesPage() {
             <div className="space-y-2">
               {filteredTx.map((t: any) => {
                 const isAporte = t.type === "repasse_recebido";
+                const cbStatus = t.cashback_status as string | undefined;
+                const cbExp = Number(t.cashback_expected ?? 0);
+                const cbRec = Number(t.cashback_received ?? 0);
                 return (
-                  <div key={t.id} className="glass rounded-2xl p-4 flex items-center gap-3">
+                  <div key={t.id} className="glass rounded-2xl p-4 flex items-center gap-3 flex-wrap">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAporte ? "bg-[color:var(--success)]/15 text-[color:var(--success)]" : "bg-[color:var(--destructive)]/15 text-[color:var(--destructive)]"}`}>
                       {isAporte ? <ArrowDownToLine className="h-5 w-5" /> : <ArrowUpFromLine className="h-5 w-5" />}
                     </div>
@@ -415,6 +418,19 @@ function AportesPage() {
                         {t.bank_id && <><span>·</span><span>{bankById[t.bank_id]?.name}</span></>}
                       </div>
                     </div>
+                    {!isAporte && cbStatus === "pendente" && cbExp > 0 && (
+                      <>
+                        <span className="text-xs px-2 py-1 rounded-md bg-[color:var(--warning,theme(colors.amber.500))]/15 text-[color:var(--warning,theme(colors.amber.500))] whitespace-nowrap">
+                          Cashback {formatBRL(cbExp)} esperado
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => setCashbackTx(t)}>Receber cashback</Button>
+                      </>
+                    )}
+                    {!isAporte && cbStatus === "recebido" && (
+                      <span className="text-xs px-2 py-1 rounded-md bg-[color:var(--success)]/15 text-[color:var(--success)] whitespace-nowrap">
+                        Cashback recebido {formatBRL(cbRec)}
+                      </span>
+                    )}
                     <div className={`font-display font-semibold ${isAporte ? "text-[color:var(--success)]" : "text-[color:var(--destructive)]"}`}>
                       {isAporte ? "+" : "−"} {formatBRL(t.amount_gross)}
                     </div>
