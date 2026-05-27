@@ -194,6 +194,11 @@ export type Database = {
           amount_gross: number
           amount_net: number | null
           bank_id: string | null
+          cashback_bank_id: string | null
+          cashback_expected: number
+          cashback_received: number
+          cashback_received_at: string | null
+          cashback_status: string
           category: string | null
           client_id: string | null
           created_at: string
@@ -219,6 +224,11 @@ export type Database = {
           amount_gross: number
           amount_net?: number | null
           bank_id?: string | null
+          cashback_bank_id?: string | null
+          cashback_expected?: number
+          cashback_received?: number
+          cashback_received_at?: string | null
+          cashback_status?: string
           category?: string | null
           client_id?: string | null
           created_at?: string
@@ -244,6 +254,11 @@ export type Database = {
           amount_gross?: number
           amount_net?: number | null
           bank_id?: string | null
+          cashback_bank_id?: string | null
+          cashback_expected?: number
+          cashback_received?: number
+          cashback_received_at?: string | null
+          cashback_status?: string
           category?: string | null
           client_id?: string | null
           created_at?: string
