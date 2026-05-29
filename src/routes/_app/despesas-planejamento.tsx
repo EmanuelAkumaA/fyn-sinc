@@ -530,12 +530,13 @@ function DespesasPlanejamentoPage() {
         title="Despesas & Planejamento"
         subtitle="Controle de custos fixos, variáveis e projeção de caixa."
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => genMonth.mutate()} disabled={genMonth.isPending}>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => genMonth.mutate()} disabled={genMonth.isPending}>
               <RotateCw className="h-4 w-4 mr-2" />
-              Gerar lançamentos do mês
+              <span className="sm:hidden">Gerar mês</span>
+              <span className="hidden sm:inline">Gerar lançamentos do mês</span>
             </Button>
-            <Button onClick={() => setOpenNew(true)}>
+            <Button className="w-full sm:w-auto" onClick={() => setOpenNew(true)}>
               <Plus className="h-4 w-4 mr-2" /> Nova despesa
             </Button>
           </div>
@@ -544,7 +545,7 @@ function DespesasPlanejamentoPage() {
 
       {/* Filtro de período */}
       <div className="glass rounded-2xl p-3 flex flex-wrap items-center gap-2">
-        <Label className="text-xs text-muted-foreground">Período:</Label>
+        <Label className="text-xs text-muted-foreground w-full sm:w-auto">Período:</Label>
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
