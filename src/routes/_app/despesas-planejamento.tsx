@@ -638,18 +638,20 @@ function DespesasPlanejamentoPage() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="todas">Todas</TabsTrigger>
-          <TabsTrigger value="fixas">Fixas</TabsTrigger>
-          <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
-          <TabsTrigger value="investimentos">Investimentos</TabsTrigger>
-          <TabsTrigger value="nao_lancadas">Não lançadas</TabsTrigger>
-          <TabsTrigger value="lancadas">Lançadas</TabsTrigger>
-          <TabsTrigger value="pagas">Pagas</TabsTrigger>
-          <TabsTrigger value="vencidas">Vencidas</TabsTrigger>
-          <TabsTrigger value="pausadas">Pausadas</TabsTrigger>
-          <TabsTrigger value="canceladas">Canceladas</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 scrollbar-thin">
+          <TabsList className="inline-flex w-max md:flex md:flex-wrap md:h-auto md:w-full">
+            <TabsTrigger value="todas">Todas</TabsTrigger>
+            <TabsTrigger value="fixas">Fixas</TabsTrigger>
+            <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
+            <TabsTrigger value="investimentos">Investimentos</TabsTrigger>
+            <TabsTrigger value="nao_lancadas">Não lançadas</TabsTrigger>
+            <TabsTrigger value="lancadas">Lançadas</TabsTrigger>
+            <TabsTrigger value="pagas">Pagas</TabsTrigger>
+            <TabsTrigger value="vencidas">Vencidas</TabsTrigger>
+            <TabsTrigger value="pausadas">Pausadas</TabsTrigger>
+            <TabsTrigger value="canceladas">Canceladas</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
       {/* Lista */}
@@ -663,7 +665,7 @@ function DespesasPlanejamentoPage() {
           action={<Button onClick={() => setOpenNew(true)}><Plus className="h-4 w-4 mr-2" />Nova despesa</Button>}
         />
       ) : (
-        <ul className="grid md:grid-cols-2 gap-3">
+        <ul className="grid sm:grid-cols-2 gap-3">
           {filteredPlans.map((p) => {
             const occs = enriched.filter((o) => o.expense_plan_id === p.id);
             const nextOcc = occs.find((o) => o.status === "nao_lancada" || o.status === "lancada");
@@ -671,17 +673,17 @@ function DespesasPlanejamentoPage() {
             const client = clientsQ.data?.find((c: any) => c.id === p.client_id);
             const bank = banksQ.data?.find((b: any) => b.id === p.default_bank_id);
             return (
-              <li key={p.id} className="glass rounded-2xl p-4 space-y-2">
-                <div className="flex items-start justify-between gap-3">
+              <li key={p.id} className="glass rounded-2xl p-3 sm:p-4 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3">
                   <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setDetailPlan(p)}>
                     <div className="font-medium truncate">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground truncate">
                       {EXPENSE_TYPE_LABELS[p.expense_type as ExpenseType]}
                       {cat && <> • {cat.name}</>}
                       {p.frequency && <> • {FREQUENCY_LABELS[p.frequency as ExpenseFrequency]}</>}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <div className="font-mono font-semibold">{formatBRL(Number(p.amount))}</div>
                     {p.status !== "ativo" && (
                       <span className="text-[10px] uppercase text-muted-foreground">{p.status}</span>
@@ -689,7 +691,7 @@ function DespesasPlanejamentoPage() {
                   </div>
                 </div>
                 {nextOcc && (
-                  <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-xs flex-wrap">
                     {nextOcc.effectiveStatus === "vencida" && <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--destructive)]" />}
                     {nextOcc.status === "paga" && <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--success)]" />}
                     {nextOcc.status === "lancada" && nextOcc.effectiveStatus !== "vencida" && <Clock className="h-3.5 w-3.5 text-primary" />}
@@ -698,7 +700,7 @@ function DespesasPlanejamentoPage() {
                   </div>
                 )}
                 {(bank || client) && (
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate">
                     {bank && <>Banco: {bank.name}</>}
                     {bank && client && " • "}
                     {client && <>Cliente: {client.name}</>}
@@ -720,24 +722,46 @@ function DespesasPlanejamentoPage() {
                       <RotateCw className="h-3.5 w-3.5 mr-1" /> Próxima
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => setEditPlan(p)}>Editar</Button>
+                  {/* Ações secundárias: visíveis a partir de sm */}
+                  <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => setEditPlan(p)}>Editar</Button>
                   {p.status === "ativo" ? (
-                    <Button size="sm" variant="ghost" onClick={() => setStatus.mutate({ id: p.id, status: "pausado" })}>
+                    <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => setStatus.mutate({ id: p.id, status: "pausado" })}>
                       <PauseCircle className="h-3.5 w-3.5 mr-1" />Pausar
                     </Button>
                   ) : (
-                    <Button size="sm" variant="ghost" onClick={() => setStatus.mutate({ id: p.id, status: "ativo" })}>
+                    <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => setStatus.mutate({ id: p.id, status: "ativo" })}>
                       <PlayCircle className="h-3.5 w-3.5 mr-1" />Ativar
                     </Button>
                   )}
                   {p.status !== "cancelado" && (
-                    <Button size="sm" variant="ghost" onClick={() => setStatus.mutate({ id: p.id, status: "cancelado" })}>
+                    <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => setStatus.mutate({ id: p.id, status: "cancelado" })}>
                       <XCircle className="h-3.5 w-3.5 mr-1" />Cancelar
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" className="text-[color:var(--destructive)]" onClick={() => setToDelete(p)}>
+                  <Button size="sm" variant="ghost" className="hidden sm:inline-flex text-[color:var(--destructive)]" onClick={() => setToDelete(p)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
+                  {/* Menu compacto no mobile */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="ghost" className="sm:hidden ml-auto">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditPlan(p)}>Editar</DropdownMenuItem>
+                      {p.status === "ativo" ? (
+                        <DropdownMenuItem onClick={() => setStatus.mutate({ id: p.id, status: "pausado" })}>Pausar</DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => setStatus.mutate({ id: p.id, status: "ativo" })}>Ativar</DropdownMenuItem>
+                      )}
+                      {p.status !== "cancelado" && (
+                        <DropdownMenuItem onClick={() => setStatus.mutate({ id: p.id, status: "cancelado" })}>Cancelar</DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-[color:var(--destructive)]" onClick={() => setToDelete(p)}>Excluir</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </li>
             );
