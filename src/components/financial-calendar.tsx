@@ -69,7 +69,6 @@ function bucketOf(t: Tx): Bucket {
 }
 
 function dayKey(t: Tx): string | null {
-  if (t.status === "pago") return t.paid_at;
   return t.due_date;
 }
 
