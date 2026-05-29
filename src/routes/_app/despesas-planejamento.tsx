@@ -547,7 +547,7 @@ function DespesasPlanejamentoPage() {
       <div className="glass rounded-2xl p-3 flex flex-wrap items-center gap-2">
         <Label className="text-xs text-muted-foreground w-full sm:w-auto">Período:</Label>
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="today">Hoje</SelectItem>
             <SelectItem value="week">Últimos 7 dias</SelectItem>
@@ -558,8 +558,8 @@ function DespesasPlanejamentoPage() {
         </Select>
         {period === "custom" && (
           <>
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-40" />
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-40" />
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-full sm:w-40" />
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-full sm:w-40" />
           </>
         )}
       </div>
