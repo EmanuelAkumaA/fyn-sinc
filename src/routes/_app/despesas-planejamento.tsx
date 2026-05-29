@@ -6,8 +6,11 @@ import { z } from "zod";
 import {
   Plus, ClipboardList, PauseCircle, PlayCircle, XCircle, Trash2,
   Send, ExternalLink, RotateCw, AlertTriangle, CheckCircle2, Clock,
+  MoreHorizontal,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
