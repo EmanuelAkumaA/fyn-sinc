@@ -1060,10 +1060,9 @@ function SecondaryMetrics({
   proximosVencimentos: any[];
   inline?: boolean;
 }) {
-  const wrap = inline ? "" : "space-y-3";
   const block = inline ? "glass rounded-2xl p-4" : "glass rounded-2xl p-3";
-  return (
-    <div className={wrap}>
+  const content = (
+    <>
       <div className={block}>
         <h3 className="text-sm font-semibold mb-3">Previsto x Realizado</h3>
         <div className="space-y-2">
@@ -1115,6 +1114,7 @@ function SecondaryMetrics({
           </ul>
         )}
       </div>
-    </div>
+    </>
   );
+  return inline ? content : <div className="space-y-3">{content}</div>;
 }
