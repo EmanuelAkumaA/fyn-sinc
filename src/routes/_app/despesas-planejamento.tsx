@@ -565,82 +565,70 @@ function DespesasPlanejamentoPage() {
       </div>
 
       {/* Cards principais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         <MetricCard label="Fixos / mês" value={formatBRL(fixedMonthlyEquiv)} />
         <MetricCard label="Planejado" value={formatBRL(planejadoMes)} tone="primary" />
         <MetricCard label="Lançado" value={formatBRL(lancadoMes)} />
         <MetricCard label="Pago" value={formatBRL(pagoMes)} tone="success" />
         <MetricCard label="Falta pagar" value={formatBRL(faltaPagar)} tone="destructive" />
+      </div>
+
+      {/* Projeção de caixa — colapsável no mobile, aberta em lg+ */}
+      <Accordion type="single" collapsible defaultValue="" className="lg:hidden">
+        <AccordionItem value="projecao" className="glass rounded-2xl border-0 px-4">
+          <AccordionTrigger className="text-sm font-semibold">Projeção de caixa</AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-2 gap-3 pb-2">
+              <MetricCard label="Saldo conservador" value={formatBRL(saldoConservador)} hint="Bancos − pendentes" />
+              <MetricCard label="Saldo esperado" value={formatBRL(saldoEsperado)} hint="+ receitas previstas" />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      <div className="hidden lg:grid grid-cols-2 gap-3">
         <MetricCard label="Saldo conservador" value={formatBRL(saldoConservador)} hint="Bancos − pendentes" />
         <MetricCard label="Saldo esperado" value={formatBRL(saldoEsperado)} hint="+ receitas previstas" />
       </div>
 
-      {/* Métricas secundárias */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="glass rounded-2xl p-4">
-          <h3 className="text-sm font-semibold mb-3">Previsto x Realizado</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs"><span>Pago</span><span>{formatBRL(pagoMes)}</span></div>
-            <Progress value={planejadoMes > 0 ? (pagoMes / planejadoMes) * 100 : 0} />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{planejadoMes > 0 ? `${Math.round((pagoMes/planejadoMes)*100)}% consumido` : "Sem planejamento"}</span>
-              <span>{formatBRL(faltaPagar)} pendente</span>
-            </div>
-          </div>
-          <div className="mt-4 flex gap-4 text-xs">
-            <div><span className="text-muted-foreground">Assinaturas:</span> <strong>{assinaturasAtivas}</strong></div>
-            <div><span className="text-muted-foreground">Investimentos:</span> <strong>{investimentosAtivos}</strong></div>
-          </div>
-        </div>
-
-        <div className="glass rounded-2xl p-4">
-          <h3 className="text-sm font-semibold mb-3">Despesas por categoria</h3>
-          {categoryRanking.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nada no período.</p>
-          ) : (
-            <ul className="space-y-2 max-h-56 overflow-y-auto">
-              {categoryRanking.slice(0, 6).map((c) => (
-                <li key={c.name} className="text-xs">
-                  <div className="flex justify-between">
-                    <span className="truncate">{c.name}</span>
-                    <span className="text-muted-foreground">{formatBRL(c.planned)} • {Math.round(c.pct)}%</span>
-                  </div>
-                  <Progress value={c.pct} className="h-1.5 mt-1" />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="glass rounded-2xl p-4">
-          <h3 className="text-sm font-semibold mb-3">Próximos vencimentos</h3>
-          {proximosVencimentos.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nenhuma despesa próxima do vencimento.</p>
-          ) : (
-            <ul className="space-y-2 max-h-56 overflow-y-auto">
-              {proximosVencimentos.map((o) => (
-                <li key={o.id} className="flex justify-between items-center text-xs">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{o.description}</div>
-                    <div className="text-muted-foreground">{formatDate(o.due_date)}</div>
-                  </div>
-                  <span className="font-mono">{formatBRL(Number(o.amount))}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {/* Métricas secundárias — colapsável no mobile */}
+      <Accordion type="single" collapsible defaultValue="" className="lg:hidden">
+        <AccordionItem value="metrics" className="glass rounded-2xl border-0 px-4">
+          <AccordionTrigger className="text-sm font-semibold">Projeção, categorias e vencimentos</AccordionTrigger>
+          <AccordionContent>
+            <SecondaryMetrics
+              pagoMes={pagoMes}
+              planejadoMes={planejadoMes}
+              faltaPagar={faltaPagar}
+              assinaturasAtivas={assinaturasAtivas}
+              investimentosAtivos={investimentosAtivos}
+              categoryRanking={categoryRanking}
+              proximosVencimentos={proximosVencimentos}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+        <SecondaryMetrics
+          pagoMes={pagoMes}
+          planejadoMes={planejadoMes}
+          faltaPagar={faltaPagar}
+          assinaturasAtivas={assinaturasAtivas}
+          investimentosAtivos={investimentosAtivos}
+          categoryRanking={categoryRanking}
+          proximosVencimentos={proximosVencimentos}
+          inline
+        />
       </div>
 
       {/* Top 5 */}
       {topPlanos.length > 0 && (
         <div className="glass rounded-2xl p-4">
           <h3 className="text-sm font-semibold mb-3">Maiores despesas ativas</h3>
-          <ul className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {topPlanos.map((p) => (
               <li key={p.id} className="rounded-lg border border-border/50 px-3 py-2 text-xs">
                 <div className="font-medium truncate">{p.name}</div>
-                <div className="text-muted-foreground">{EXPENSE_TYPE_LABELS[p.expense_type as ExpenseType]} • {FREQUENCY_LABELS[p.frequency as ExpenseFrequency] ?? "—"}</div>
+                <div className="text-muted-foreground truncate">{EXPENSE_TYPE_LABELS[p.expense_type as ExpenseType]} • {FREQUENCY_LABELS[p.frequency as ExpenseFrequency] ?? "—"}</div>
                 <div className="font-mono mt-1">{formatBRL(Number(p.amount))}</div>
               </li>
             ))}
