@@ -1045,3 +1045,76 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
     </div>
   );
 }
+
+// ─── Secondary Metrics (Previsto x Realizado / Categorias / Vencimentos) ─────
+function SecondaryMetrics({
+  pagoMes, planejadoMes, faltaPagar, assinaturasAtivas, investimentosAtivos,
+  categoryRanking, proximosVencimentos, inline,
+}: {
+  pagoMes: number;
+  planejadoMes: number;
+  faltaPagar: number;
+  assinaturasAtivas: number;
+  investimentosAtivos: number;
+  categoryRanking: { name: string; planned: number; paid: number; pct: number }[];
+  proximosVencimentos: any[];
+  inline?: boolean;
+}) {
+  const wrap = inline ? "" : "space-y-3";
+  const block = inline ? "glass rounded-2xl p-4" : "glass rounded-2xl p-3";
+  return (
+    <div className={wrap}>
+      <div className={block}>
+        <h3 className="text-sm font-semibold mb-3">Previsto x Realizado</h3>
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs"><span>Pago</span><span>{formatBRL(pagoMes)}</span></div>
+          <Progress value={planejadoMes > 0 ? (pagoMes / planejadoMes) * 100 : 0} />
+          <div className="flex justify-between text-xs text-muted-foreground gap-2">
+            <span className="truncate">{planejadoMes > 0 ? `${Math.round((pagoMes/planejadoMes)*100)}% consumido` : "Sem planejamento"}</span>
+            <span className="shrink-0">{formatBRL(faltaPagar)} pendente</span>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <div><span className="text-muted-foreground">Assinaturas:</span> <strong>{assinaturasAtivas}</strong></div>
+          <div><span className="text-muted-foreground">Investimentos:</span> <strong>{investimentosAtivos}</strong></div>
+        </div>
+      </div>
+      <div className={block}>
+        <h3 className="text-sm font-semibold mb-3">Despesas por categoria</h3>
+        {categoryRanking.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nada no período.</p>
+        ) : (
+          <ul className="space-y-2 max-h-56 overflow-y-auto">
+            {categoryRanking.slice(0, 6).map((c) => (
+              <li key={c.name} className="text-xs">
+                <div className="flex justify-between gap-2">
+                  <span className="truncate">{c.name}</span>
+                  <span className="text-muted-foreground shrink-0">{formatBRL(c.planned)} • {Math.round(c.pct)}%</span>
+                </div>
+                <Progress value={c.pct} className="h-1.5 mt-1" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className={block}>
+        <h3 className="text-sm font-semibold mb-3">Próximos vencimentos</h3>
+        {proximosVencimentos.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhuma despesa próxima do vencimento.</p>
+        ) : (
+          <ul className="space-y-2 max-h-56 overflow-y-auto">
+            {proximosVencimentos.map((o) => (
+              <li key={o.id} className="flex justify-between items-center text-xs gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{o.description}</div>
+                  <div className="text-muted-foreground">{formatDate(o.due_date)}</div>
+                </div>
+                <span className="font-mono shrink-0">{formatBRL(Number(o.amount))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
