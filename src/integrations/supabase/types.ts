@@ -189,6 +189,169 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          classification: string
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          classification?: string
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expense_occurrences: {
+        Row: {
+          amount: number
+          bank_id: string | null
+          created_at: string
+          description: string
+          due_date: string
+          expense_plan_id: string
+          financial_transaction_id: string | null
+          id: string
+          launched_at: string | null
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          reference_month: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_id?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          expense_plan_id: string
+          financial_transaction_id?: string | null
+          id?: string
+          launched_at?: string | null
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          reference_month?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_id?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          expense_plan_id?: string
+          financial_transaction_id?: string | null
+          id?: string
+          launched_at?: string | null
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          reference_month?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_occurrences_expense_plan_id_fkey"
+            columns: ["expense_plan_id"]
+            isOneToOne: false
+            referencedRelation: "expense_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_plans: {
+        Row: {
+          amount: number
+          category_id: string | null
+          client_id: string | null
+          created_at: string
+          default_bank_id: string | null
+          description: string | null
+          due_day: number | null
+          end_date: string | null
+          expense_type: string
+          frequency: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          service_id: string | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          default_bank_id?: string | null
+          description?: string | null
+          due_day?: number | null
+          end_date?: string | null
+          expense_type: string
+          frequency?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          default_bank_id?: string | null
+          description?: string | null
+          due_day?: number | null
+          end_date?: string | null
+          expense_type?: string
+          frequency?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_plans_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           amount_gross: number
@@ -204,6 +367,7 @@ export type Database = {
           created_at: string
           description: string
           due_date: string | null
+          expense_occurrence_id: string | null
           fornecedor: string | null
           id: string
           notes: string | null
@@ -234,6 +398,7 @@ export type Database = {
           created_at?: string
           description: string
           due_date?: string | null
+          expense_occurrence_id?: string | null
           fornecedor?: string | null
           id?: string
           notes?: string | null
@@ -264,6 +429,7 @@ export type Database = {
           created_at?: string
           description?: string
           due_date?: string | null
+          expense_occurrence_id?: string | null
           fornecedor?: string | null
           id?: string
           notes?: string | null
