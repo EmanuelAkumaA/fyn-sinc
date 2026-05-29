@@ -1061,7 +1061,6 @@ function SecondaryMetrics({
   inline?: boolean;
 }) {
   const block = inline ? "glass rounded-2xl p-4" : "glass rounded-2xl p-3";
-  const Wrapper: any = inline ? "" : "div";
   const content = (
     <>
       <div className={block}>
