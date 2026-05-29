@@ -1114,6 +1114,7 @@ function SecondaryMetrics({
           </ul>
         )}
       </div>
-    </div>
+    </>
   );
+  return inline ? content : <div className="space-y-3">{content}</div>;
 }
