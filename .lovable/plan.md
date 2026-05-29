@@ -1,39 +1,34 @@
-## Cashback em "Usar aporte"
+## Calendário: sempre exibir na data de vencimento
 
-Adiciona controle de cashback nos usos de aporte (geralmente pagos no cartão), permitindo registrar o valor esperado e depois marcar como recebido.
+**Problema:** hoje no calendário, quando uma transação é marcada como paga, ela "pula" da data de vencimento para a data de pagamento (`paid_at`), confundindo a visão mensal.
 
-### 1. Banco de dados (migração)
+**Mudança:** o calendário passa a posicionar TODA transação pela `due_date` (vencimento), independente de status. A `paid_at` continua existindo no banco e aparece no detalhe do dia ("Pago em dd/mm/yyyy") — só não move mais o card no grid.
 
-Novos campos em `financial_transactions` (usados apenas em `type = 'uso_repasse'`):
+### Arquivo
 
-- `cashback_expected` numeric default 0 — valor previsto
-- `cashback_received` numeric default 0 — valor efetivamente recebido
-- `cashback_received_at` date — data do recebimento
-- `cashback_bank_id` uuid — banco onde caiu o cashback
-- `cashback_status` text default 'nenhum' — `nenhum | pendente | recebido`
+- `src/components/financial-calendar.tsx`
 
-### 2. Formulário "Usar aporte" (`src/routes/_app/aportes.tsx` → `UsoForm`)
+### Alterações
 
-Adiciona seção "Cashback (opcional)" sempre visível:
-- Campo `Cashback esperado (R$)` — numérico, opcional
-- Ao salvar, se `cashback_expected > 0` → `cashback_status = 'pendente'`, senão `'nenhum'`
+1. **`dayKey(t)`** — substituir:
+   ```ts
+   if (t.status === "pago") return t.paid_at;
+   return t.due_date;
+   ```
+   por:
+   ```ts
+   return t.due_date;
+   ```
+   (cai de volta em `due_date` para todos os casos; transações sem `due_date` continuam sendo descartadas, como hoje)
 
-### 3. Lista de movimentações
+2. **Resumo do mês (`summary`)** — manter como está. "Recebido no mês" continua somando por `paid_at` dentro do mês (faz sentido como caixa); "Previsto / a receber / em atraso" já usam `due_date`.
 
-Em cada linha de "uso_repasse" com cashback:
-- Mostrar chip `Cashback: R$ X esperado` (amarelo) ou `Cashback recebido R$ X` (verde)
-- Botão "Receber cashback" abre dialog para informar:
-  - Valor recebido (default = esperado)
-  - Data
-  - Banco de destino
-- Ao confirmar: atualiza `cashback_received`, `cashback_received_at`, `cashback_bank_id`, `cashback_status='recebido'` e cria uma transação auxiliar `type='receita'` no banco escolhido para refletir a entrada (mantém saldo bancário coerente).
+3. **Agrupamento `byDay`** — não muda (usa `dayKey`, que agora sempre devolve `due_date`).
 
-### 4. Métricas
-
-Novo card no topo: **Cashback pendente** (soma de `cashback_expected - cashback_received` onde status='pendente').
+4. **Drawer do dia (`DayDetails`)** — sem mudanças: já mostra "Pago em {paid_at}" quando `status === 'pago'` e "Vence {due_date}" caso contrário.
 
 ### Fora de escopo
 
-- Não muda fluxo de "Novo aporte"
-- Não toca em third_party_plans (que já tem cashback próprio)
-- Sem mudanças em Financeiro/Dashboard/Bancos
+- Não altera `paid_at` nos dados existentes (a data de pagamento continua registrada, só não desloca o card).
+- Não muda Financeiro, Dashboard, Aportes nem mutations de pagamento.
+- Não altera o resumo "Recebido no mês" (continua baseado em `paid_at`, que é o correto para fluxo de caixa).
