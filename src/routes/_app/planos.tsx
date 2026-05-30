@@ -232,9 +232,9 @@ function PlanForm({ initial, clients, banks, loading, onSubmit }: { initial: any
         <div className="space-y-2"><Label>Pago ao fornecedor</Label><CurrencyInput value={form.amount_paid_to_supplier} onValueChange={(v: string) => setForm({ ...form, amount_paid_to_supplier: v })} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2"><Label>Valor cheio</Label><Input type="number" step="0.01" value={form.full_value} onChange={(e) => setForm({ ...form, full_value: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor cheio</Label><CurrencyInput value={form.full_value} onValueChange={(v: string) => setForm({ ...form, full_value: v })} /></div>
         <div className="space-y-2"><Label>Comissão %</Label><Input type="number" step="0.01" value={form.commission_pct} onChange={(e) => setForm({ ...form, commission_pct: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Comissão R$</Label><Input type="number" step="0.01" value={form.commission_value} onChange={(e) => setForm({ ...form, commission_value: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Comissão R$</Label><CurrencyInput value={form.commission_value} onValueChange={(v: string) => setForm({ ...form, commission_value: v })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2"><Label>Cashback previsto</Label><Input type="number" step="0.01" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} /></div>
