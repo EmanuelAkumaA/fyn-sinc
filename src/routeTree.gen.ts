@@ -25,6 +25,7 @@ import { Route as AppServicosRouteImport } from './routes/_app/servicos'
 import { Route as AppRecorrenciasRouteImport } from './routes/_app/recorrencias'
 import { Route as AppPlanosRouteImport } from './routes/_app/planos'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
+import { Route as AppEquipePrestadoresRouteImport } from './routes/_app/equipe-prestadores'
 import { Route as AppDespesasPlanejamentoRouteImport } from './routes/_app/despesas-planejamento'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
@@ -113,6 +114,11 @@ const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEquipePrestadoresRoute = AppEquipePrestadoresRouteImport.update({
+  id: '/equipe-prestadores',
+  path: '/equipe-prestadores',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDespesasPlanejamentoRoute = AppDespesasPlanejamentoRouteImport.update({
   id: '/despesas-planejamento',
   path: '/despesas-planejamento',
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof AppConfiguracoesRoute
   '/dashboard': typeof AppDashboardRoute
   '/despesas-planejamento': typeof AppDespesasPlanejamentoRoute
+  '/equipe-prestadores': typeof AppEquipePrestadoresRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof AppConfiguracoesRoute
   '/dashboard': typeof AppDashboardRoute
   '/despesas-planejamento': typeof AppDespesasPlanejamentoRoute
+  '/equipe-prestadores': typeof AppEquipePrestadoresRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/planos': typeof AppPlanosRoute
   '/recorrencias': typeof AppRecorrenciasRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/despesas-planejamento': typeof AppDespesasPlanejamentoRoute
+  '/_app/equipe-prestadores': typeof AppEquipePrestadoresRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/planos': typeof AppPlanosRoute
   '/_app/recorrencias': typeof AppRecorrenciasRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dashboard'
     | '/despesas-planejamento'
+    | '/equipe-prestadores'
     | '/financeiro'
     | '/planos'
     | '/recorrencias'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dashboard'
     | '/despesas-planejamento'
+    | '/equipe-prestadores'
     | '/financeiro'
     | '/planos'
     | '/recorrencias'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/_app/configuracoes'
     | '/_app/dashboard'
     | '/_app/despesas-planejamento'
+    | '/_app/equipe-prestadores'
     | '/_app/financeiro'
     | '/_app/planos'
     | '/_app/recorrencias'
@@ -433,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/equipe-prestadores': {
+      id: '/_app/equipe-prestadores'
+      path: '/equipe-prestadores'
+      fullPath: '/equipe-prestadores'
+      preLoaderRoute: typeof AppEquipePrestadoresRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/despesas-planejamento': {
       id: '/_app/despesas-planejamento'
       path: '/despesas-planejamento'
@@ -511,6 +530,7 @@ interface AppRouteChildren {
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDespesasPlanejamentoRoute: typeof AppDespesasPlanejamentoRoute
+  AppEquipePrestadoresRoute: typeof AppEquipePrestadoresRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppPlanosRoute: typeof AppPlanosRoute
   AppRecorrenciasRoute: typeof AppRecorrenciasRoute
@@ -524,6 +544,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDespesasPlanejamentoRoute: AppDespesasPlanejamentoRoute,
+  AppEquipePrestadoresRoute: AppEquipePrestadoresRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppPlanosRoute: AppPlanosRoute,
   AppRecorrenciasRoute: AppRecorrenciasRoute,
