@@ -1,114 +1,83 @@
+# Plano — Módulo Equipe & Prestadores
 
-# Restauração do schema do Fyn Sinc no Supabase externo
+## Estado atual (já pronto)
 
-## Confirmações iniciais (auditoria)
+A base já está aplicada no banco e nos helpers:
 
-- O projeto **já aponta** para o Supabase externo novo: `twgcxnoctlkbrtaapxik` (confirmado em `.env`, `supabase/config.toml` e `src/integrations/supabase/client.ts`).
-- **Lovable Cloud não será ativado**. Toda a restauração ocorre no Supabase externo já conectado.
-- O banco do novo projeto está **vazio** (sem tabelas, triggers ou buckets) — confirmado via metadados.
-- O repositório contém **22 migrations** versionadas em `supabase/migrations/` (2026-05-16 → 2026-05-30), totalizando ~1.625 linhas SQL. Elas são a fonte única de verdade do schema.
-- Nenhum seed/dado fictício será inserido. Banco ficará estruturalmente completo e limpo.
+- Tabelas `providers`, `provider_assignments`, `provider_payables` com RLS por `organization_id`.
+- Triggers `sync_provider_payable_on_tx` e `unlink_tx_on_provider_payable_delete` (baixa pelo Financeiro já espelha em `provider_payables`).
+- Views `v_provider_summary`, `v_client_profitability_summary`, `v_service_profitability_summary`.
+- Helpers em `src/lib/providers.ts` (schemas Zod, `computeProviderCost`, `assignmentMonthlyCost`, `nextPayableDate`, `launchPayableInFinance` idempotente).
+- Rota `/_app/equipe-prestadores` registrada (stub) e item no `app-sidebar`.
 
-## Estratégia
+Portanto este plano é só de UI + glue. Nenhuma nova migration é necessária; se aparecer um gap pontual (ex.: unique constraint anti-duplicidade), aplico migration mínima.
 
-Aplicar as 22 migrations em ordem cronológica diretamente no Supabase externo via `supabase--migration` (uma chamada por arquivo, na ordem do timestamp do nome). Não recriar nem refazer schema manualmente — apenas reexecutar o que já está versionado.
+## Escopo da implementação
 
-Se alguma migration falhar:
-1. Parar imediatamente.
-2. Diagnosticar a causa (dependência ausente, objeto duplicado, role inexistente, etc.).
-3. Aplicar correção mínima preservando nomes de tabelas/colunas usados pelo frontend.
-4. Continuar a partir da migration corrigida.
-5. Reportar o ajuste ao usuário.
+### 1. Página `/_app/equipe-prestadores`
+Substituir o stub por página completa com:
+- `PageHeader` "Equipe & Prestadores" / "Controle de profissionais, custos de execução e pagamentos".
+- 6 `MetricCard`s no topo: ativos, custo recorrente mensal, previstos no mês, pendentes, pagos no mês, em atraso — alimentados por `v_provider_summary` + agregação client-side de `provider_payables` do mês.
+- Filtros por tipo / status / "com pendências" + busca (nome, documento, telefone, e-mail).
+- Lista de cards de prestador (responsiva: grid desktop, 2 col tablet, 1 col mobile) com nome, tipo, status, custo recorrente, pendente no mês, total pago, contagem de clientes/serviços vinculados, botão editar, clique abre dossiê.
+- Botão "Novo prestador" abre `Sheet` com `ProviderForm` (validado por `providerSchema`).
 
-## Etapas
+### 2. Componente `ProviderDossier` (`src/components/provider-dossier.tsx`)
+`Sheet` grande no desktop, fullscreen no mobile, com header (dados + editar) e 4 cards (total pago, a pagar, atraso, custo recorrente). Tabs:
+1. **Visão geral** — próximos pagamentos, últimas movimentações, clientes/serviços vinculados, alertas.
+2. **Vínculos** — lista de `provider_assignments` com preview de receita prevista, custo, lucro Kuma e margem (usa `computeProviderCost`); ações: editar, pausar, encerrar, gerar próxima obrigação, abrir cliente/serviço. Botão "Novo vínculo" abre `AssignmentForm` (validado por `assignmentSchema`) com selects de cliente, serviço e `recurring_contract`, preview de cálculo, valor fixo OU porcentagem.
+3. **Pagamentos** — lista de `provider_payables` com filtros (período, status, cliente, serviço). Ações: "Lançar no Financeiro" (chama `launchPayableInFinance` — idempotente), "Ver no Financeiro" (deep-link para `/financeiro` com filtro), "Cancelar", "Gerar próxima obrigação".
+4. **Timeline** — agregação client-side em ordem reversa (criação do prestador, vínculos, obrigações geradas, lançamentos enviados, pagamentos realizados via `paid_at`, pausas/encerramentos).
+5. **Observações** — textarea editável que persiste em `providers.notes`.
 
-### 1. Aplicar migrations (ordem cronológica)
+### 3. Geração de obrigações (V1, manual)
+Em `src/lib/providers.ts` adicionar:
+- `generateNextPayable(assignment)` — calcula próximo `due_date` via `nextPayableDate`, define `reference_month` via `monthAnchor`, faz `insert` com guarda anti-duplicidade (`select` antes por `provider_assignment_id + reference_month`).
+- `generateMonthPayables(orgId, monthAnchor)` — varre vínculos recorrentes ativos e gera obrigações do mês ignorando as já existentes.
 
-Sequência exata a executar (uma chamada `supabase--migration` por arquivo, conteúdo lido de `supabase/migrations/`):
+Botões "Gerar próxima obrigação" (no vínculo) e "Gerar obrigações do mês" (no header da aba Pagamentos do dossiê) consomem essas funções. Para vínculos `pontual`, ao criar o vínculo já gerar a obrigação única.
 
-```text
-20260516205628 → base: organizations, profiles, organization_users, helpers is_org_member/is_org_active/is_super_admin
-20260516205813 → ajustes iniciais
-20260516220434 → clients
-20260516222623 → banks, financial_transactions
-20260516234940 → services
-20260516235811 → ajustes
-20260517015826 → recurring_contracts / occurrences
-20260517212015 → ...
-20260517213710 → ...
-20260518161016 → ...
-20260523151448 → ...
-20260523193854 → ...
-20260523201718 → ...
-20260523220612 → ...
-20260523221100 → ...
-20260523224531 → ...
-20260525225616 → ...
-20260525230720 → ...
-20260525232202 → ...
-20260527234951 → ...
-20260529233313 → despesas/planejamento
-20260530222106 → providers, provider_assignments, provider_payables (Equipe & Prestadores)
-```
+### 4. Lançar no Financeiro (sem duplicar)
+O helper `launchPayableInFinance` já é idempotente (sai cedo se houver `financial_transaction_id`). UI:
+- Botão "Lançar no Financeiro" quando `status = nao_lancada`.
+- Substituído por "Ver no Financeiro" quando `financial_transaction_id` existir.
+- `onSuccess`: `invalidateFinanceCaches(qc)` + invalidar `["provider-payables"]`, `["provider-summary"]`, `["expense-planning"]`, `["client-summary"]`, `["service-summary"]`, `["dashboard"]`.
 
-(Os títulos acima refletem o conteúdo conhecido; o que importa é executar cada arquivo *verbatim* na ordem cronológica.)
+### 5. Baixa pelo Financeiro (já funcional)
+A trigger `sync_provider_payable_on_tx` já espelha `pago/pendente` em `provider_payables`. Sem mudança de backend. Apenas garantir que `PayTransactionDialog` invalide as queries de prestadores quando a transação tiver `provider_payable_id` — adicionar chaves ao `invalidateFinanceCaches` (`provider-payables`, `provider-summary`, `provider`, `providers`).
 
-### 2. Validação pós-migration
+### 6. Integrações em outras telas (mudanças mínimas)
+- **`despesas-planejamento`**: adicionar seção "Obrigações de prestadores" que lista `provider_payables` do mês (com origem "Prestador", link para abrir prestador / ver no Financeiro). Sem duplicar com `expense_occurrences`.
+- **`client-dossier`**: bloco compacto "Custos de execução" lendo `v_client_profitability_summary` (custos previstos/realizados, lucro previsto/realizado, margem prevista/realizada, prestadores vinculados — `count distinct provider_id` em `provider_assignments` do cliente).
+- **`service-dossier`**: métricas compactas equivalentes lendo `v_service_profitability_summary` + lista compacta de prestadores vinculados.
+- **`dashboard`**: bloco compacto "Equipe & execução" (4 métricas: custos do mês, pendentes a prestadores, atrasados, margem média realizada) com botão "Ver equipe e prestadores" navegando para `/equipe-prestadores`. Inserido abaixo do bloco de composição de bancos. Não altera o Calendário Financeiro.
 
-- Rodar `supabase--linter` para detectar problemas (RLS off, search_path, security definer views, etc.) e corrigir os relevantes.
-- Listar via `supabase--read_query` tabelas, views, funções e policies criadas — conferir presença de:
-  - `organizations`, `organization_users`, `profiles`, `user_global_roles`
-  - `clients`, `services`, `banks`
-  - `financial_transactions`, `recurring_contracts`, `recurring_occurrences`
-  - `client_documents`
-  - `expense_categories`, `expense_plans`, `expense_occurrences`
-  - `third_party_plans`
-  - `providers`, `provider_assignments`, `provider_payables`
-  - views: `v_provider_summary`, `v_client_profitability_summary`, `v_service_profitability_summary` e demais views financeiras das migrations.
-
-### 3. Storage
-
-Criar bucket privado `client-documents` no Supabase externo se as migrations não o criarem, com políticas RLS por `organization_id/client_id/filename`:
-- upload/leitura/update/delete restritos a membros ativos da organização (via `is_org_member`/`is_org_active`).
-- bucket marcado como **privado** (acesso via signed URLs).
-
-### 4. Tipos TypeScript
-
-- Após sucesso das migrations, regenerar `src/integrations/supabase/types.ts` (atualizado automaticamente pela plataforma após cada migration aprovada).
-- Conferir que `src/lib/providers.ts`, `src/lib/finance.ts`, etc., continuam compilando.
-
-### 5. Auth
-
-- Não alterar fluxo de Auth existente. Validar que `signup`, `login`, `logout`, recuperação de sessão e criação automática de `profile` + `organization` (via triggers das migrations) funcionam no novo projeto.
-- Confirmar provedor Email/Password habilitado no painel do Supabase externo.
-
-### 6. Smoke test (sem deixar dados)
-
-Manual pelo usuário, seguindo o roteiro do item 12 do pedido. Não vou inserir dados de teste automaticamente — apenas deixar o ambiente pronto.
-
-### 7. Relatório final
-
-Após concluir, informar:
-- Confirmação de uso exclusivo do Supabase externo `twgcxnoctlkbrtaapxik`.
-- Lovable Cloud não ativado.
-- 22 migrations aplicadas (lista com status).
-- Objetos criados (tabelas/views/funções/triggers/policies).
-- Bucket `client-documents` criado e políticas aplicadas.
-- Avisos do linter resolvidos vs. pendentes.
-- Próximos passos (recadastro manual).
-
-## Premissas / pontos a confirmar
-
-- As migrations no repositório são as **definitivas** (não vou editá-las, apenas executar).
-- Caso alguma migration referencie objetos do Auth/Storage que já existam por padrão no novo projeto, ajustes mínimos com `IF NOT EXISTS` / `CREATE OR REPLACE` serão usados como correção pontual.
-- Não vou implementar parceiros/revendedores.
-- Não vou criar usuários por SQL — signup do app cuida disso.
+### 7. Estados vazios e responsividade
+Aplicar `EmptyState` nos três níveis (sem prestador, sem vínculo, sem pagamento). Cards em grid `md:grid-cols-2 lg:grid-cols-3`, tabs com scroll horizontal no mobile, `Sheet` fullscreen `sm:max-w-2xl` no desktop.
 
 ## Detalhes técnicos
 
-- Ferramenta: `supabase--migration` (uma migration por chamada, conteúdo idêntico ao arquivo).
-- Verificações: `supabase--read_query` para inspecionar `information_schema`/`pg_policies` entre etapas se necessário.
-- Linter: `supabase--linter` ao final.
-- Storage: criado via SQL (`storage.buckets` + `storage.objects` policies) na própria sequência de migrations ou em migration complementar se ausente.
+- **Stack**: TanStack Router + React Query + `supabase` browser client. Sem `createServerFn` (segue padrão do projeto, todo acesso é client-side com RLS).
+- **Validação**: Zod (schemas já em `src/lib/providers.ts`); `react-hook-form` ou state local seguindo padrão de `planos.tsx`.
+- **Idempotência**: `launchPayableInFinance` já garante; `generateNextPayable` deduplica por `(provider_assignment_id, reference_month)`. Se quiser garantia em DB, adicionar `CREATE UNIQUE INDEX provider_payables_assignment_month_uidx ON provider_payables (provider_assignment_id, reference_month) WHERE provider_assignment_id IS NOT NULL AND reference_month IS NOT NULL;` numa migration curta.
+- **Tipos**: tabelas já estão em `src/integrations/supabase/types.ts` — usar normalmente. Cast `as any` apenas no helper já existente, novo código tipa direto.
+- **Sem mudanças** em: Auth, RLS existente, Calendário Financeiro, fluxo de aportes/repasses, cashback, taxas, Admin, trial, SaaS.
 
-Confirme para eu prosseguir com a execução em modo build.
+## Entregas / arquivos
+
+Criar:
+- `src/components/provider-form.tsx`
+- `src/components/assignment-form.tsx`
+- `src/components/provider-dossier.tsx`
+- (opcional) `supabase/migrations/<ts>_provider_payables_unique.sql` — só o índice anti-duplicidade.
+
+Editar:
+- `src/routes/_app/equipe-prestadores.tsx` — página principal.
+- `src/lib/providers.ts` — adicionar `generateNextPayable`, `generateMonthPayables`, `cancelPayable`.
+- `src/lib/finance.ts` — incluir chaves de prestador em `invalidateFinanceCaches`.
+- `src/components/client-dossier.tsx` — bloco "Custos de execução".
+- `src/components/service-dossier.tsx` — métricas + prestadores vinculados.
+- `src/routes/_app/dashboard.tsx` — bloco compacto "Equipe & execução".
+- `src/routes/_app/despesas-planejamento.tsx` — seção "Obrigações de prestadores".
+
+Implementação será incremental nessa ordem: helpers → página + form de prestador → form de vínculo + dossiê → integrações em cliente/serviço/dashboard/despesas.
