@@ -17,6 +17,7 @@ const NAV = [
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/recorrencias", label: "Recorrências", icon: Repeat },
   { to: "/aportes", label: "Aportes/Repasses", icon: ArrowLeftRight },
+  { to: "/equipe-prestadores", label: "Equipe & Prestadores", icon: UserCog },
   { to: "/despesas-planejamento", label: "Despesas & Planejamento", icon: ClipboardList },
   { to: "/planos", label: "Planos/Ferramentas", icon: Package },
   { to: "/servicos", label: "Serviços", icon: Briefcase },
