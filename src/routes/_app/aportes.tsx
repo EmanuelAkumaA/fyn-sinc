@@ -488,7 +488,7 @@ function CashbackDialog({ tx, banks, onClose, onSubmit, loading }: any) {
             </div>
             <div className="space-y-2">
               <Label>Valor recebido *</Label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <CurrencyInput value={amount} onValueChange={setAmount} />
             </div>
             <div className="space-y-2">
               <Label>Data *</Label>
