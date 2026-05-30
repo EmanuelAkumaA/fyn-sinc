@@ -233,6 +233,7 @@ export type Database = {
           notes: string | null
           organization_id: string
           paid_at: string | null
+          provider_payable_id: string | null
           reference_month: string | null
           status: string
           updated_at: string
@@ -250,6 +251,7 @@ export type Database = {
           notes?: string | null
           organization_id: string
           paid_at?: string | null
+          provider_payable_id?: string | null
           reference_month?: string | null
           status?: string
           updated_at?: string
@@ -267,6 +269,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           paid_at?: string | null
+          provider_payable_id?: string | null
           reference_month?: string | null
           status?: string
           updated_at?: string
@@ -376,6 +379,7 @@ export type Database = {
           parent_transaction_id: string | null
           payment_method: string | null
           platform: string | null
+          provider_payable_id: string | null
           recurring_contract_id: string | null
           service_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
@@ -407,6 +411,7 @@ export type Database = {
           parent_transaction_id?: string | null
           payment_method?: string | null
           platform?: string | null
+          provider_payable_id?: string | null
           recurring_contract_id?: string | null
           service_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
@@ -438,6 +443,7 @@ export type Database = {
           parent_transaction_id?: string | null
           payment_method?: string | null
           platform?: string | null
+          provider_payable_id?: string | null
           recurring_contract_id?: string | null
           service_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
@@ -486,6 +492,13 @@ export type Database = {
             foreignKeyName: "financial_transactions_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "v_client_profitability_summary"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "v_client_wallet"
             referencedColumns: ["client_id"]
           },
@@ -516,6 +529,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_service_profitability_summary"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "financial_transactions_service_id_fkey"
@@ -651,6 +671,177 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_assignments: {
+        Row: {
+          assignment_type: string
+          client_id: string | null
+          client_recurring_contract_id: string | null
+          compensation_type: string
+          created_at: string
+          end_date: string | null
+          fixed_amount: number | null
+          frequency: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          percentage: number | null
+          provider_id: string
+          service_id: string | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_type: string
+          client_id?: string | null
+          client_recurring_contract_id?: string | null
+          compensation_type: string
+          created_at?: string
+          end_date?: string | null
+          fixed_amount?: number | null
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          percentage?: number | null
+          provider_id: string
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_type?: string
+          client_id?: string | null
+          client_recurring_contract_id?: string | null
+          compensation_type?: string
+          created_at?: string
+          end_date?: string | null
+          fixed_amount?: number | null
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          percentage?: number | null
+          provider_id?: string
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_payables: {
+        Row: {
+          amount: number
+          bank_id: string | null
+          client_id: string | null
+          created_at: string
+          description: string
+          due_date: string
+          financial_transaction_id: string | null
+          id: string
+          launched_at: string | null
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          provider_assignment_id: string | null
+          provider_id: string
+          reference_month: string | null
+          service_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          financial_transaction_id?: string | null
+          id?: string
+          launched_at?: string | null
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          provider_assignment_id?: string | null
+          provider_id: string
+          reference_month?: string | null
+          service_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          financial_transaction_id?: string | null
+          id?: string
+          launched_at?: string | null
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          provider_assignment_id?: string | null
+          provider_id?: string
+          reference_month?: string | null
+          service_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      providers: {
+        Row: {
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          payment_notes: string | null
+          phone: string | null
+          pix_key: string | null
+          provider_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          payment_notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          provider_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          payment_notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          provider_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recurring_contracts: {
         Row: {
           amount: number
@@ -728,6 +919,13 @@ export type Database = {
             foreignKeyName: "recurring_contracts_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "v_client_profitability_summary"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "v_client_wallet"
             referencedColumns: ["client_id"]
           },
@@ -765,6 +963,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_contracts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "v_service_profitability_summary"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "recurring_contracts_service_id_fkey"
@@ -920,6 +1125,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "v_client_financial_summary"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "third_party_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_profitability_summary"
             referencedColumns: ["client_id"]
           },
           {
@@ -1137,6 +1349,50 @@ export type Database = {
           },
         ]
       }
+      v_client_profitability_summary: {
+        Row: {
+          cashback_received: number | null
+          client_id: string | null
+          expected_revenue: number | null
+          fees_paid: number | null
+          organization_id: string | null
+          other_costs_paid: number | null
+          paid_revenue: number | null
+          provider_costs_expected: number | null
+          provider_costs_paid: number | null
+        }
+        Insert: {
+          cashback_received?: never
+          client_id?: string | null
+          expected_revenue?: never
+          fees_paid?: never
+          organization_id?: string | null
+          other_costs_paid?: never
+          paid_revenue?: never
+          provider_costs_expected?: never
+          provider_costs_paid?: never
+        }
+        Update: {
+          cashback_received?: never
+          client_id?: string | null
+          expected_revenue?: never
+          fees_paid?: never
+          organization_id?: string | null
+          other_costs_paid?: never
+          paid_revenue?: never
+          provider_costs_expected?: never
+          provider_costs_paid?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_client_wallet: {
         Row: {
           available_balance: number | null
@@ -1150,6 +1406,86 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_provider_summary: {
+        Row: {
+          linked_clients_count: number | null
+          linked_services_count: number | null
+          organization_id: string | null
+          overdue_amount: number | null
+          paid_amount_period: number | null
+          pending_amount: number | null
+          provider_id: string | null
+          provider_name: string | null
+          provider_status: string | null
+          provider_type: string | null
+          recurring_monthly_cost: number | null
+          total_paid: number | null
+        }
+        Insert: {
+          linked_clients_count?: never
+          linked_services_count?: never
+          organization_id?: string | null
+          overdue_amount?: never
+          paid_amount_period?: never
+          pending_amount?: never
+          provider_id?: string | null
+          provider_name?: string | null
+          provider_status?: string | null
+          provider_type?: string | null
+          recurring_monthly_cost?: never
+          total_paid?: never
+        }
+        Update: {
+          linked_clients_count?: never
+          linked_services_count?: never
+          organization_id?: string | null
+          overdue_amount?: never
+          paid_amount_period?: never
+          pending_amount?: never
+          provider_id?: string | null
+          provider_name?: string | null
+          provider_status?: string | null
+          provider_type?: string | null
+          recurring_monthly_cost?: never
+          total_paid?: never
+        }
+        Relationships: []
+      }
+      v_service_profitability_summary: {
+        Row: {
+          expected_revenue: number | null
+          organization_id: string | null
+          paid_revenue: number | null
+          provider_costs_expected: number | null
+          provider_costs_paid: number | null
+          service_id: string | null
+        }
+        Insert: {
+          expected_revenue?: never
+          organization_id?: string | null
+          paid_revenue?: never
+          provider_costs_expected?: never
+          provider_costs_paid?: never
+          service_id?: string | null
+        }
+        Update: {
+          expected_revenue?: never
+          organization_id?: string | null
+          paid_revenue?: never
+          provider_costs_expected?: never
+          provider_costs_paid?: never
+          service_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
