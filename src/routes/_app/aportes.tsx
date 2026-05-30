@@ -634,7 +634,7 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2"><Label>Fornecedor</Label><Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} placeholder="Ex.: Google Ads, Meta Ads, Kommo" /></div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor *</Label><CurrencyInput value={form.amount} onValueChange={(v: string) => setForm({ ...form, amount: v })} /></div>
         <div className="space-y-2"><Label>Data *</Label><Input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
       </div>
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Pagamento Meta Ads outubro" /></div>
