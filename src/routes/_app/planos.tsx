@@ -228,8 +228,8 @@ function PlanForm({ initial, clients, banks, loading, onSubmit }: { initial: any
         <div className="space-y-2"><Label>Forma de pagamento</Label><Input value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Recebido do cliente</Label><Input type="number" step="0.01" value={form.amount_received_from_client} onChange={(e) => setForm({ ...form, amount_received_from_client: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Pago ao fornecedor</Label><Input type="number" step="0.01" value={form.amount_paid_to_supplier} onChange={(e) => setForm({ ...form, amount_paid_to_supplier: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Recebido do cliente</Label><CurrencyInput value={form.amount_received_from_client} onValueChange={(v: string) => setForm({ ...form, amount_received_from_client: v })} /></div>
+        <div className="space-y-2"><Label>Pago ao fornecedor</Label><CurrencyInput value={form.amount_paid_to_supplier} onValueChange={(v: string) => setForm({ ...form, amount_paid_to_supplier: v })} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-2"><Label>Valor cheio</Label><Input type="number" step="0.01" value={form.full_value} onChange={(e) => setForm({ ...form, full_value: e.target.value })} /></div>
