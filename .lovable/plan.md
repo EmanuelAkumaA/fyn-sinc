@@ -1,149 +1,114 @@
-## Plano: Equipe & Prestadores (V1)
 
-Módulo novo, sem alterar Calendário, Auth, RLS existente, fluxo geral de Clientes/Serviços/Bancos, regras de aporte/repasse, cashback/taxas, Admin, trial. Reusa o Financeiro como fonte oficial de pagamento. Implementação incremental.
+# Restauração do schema do Fyn Sinc no Supabase externo
 
----
+## Confirmações iniciais (auditoria)
 
-### Fase 1 — Banco de dados (migration única)
+- O projeto **já aponta** para o Supabase externo novo: `twgcxnoctlkbrtaapxik` (confirmado em `.env`, `supabase/config.toml` e `src/integrations/supabase/client.ts`).
+- **Lovable Cloud não será ativado**. Toda a restauração ocorre no Supabase externo já conectado.
+- O banco do novo projeto está **vazio** (sem tabelas, triggers ou buckets) — confirmado via metadados.
+- O repositório contém **22 migrations** versionadas em `supabase/migrations/` (2026-05-16 → 2026-05-30), totalizando ~1.625 linhas SQL. Elas são a fonte única de verdade do schema.
+- Nenhum seed/dado fictício será inserido. Banco ficará estruturalmente completo e limpo.
 
-Novas tabelas em `public`, com `GRANT` + RLS por organização (padrão das demais tabelas: `is_org_member` / `is_org_active` / `super_admin`).
+## Estratégia
 
-**`providers`**
-- Campos conforme spec (id, organization_id, name, provider_type, document, email, phone, pix_key, payment_notes, status default 'ativo', notes, timestamps).
-- Validação de `provider_type` e `status` via CHECK simples (valores imutáveis).
-- Trigger `set_updated_at`.
+Aplicar as 22 migrations em ordem cronológica diretamente no Supabase externo via `supabase--migration` (uma chamada por arquivo, na ordem do timestamp do nome). Não recriar nem refazer schema manualmente — apenas reexecutar o que já está versionado.
 
-**`provider_assignments`**
-- Campos conforme spec; FKs lógicas para `providers`, `clients`, `services`, `recurring_contracts`.
-- CHECKs: `assignment_type ∈ {pontual,recorrente}`, `compensation_type ∈ {valor_fixo,porcentagem}`, `percentage BETWEEN 0 AND 100`, `fixed_amount >= 0`, `frequency` em lista permitida.
-- Regra (CHECK): se `valor_fixo` → `fixed_amount NOT NULL`; se `porcentagem` → `percentage NOT NULL`.
+Se alguma migration falhar:
+1. Parar imediatamente.
+2. Diagnosticar a causa (dependência ausente, objeto duplicado, role inexistente, etc.).
+3. Aplicar correção mínima preservando nomes de tabelas/colunas usados pelo frontend.
+4. Continuar a partir da migration corrigida.
+5. Reportar o ajuste ao usuário.
 
-**`provider_payables`**
-- Campos conforme spec + FK opcional para `financial_transactions(id)` com `ON DELETE SET NULL`.
-- CHECK status, `amount >= 0`.
-- Index parcial UNIQUE para evitar duplicidade recorrente: `(provider_assignment_id, reference_month)` quando ambos não nulos.
-- UNIQUE em `financial_transaction_id` (parcial WHERE NOT NULL) para garantir 1:1.
+## Etapas
 
-**Alteração leve em `financial_transactions`**
-- Adicionar coluna `provider_payable_id uuid NULL` (sem FK rígida para evitar ciclo) + index.
-- Trigger `sync_provider_payable_on_tx` (espelhando o existente `sync_expense_occurrence_on_tx`):
-  - Quando tx vinculada vira `pago`: setar payable.status='paga', `paid_at`, `bank_id`.
-  - Quando volta para `pendente`: payable.status='lancada', limpar `paid_at`.
-- Trigger `unlink_tx_on_payable_delete` (espelha o de expense).
+### 1. Aplicar migrations (ordem cronológica)
 
-**Integração com Despesas & Planejamento**
-- Adicionar `provider_payable_id uuid NULL UNIQUE` em `expense_occurrences` para permitir vínculo opcional sem duplicar lançamento (a aba Despesas lê via JOIN e marca origem "Prestador" quando preenchido).
+Sequência exata a executar (uma chamada `supabase--migration` por arquivo, conteúdo lido de `supabase/migrations/`):
 
-**Views**
-- `v_provider_summary` (por prestador): custo recorrente, pendente, atrasado, pago no período, totais, contagem de clientes/serviços vinculados.
-- `v_client_profitability_summary` e `v_service_profitability_summary`: receitas (excluindo `repasse_recebido`), custos de prestador previstos/pagos, outras despesas próprias pagas, taxas, cashback, lucro e margem previsto/realizado.
+```text
+20260516205628 → base: organizations, profiles, organization_users, helpers is_org_member/is_org_active/is_super_admin
+20260516205813 → ajustes iniciais
+20260516220434 → clients
+20260516222623 → banks, financial_transactions
+20260516234940 → services
+20260516235811 → ajustes
+20260517015826 → recurring_contracts / occurrences
+20260517212015 → ...
+20260517213710 → ...
+20260518161016 → ...
+20260523151448 → ...
+20260523193854 → ...
+20260523201718 → ...
+20260523220612 → ...
+20260523221100 → ...
+20260523224531 → ...
+20260525225616 → ...
+20260525230720 → ...
+20260525232202 → ...
+20260527234951 → ...
+20260529233313 → despesas/planejamento
+20260530222106 → providers, provider_assignments, provider_payables (Equipe & Prestadores)
+```
 
-Todas as views: `SECURITY INVOKER` (respeitam RLS das tabelas base) + `GRANT SELECT TO authenticated`.
+(Os títulos acima refletem o conteúdo conhecido; o que importa é executar cada arquivo *verbatim* na ordem cronológica.)
 
----
+### 2. Validação pós-migration
 
-### Fase 2 — Helpers e tipagem
+- Rodar `supabase--linter` para detectar problemas (RLS off, search_path, security definer views, etc.) e corrigir os relevantes.
+- Listar via `supabase--read_query` tabelas, views, funções e policies criadas — conferir presença de:
+  - `organizations`, `organization_users`, `profiles`, `user_global_roles`
+  - `clients`, `services`, `banks`
+  - `financial_transactions`, `recurring_contracts`, `recurring_occurrences`
+  - `client_documents`
+  - `expense_categories`, `expense_plans`, `expense_occurrences`
+  - `third_party_plans`
+  - `providers`, `provider_assignments`, `provider_payables`
+  - views: `v_provider_summary`, `v_client_profitability_summary`, `v_service_profitability_summary` e demais views financeiras das migrations.
 
-- `src/lib/providers.ts`: enums (`PROVIDER_TYPE_LABELS`, `ASSIGNMENT_TYPE`, `COMPENSATION_TYPE`), schemas Zod, helpers de cálculo (lucro/margem previsto e realizado, equivalente mensal reutilizando `monthlyEquivalent` de `expenses.ts`), util de geração de próxima obrigação (reusa `addFrequency`/`computeFirstDueDate`).
-- Após a migration, o `src/integrations/supabase/types.ts` será regenerado automaticamente — sem edição manual.
+### 3. Storage
 
----
+Criar bucket privado `client-documents` no Supabase externo se as migrations não o criarem, com políticas RLS por `organization_id/client_id/filename`:
+- upload/leitura/update/delete restritos a membros ativos da organização (via `is_org_member`/`is_org_active`).
+- bucket marcado como **privado** (acesso via signed URLs).
 
-### Fase 3 — Rota e navegação
+### 4. Tipos TypeScript
 
-- Criar `src/routes/_app/equipe-prestadores.tsx` (autenticada, padrão das outras `_app/*`).
-- Adicionar item no `NAV` e em `MORE_ITEMS` de `src/components/app-sidebar.tsx` (ícone `Users` do lucide-react), entre "Aportes/Repasses" e "Despesas & Planejamento".
+- Após sucesso das migrations, regenerar `src/integrations/supabase/types.ts` (atualizado automaticamente pela plataforma após cada migration aprovada).
+- Conferir que `src/lib/providers.ts`, `src/lib/finance.ts`, etc., continuam compilando.
 
----
+### 5. Auth
 
-### Fase 4 — Tela principal Equipe & Prestadores
+- Não alterar fluxo de Auth existente. Validar que `signup`, `login`, `logout`, recuperação de sessão e criação automática de `profile` + `organization` (via triggers das migrations) funcionam no novo projeto.
+- Confirmar provedor Email/Password habilitado no painel do Supabase externo.
 
-- Cabeçalho + subtítulo conforme spec.
-- Cards superiores: ativos, custo recorrente mensal, previstos no mês, pendentes, pagos no mês, em atraso (via `v_provider_summary` agregada).
-- Filtros (tipo / status / com pendências) + busca (nome/documento/telefone/email).
-- Grid responsivo de cards de prestador (`MetricCard` style, mas componente próprio `ProviderCard`).
-- Botão "Novo prestador" → Sheet com formulário Zod.
-- Estados vazios conforme spec.
+### 6. Smoke test (sem deixar dados)
 
----
+Manual pelo usuário, seguindo o roteiro do item 12 do pedido. Não vou inserir dados de teste automaticamente — apenas deixar o ambiente pronto.
 
-### Fase 5 — Dossiê do prestador
+### 7. Relatório final
 
-Dialog grande no desktop, fullscreen no mobile (padrão `client-dossier.tsx`).
+Após concluir, informar:
+- Confirmação de uso exclusivo do Supabase externo `twgcxnoctlkbrtaapxik`.
+- Lovable Cloud não ativado.
+- 22 migrations aplicadas (lista com status).
+- Objetos criados (tabelas/views/funções/triggers/policies).
+- Bucket `client-documents` criado e políticas aplicadas.
+- Avisos do linter resolvidos vs. pendentes.
+- Próximos passos (recadastro manual).
 
-Header com dados + botão editar. Cards de totais. Abas:
-1. **Visão geral** — resumo, próximos pagamentos, últimas movimentações, clientes/serviços vinculados, alertas de atraso.
-2. **Vínculos** — lista de `provider_assignments` com preview de margem; ações: editar, pausar, encerrar, gerar obrigação, abrir cliente/serviço. Botão "Novo vínculo".
-3. **Pagamentos** — `provider_payables` filtráveis (período/status/cliente/serviço). Ações: "Lançar no Financeiro" / "Ver no Financeiro" / Cancelar / Gerar próxima.
-4. **Timeline** — agregação em memória (criado, vínculos, obrigações, lançamentos, baixas, pausas).
-5. **Observações** — textarea simples.
+## Premissas / pontos a confirmar
 
----
+- As migrations no repositório são as **definitivas** (não vou editá-las, apenas executar).
+- Caso alguma migration referencie objetos do Auth/Storage que já existam por padrão no novo projeto, ajustes mínimos com `IF NOT EXISTS` / `CREATE OR REPLACE` serão usados como correção pontual.
+- Não vou implementar parceiros/revendedores.
+- Não vou criar usuários por SQL — signup do app cuida disso.
 
-### Fase 6 — Formulário de vínculo
+## Detalhes técnicos
 
-Reutilizável a partir do dossiê do prestador, do cliente e do serviço.
-- Selects de Prestador / Cliente / Serviço / Contrato recorrente do cliente.
-- Tipo (pontual/recorrente), compensação (fixo/percentual), frequência, datas.
-- Preview de cálculo (receita prevista vs custo vs lucro vs margem). Quando receita não disponível, permitir preenchimento manual apenas para simulação (não persiste como receita).
-- Ao salvar pontual: cria 1 `provider_payable` (`nao_lancada`).
-- Ao salvar recorrente: cria a obrigação da competência atual; botões "Gerar próxima" e "Gerar obrigações do mês" (com proteção contra duplicidade via unique index).
+- Ferramenta: `supabase--migration` (uma migration por chamada, conteúdo idêntico ao arquivo).
+- Verificações: `supabase--read_query` para inspecionar `information_schema`/`pg_policies` entre etapas se necessário.
+- Linter: `supabase--linter` ao final.
+- Storage: criado via SQL (`storage.buckets` + `storage.objects` policies) na própria sequência de migrations ou em migration complementar se ausente.
 
----
-
-### Fase 7 — Lançar no Financeiro / Baixa
-
-- Server fn / mutation client-side: cria `financial_transactions` (`type=despesa_propria`, `status=pendente`, copia descrição/valor/due_date/bank, vincula `provider_payable_id`, `provider_id`, `client_id`, `service_id`). Atualiza payable para `lancada` + `launched_at`. Idempotente: se já tem `financial_transaction_id`, retorna o existente.
-- Baixa: somente pelo módulo Financeiro (fluxo existente). Trigger SQL espelha status → payable.
-
----
-
-### Fase 8 — Integração com Despesas & Planejamento
-
-- `despesas-planejamento.tsx`: incluir leitura adicional dos `provider_payables` (via view ou JOIN) com origem "Prestador", sem criar `expense_occurrence` paralela. Se a Despesa já tiver `provider_payable_id`, mostrar como único item com badge "Prestador".
-- Não duplicar contagem.
-
----
-
-### Fase 9 — Ajustes compactos em outras telas
-
-- **Cliente (`clientes.$id.tsx`)**: bloco recolhível "Custos de execução" (custos previstos/pagos, lucro previsto/realizado, margens, prestadores vinculados). Lê de `v_client_profitability_summary` + lista enxuta.
-- **Serviço (`servicos.tsx` dossiê)**: mesma ideia via `v_service_profitability_summary`.
-- **Dashboard (`dashboard.tsx`)**: um único bloco "Equipe & execução" (custos no mês, pendentes, em atraso, margem média realizada) + botão "Ver equipe e prestadores". Inserido após composição de bancos, sem mexer no Calendário Financeiro.
-
----
-
-### Fase 10 — React Query
-
-- Chaves novas: `['providers', orgId]`, `['provider', orgId, id]`, `['provider-summary', orgId]`, `['provider-assignments', orgId, providerId]`, `['provider-payables', orgId, filters]`.
-- Invalidar essas + `['transactions']`, `['expense-planning']`, `['client-summary', clientId]`, `['service-summary', serviceId]`, `['dashboard']`, `['banks']` em cada mutação (criar/editar prestador, criar/editar vínculo, gerar obrigação, lançar no Financeiro, pagar/estornar via Financeiro).
-
----
-
-### Fora de escopo (V1)
-
-Folha CLT, encargos, férias, ponto, portal prestador, aprovação, comissão multinível, WhatsApp, pagamentos/Pix automáticos, integração bancária, cron externo, PDF avançado.
-
----
-
-### Detalhes técnicos relevantes
-
-- Enum `transaction_type` já contém `despesa_propria` (confirmado em `types.ts`).
-- Tabelas existentes não têm FKs declaradas (padrão do projeto) — manteremos o mesmo estilo nas novas para consistência.
-- RLS reusa funções `is_org_member`, `is_org_active`, `is_super_admin` já existentes — sem novas security definer functions necessárias.
-- Triggers novos seguem o padrão de `sync_expense_occurrence_on_tx` (SECURITY DEFINER, search_path=public).
-- Sem `service_role_key` no frontend; queries diretas via `supabase` client com RLS.
-
----
-
-### Ordem de execução proposta
-
-1. Migration (tabelas, triggers, views, alteração em `financial_transactions` e `expense_occurrences`).
-2. Helpers + tipos (`src/lib/providers.ts`).
-3. Rota + menu.
-4. Lista + dossiê + Sheet de prestador.
-5. Vínculos + obrigações + "Lançar no Financeiro".
-6. Integração Despesas & Planejamento.
-7. Blocos compactos em Cliente / Serviço / Dashboard.
-
-Cada etapa entregável de forma incremental.
+Confirme para eu prosseguir com a execução em modo build.
