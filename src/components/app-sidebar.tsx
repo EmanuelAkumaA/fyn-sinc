@@ -86,6 +86,7 @@ export function AppSidebar() {
 
 const MORE_ITEMS = [
   { to: "/recorrencias", label: "Recorrências", icon: Repeat },
+  { to: "/equipe-prestadores", label: "Equipe & Prestadores", icon: UserCog },
   { to: "/despesas-planejamento", label: "Despesas & Planejamento", icon: ClipboardList },
   { to: "/planos", label: "Planos/Ferramentas", icon: Package },
   { to: "/servicos", label: "Serviços", icon: Briefcase },
