@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Wallet, Repeat, ArrowLeftRight,
   Package, Briefcase, Building2, Settings, LogOut, Download,
-  MoreHorizontal, ClipboardList,
+  MoreHorizontal, ClipboardList, UserCog,
 } from "lucide-react";
 import { signOutAndRedirect } from "@/lib/session";
 import { useInstallPwa } from "@/components/install-pwa-banner";
