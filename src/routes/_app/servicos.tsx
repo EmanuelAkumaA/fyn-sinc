@@ -260,7 +260,7 @@ function ServiceForm({ initial, loading, onSubmit }: { initial: any | null; load
         </div>
       </div>
       <div className="space-y-2"><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
-      <div className="space-y-2"><Label>Valor padrão</Label><CurrencyInput value={form.default_value} onValueChange={(v) => setForm({ ...form, default_value: v })} /></div>
+      <div className="space-y-2"><Label>Valor padrão</Label><CurrencyInput value={form.default_value} onValueChange={(v: string) => setForm({ ...form, default_value: v })} /></div>
       <div className="space-y-2"><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
       <Button type="submit" disabled={loading} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
         {loading ? "Salvando..." : "Salvar serviço"}
