@@ -6,6 +6,7 @@ import { Plus, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Search } from "
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
@@ -487,7 +488,7 @@ function CashbackDialog({ tx, banks, onClose, onSubmit, loading }: any) {
             </div>
             <div className="space-y-2">
               <Label>Valor recebido *</Label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <CurrencyInput value={amount} onValueChange={setAmount} />
             </div>
             <div className="space-y-2">
               <Label>Data *</Label>
@@ -560,7 +561,7 @@ function AporteForm({ clients, banks, onSubmit, loading }: any) {
 
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor *</Label><CurrencyInput value={form.amount} onValueChange={(v: string) => setForm({ ...form, amount: v })} /></div>
         <div className="space-y-2"><Label>Data *</Label><Input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
       </div>
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Aporte para mídia outubro" /></div>
@@ -633,13 +634,13 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
       </div>
       <div className="space-y-2"><Label>Fornecedor</Label><Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} placeholder="Ex.: Google Ads, Meta Ads, Kommo" /></div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor *</Label><CurrencyInput value={form.amount} onValueChange={(v: string) => setForm({ ...form, amount: v })} /></div>
         <div className="space-y-2"><Label>Data *</Label><Input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
       </div>
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Pagamento Meta Ads outubro" /></div>
       <div className="space-y-2">
         <Label>Cashback esperado (opcional)</Label>
-        <Input type="number" step="0.01" min="0" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} placeholder="Ex.: pago no cartão com 2% de cashback" />
+        <CurrencyInput value={form.cashback_expected} onValueChange={(v: string) => setForm({ ...form, cashback_expected: v })} placeholder="Ex.: pago no cartão com 2% de cashback" />
         <p className="text-xs text-muted-foreground">Informe o valor previsto se o pagamento gera cashback (ex.: cartão).</p>
       </div>
       <div className="space-y-2"><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} /></div>

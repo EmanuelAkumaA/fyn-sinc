@@ -6,6 +6,7 @@ import { Briefcase, Pencil, Plus, Search, Users, Wallet, Repeat, AlertTriangle }
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -260,7 +261,7 @@ function ServiceForm({ initial, loading, onSubmit }: { initial: any | null; load
         </div>
       </div>
       <div className="space-y-2"><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
-      <div className="space-y-2"><Label>Valor padrão</Label><Input type="number" step="0.01" value={form.default_value} onChange={(e) => setForm({ ...form, default_value: e.target.value })} /></div>
+      <div className="space-y-2"><Label>Valor padrão</Label><CurrencyInput value={form.default_value} onValueChange={(v: string) => setForm({ ...form, default_value: v })} /></div>
       <div className="space-y-2"><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
       <Button type="submit" disabled={loading} className="w-full" style={{ background: "var(--gradient-primary)", color: "var(--background)" }}>
         {loading ? "Salvando..." : "Salvar serviço"}

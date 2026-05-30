@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   assignmentSchema,
   ASSIGNMENT_TYPE_LABELS,
@@ -200,7 +201,7 @@ export function AssignmentForm({
         {form.compensation_type === "valor_fixo" ? (
           <div className="space-y-2">
             <Label>Valor fixo (R$) *</Label>
-            <Input type="number" step="0.01" min="0" value={form.fixed_amount} onChange={(e) => setForm({ ...form, fixed_amount: e.target.value })} />
+            <CurrencyInput value={form.fixed_amount} onValueChange={(v) => setForm({ ...form, fixed_amount: v })} />
           </div>
         ) : (
           <div className="space-y-2">
@@ -246,7 +247,7 @@ export function AssignmentForm({
       {expectedRevenue === 0 && (form.compensation_type === "porcentagem" || true) && (
         <div className="space-y-2">
           <Label>Receita estimada do cliente (simulação)</Label>
-          <Input type="number" step="0.01" min="0" placeholder="Opcional, apenas para preview" value={form.manual_revenue} onChange={(e) => setForm({ ...form, manual_revenue: e.target.value })} />
+          <CurrencyInput placeholder="Opcional, apenas para preview" value={form.manual_revenue} onValueChange={(v) => setForm({ ...form, manual_revenue: v })} />
         </div>
       )}
 

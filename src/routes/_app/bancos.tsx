@@ -6,6 +6,7 @@ import { Banknote, Building2, Pencil, Plus, Search, Wallet } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -208,7 +209,7 @@ function BankForm({ initial, loading, onSubmit }: { initial: any | null; loading
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4 mt-6">
       <div className="space-y-2"><Label>Nome *</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
       <div className="space-y-2"><Label>Tipo de conta</Label><Input value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })} placeholder="Conta corrente, gateway, carteira..." /></div>
-      <div className="space-y-2"><Label>Saldo inicial</Label><Input type="number" step="0.01" value={form.initial_balance} onChange={(e) => setForm({ ...form, initial_balance: e.target.value })} /></div>
+      <div className="space-y-2"><Label>Saldo inicial</Label><CurrencyInput value={form.initial_balance} onValueChange={(v: string) => setForm({ ...form, initial_balance: v })} /></div>
 
       <div className="space-y-2">
         <Label>Logo</Label>

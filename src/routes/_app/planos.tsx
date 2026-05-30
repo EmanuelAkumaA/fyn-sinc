@@ -6,6 +6,7 @@ import { CheckCircle2, CreditCard, Pencil, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -227,17 +228,17 @@ function PlanForm({ initial, clients, banks, loading, onSubmit }: { initial: any
         <div className="space-y-2"><Label>Forma de pagamento</Label><Input value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Recebido do cliente</Label><Input type="number" step="0.01" value={form.amount_received_from_client} onChange={(e) => setForm({ ...form, amount_received_from_client: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Pago ao fornecedor</Label><Input type="number" step="0.01" value={form.amount_paid_to_supplier} onChange={(e) => setForm({ ...form, amount_paid_to_supplier: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Recebido do cliente</Label><CurrencyInput value={form.amount_received_from_client} onValueChange={(v: string) => setForm({ ...form, amount_received_from_client: v })} /></div>
+        <div className="space-y-2"><Label>Pago ao fornecedor</Label><CurrencyInput value={form.amount_paid_to_supplier} onValueChange={(v: string) => setForm({ ...form, amount_paid_to_supplier: v })} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2"><Label>Valor cheio</Label><Input type="number" step="0.01" value={form.full_value} onChange={(e) => setForm({ ...form, full_value: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor cheio</Label><CurrencyInput value={form.full_value} onValueChange={(v: string) => setForm({ ...form, full_value: v })} /></div>
         <div className="space-y-2"><Label>Comissão %</Label><Input type="number" step="0.01" value={form.commission_pct} onChange={(e) => setForm({ ...form, commission_pct: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Comissão R$</Label><Input type="number" step="0.01" value={form.commission_value} onChange={(e) => setForm({ ...form, commission_value: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Comissão R$</Label><CurrencyInput value={form.commission_value} onValueChange={(v: string) => setForm({ ...form, commission_value: v })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Cashback previsto</Label><Input type="number" step="0.01" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Cashback recebido</Label><Input type="number" step="0.01" value={form.cashback_received} onChange={(e) => setForm({ ...form, cashback_received: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Cashback previsto</Label><CurrencyInput value={form.cashback_expected} onValueChange={(v: string) => setForm({ ...form, cashback_expected: v })} /></div>
+        <div className="space-y-2"><Label>Cashback recebido</Label><CurrencyInput value={form.cashback_received} onValueChange={(v: string) => setForm({ ...form, cashback_received: v })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">

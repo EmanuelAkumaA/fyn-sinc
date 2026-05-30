@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -429,7 +430,7 @@ function NewTxForm({ clients, banks, services, initialServiceId, onSubmit, loadi
       </div>
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Valor *</Label><Input required type="number" step="0.01" value={form.amount_gross} onChange={(e) => setForm({ ...form, amount_gross: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Valor *</Label><CurrencyInput value={form.amount_gross} onValueChange={(v: string) => setForm({ ...form, amount_gross: v })} /></div>
         <div className="space-y-2"><Label>Vencimento</Label><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
       </div>
       {form.type !== "transferencia" && (
@@ -476,7 +477,7 @@ function NewTxForm({ clients, banks, services, initialServiceId, onSubmit, loadi
           {cashback.enabled && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Valor do cashback</Label><Input type="number" step="0.01" value={cashback.amount} onChange={(e) => setCashback({ ...cashback, amount: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Valor do cashback</Label><CurrencyInput value={cashback.amount} onValueChange={(v: string) => setCashback({ ...cashback, amount: v })} /></div>
                 <div className="space-y-2"><Label>Data</Label><Input type="date" value={cashback.date} onChange={(e) => setCashback({ ...cashback, date: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
