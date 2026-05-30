@@ -247,7 +247,7 @@ export function AssignmentForm({
       {expectedRevenue === 0 && (form.compensation_type === "porcentagem" || true) && (
         <div className="space-y-2">
           <Label>Receita estimada do cliente (simulação)</Label>
-          <Input type="number" step="0.01" min="0" placeholder="Opcional, apenas para preview" value={form.manual_revenue} onChange={(e) => setForm({ ...form, manual_revenue: e.target.value })} />
+          <CurrencyInput placeholder="Opcional, apenas para preview" value={form.manual_revenue} onValueChange={(v) => setForm({ ...form, manual_revenue: v })} />
         </div>
       )}
 
