@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) {
       throw redirect({
