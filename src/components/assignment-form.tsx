@@ -201,7 +201,7 @@ export function AssignmentForm({
         {form.compensation_type === "valor_fixo" ? (
           <div className="space-y-2">
             <Label>Valor fixo (R$) *</Label>
-            <Input type="number" step="0.01" min="0" value={form.fixed_amount} onChange={(e) => setForm({ ...form, fixed_amount: e.target.value })} />
+            <CurrencyInput value={form.fixed_amount} onValueChange={(v) => setForm({ ...form, fixed_amount: v })} />
           </div>
         ) : (
           <div className="space-y-2">
