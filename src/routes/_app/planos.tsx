@@ -237,8 +237,8 @@ function PlanForm({ initial, clients, banks, loading, onSubmit }: { initial: any
         <div className="space-y-2"><Label>Comissão R$</Label><CurrencyInput value={form.commission_value} onValueChange={(v: string) => setForm({ ...form, commission_value: v })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2"><Label>Cashback previsto</Label><Input type="number" step="0.01" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} /></div>
-        <div className="space-y-2"><Label>Cashback recebido</Label><Input type="number" step="0.01" value={form.cashback_received} onChange={(e) => setForm({ ...form, cashback_received: e.target.value })} /></div>
+        <div className="space-y-2"><Label>Cashback previsto</Label><CurrencyInput value={form.cashback_expected} onValueChange={(v: string) => setForm({ ...form, cashback_expected: v })} /></div>
+        <div className="space-y-2"><Label>Cashback recebido</Label><CurrencyInput value={form.cashback_received} onValueChange={(v: string) => setForm({ ...form, cashback_received: v })} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
