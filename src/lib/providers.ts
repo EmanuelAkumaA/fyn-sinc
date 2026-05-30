@@ -179,3 +179,78 @@ export async function launchPayableInFinance(payable: {
 
   return tx.id as string;
 }
+
+/** Gera uma obrigação para um vínculo, com guarda anti-duplicidade por (assignment, reference_month). */
+export async function generateNextPayable(args: {
+  organization_id: string;
+  provider_id: string;
+  assignment_id: string;
+  client_id: string | null;
+  service_id: string | null;
+  amount: number;
+  due_date: string;
+  description: string;
+}) {
+  const referenceMonth = monthAnchor(args.due_date);
+  const existing = await supabase
+    .from("provider_payables")
+    .select("id")
+    .eq("provider_assignment_id", args.assignment_id)
+    .eq("reference_month", referenceMonth)
+    .maybeSingle();
+  if (existing.error && existing.error.code !== "PGRST116") throw existing.error;
+  if (existing.data?.id) return { id: existing.data.id as string, created: false };
+
+  const { data, error } = await supabase
+    .from("provider_payables")
+    .insert({
+      organization_id: args.organization_id,
+      provider_id: args.provider_id,
+      provider_assignment_id: args.assignment_id,
+      client_id: args.client_id,
+      service_id: args.service_id,
+      amount: args.amount,
+      due_date: args.due_date,
+      reference_month: referenceMonth,
+      description: args.description,
+      status: "nao_lancada",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { id: data.id as string, created: true };
+}
+
+/** Cancela uma obrigação. Se já lançada no financeiro, desvincula a transação. */
+export async function cancelPayable(payableId: string) {
+  const { error } = await supabase
+    .from("provider_payables")
+    .update({ status: "cancelada", financial_transaction_id: null })
+    .eq("id", payableId);
+  if (error) throw error;
+}
+
+/** Receita prevista de um vínculo (recurring_contract.amount ou service.default_value). */
+export async function fetchAssignmentExpectedRevenue(opts: {
+  recurring_contract_id?: string | null;
+  service_id?: string | null;
+}): Promise<number> {
+  if (opts.recurring_contract_id) {
+    const { data } = await supabase
+      .from("recurring_contracts")
+      .select("amount")
+      .eq("id", opts.recurring_contract_id)
+      .maybeSingle();
+    if (data?.amount != null) return Number(data.amount);
+  }
+  if (opts.service_id) {
+    const { data } = await supabase
+      .from("services")
+      .select("default_value")
+      .eq("id", opts.service_id)
+      .maybeSingle();
+    if (data?.default_value != null) return Number(data.default_value);
+  }
+  return 0;
+}
+

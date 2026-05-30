@@ -24,6 +24,11 @@ export function invalidateFinanceCaches(qc: QueryClient) {
     "service-recurring",
     "service-timeline",
     "recorrencias",
+    "providers",
+    "provider",
+    "provider-summary",
+    "provider-payables",
+    "expense-planning",
   ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
 
