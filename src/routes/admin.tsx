@@ -6,23 +6,26 @@ import { LayoutDashboard, Building2, Users, Clock4, ShieldCheck, LogOut, ArrowLe
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
-      window.location.assign("/login?next=/admin");
-      throw redirect({ to: "/login" });
+  beforeLoad: async ({ location }) => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      throw redirect({
+        to: "/login",
+        search: { next: location.href } as never,
+      });
     }
     const { data: role } = await supabase
       .from("user_global_roles")
       .select("role")
-      .eq("user_id", data.session.user.id)
+      .eq("user_id", userData.user.id)
       .maybeSingle();
     if (!role || role.role !== "super_admin") {
-      window.sessionStorage.setItem(
-        "fynsinc:flash",
-        "Acesso restrito ao super admin. Você foi redirecionado para o app.",
-      );
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          "fynsinc:flash",
+          "Acesso restrito ao super admin. Você foi redirecionado para o app.",
+        );
+      }
       throw redirect({ to: "/dashboard" });
     }
   },
