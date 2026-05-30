@@ -919,7 +919,7 @@ function PlanFormSheet({
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><Label>Valor previsto *</Label><Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div><Label>Valor previsto *</Label><CurrencyInput value={amount} onValueChange={setAmount} /></div>
             <div>
               <Label>Frequência *</Label>
               <Select value={frequency} onValueChange={(v) => setFrequency(v as ExpenseFrequency)}>
