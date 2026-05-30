@@ -640,7 +640,7 @@ function UsoForm({ clients, banks, wallet, onSubmit, loading }: any) {
       <div className="space-y-2"><Label>Descrição *</Label><Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Pagamento Meta Ads outubro" /></div>
       <div className="space-y-2">
         <Label>Cashback esperado (opcional)</Label>
-        <Input type="number" step="0.01" min="0" value={form.cashback_expected} onChange={(e) => setForm({ ...form, cashback_expected: e.target.value })} placeholder="Ex.: pago no cartão com 2% de cashback" />
+        <CurrencyInput value={form.cashback_expected} onValueChange={(v: string) => setForm({ ...form, cashback_expected: v })} placeholder="Ex.: pago no cartão com 2% de cashback" />
         <p className="text-xs text-muted-foreground">Informe o valor previsto se o pagamento gera cashback (ex.: cartão).</p>
       </div>
       <div className="space-y-2"><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} /></div>
