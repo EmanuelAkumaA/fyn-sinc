@@ -117,7 +117,7 @@ function MarkPaidForm({ tx, banks, onSubmit, loading }: any) {
           </div>
           {hadFee && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Valor da taxa</Label><Input type="number" step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Valor da taxa</Label><CurrencyInput value={feeAmount} onValueChange={setFeeAmount} /></div>
               <div className="space-y-2">
                 <Label>Fornecedor</Label>
                 <Select value={feeProvider} onValueChange={setFeeProvider}>
