@@ -210,6 +210,22 @@ function DespesasPlanejamentoPage() {
     },
   });
 
+  // Saídas operacionais previstas (provider_payables) no período
+  const providerPayablesQ = useQuery({
+    queryKey: ["expense-provider-payables", range.from, range.to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("provider_payables")
+        .select("*, providers(id, name), clients(id, name), services(id, name)")
+        .gte("due_date", range.from)
+        .lte("due_date", range.to)
+        .neq("status", "cancelada")
+        .order("due_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   // ─── Derived metrics ────────────────────────────────────────────────────────
   const plans = plansQ.data ?? [];
   const occurrences = occurrencesQ.data ?? [];
