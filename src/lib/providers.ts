@@ -67,6 +67,9 @@ export const providerSchema = z.object({
 
 export type ProviderInput = z.infer<typeof providerSchema>;
 
+export type RecurrenceMode = "finite" | "continuous";
+export type LaunchBehavior = "planning_only" | "launch_first" | "launch_all";
+
 export const assignmentSchema = z
   .object({
     provider_id: z.string().uuid(),
@@ -83,6 +86,11 @@ export const assignmentSchema = z
       .optional(),
     start_date: z.string().min(1),
     end_date: z.string().nullable().optional(),
+    first_due_date: z.string().min(1, "Data do primeiro vencimento obrigatória"),
+    installments_count: z.number().int().min(1).nullable().optional(),
+    recurrence_mode: z.enum(["finite", "continuous"]).default("finite"),
+    auto_generate_payables: z.boolean().default(true),
+    launch_behavior: z.enum(["planning_only", "launch_first", "launch_all"]).default("planning_only"),
     status: z.enum(["ativo", "pausado", "encerrado", "cancelado"]).default("ativo"),
     notes: z.string().max(1000).optional().or(z.literal("")),
   })
@@ -93,7 +101,14 @@ export const assignmentSchema = z
   .refine((v) => (v.compensation_type === "porcentagem" ? v.percentage != null : true), {
     message: "Percentual obrigatório",
     path: ["percentage"],
-  });
+  })
+  .refine(
+    (v) =>
+      v.recurrence_mode === "continuous" ||
+      v.assignment_type === "pontual" ||
+      (v.installments_count != null && v.installments_count >= 1),
+    { message: "Quantidade de lançamentos obrigatória (mínimo 1)", path: ["installments_count"] },
+  );
 
 export type AssignmentInput = z.infer<typeof assignmentSchema>;
 
@@ -254,3 +269,235 @@ export async function fetchAssignmentExpectedRevenue(opts: {
   return 0;
 }
 
+
+/** Adiciona N períodos de uma frequência a uma data ISO (yyyy-mm-dd). */
+export function addProviderPaymentPeriod(
+  dateISO: string,
+  frequency: ExpenseFrequency,
+  installmentIndex: number,
+): string {
+  if (installmentIndex <= 0 || frequency === "unica") return dateISO;
+  const d = new Date(dateISO + "T00:00:00");
+  switch (frequency) {
+    case "semanal":
+      d.setDate(d.getDate() + 7 * installmentIndex);
+      break;
+    case "quinzenal":
+      d.setDate(d.getDate() + 15 * installmentIndex);
+      break;
+    case "mensal":
+      d.setMonth(d.getMonth() + 1 * installmentIndex);
+      break;
+    case "bimestral":
+      d.setMonth(d.getMonth() + 2 * installmentIndex);
+      break;
+    case "trimestral":
+      d.setMonth(d.getMonth() + 3 * installmentIndex);
+      break;
+    case "semestral":
+      d.setMonth(d.getMonth() + 6 * installmentIndex);
+      break;
+    case "anual":
+      d.setFullYear(d.getFullYear() + 1 * installmentIndex);
+      break;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+export type ScheduleItem = {
+  installment_number: number;
+  installments_total: number | null;
+  due_date: string;
+  amount: number;
+  description: string;
+};
+
+export type ScheduleInput = {
+  assignment_type: AssignmentType;
+  compensation_type: CompensationType;
+  fixed_amount: number | null | undefined;
+  percentage: number | null | undefined;
+  frequency: ExpenseFrequency | null | undefined;
+  first_due_date: string;
+  recurrence_mode: RecurrenceMode;
+  installments_count: number | null | undefined;
+  revenue: number;
+  providerName?: string;
+  clientName?: string | null;
+  serviceName?: string | null;
+};
+
+export function generateAssignmentSchedule(input: ScheduleInput): ScheduleItem[] {
+  const amount = computeProviderCost(
+    input.compensation_type,
+    input.fixed_amount,
+    input.percentage,
+    input.revenue,
+  );
+  if (amount <= 0) return [];
+  const freq: ExpenseFrequency =
+    input.assignment_type === "pontual" ? "unica" : (input.frequency ?? "mensal");
+
+  const isContinuous = input.recurrence_mode === "continuous";
+  const total =
+    input.assignment_type === "pontual" || freq === "unica"
+      ? 1
+      : isContinuous
+        ? 1
+        : Math.max(1, Math.floor(input.installments_count ?? 1));
+  const totalLabel: number | null = isContinuous ? null : total;
+
+  const items: ScheduleItem[] = [];
+  for (let i = 0; i < total; i++) {
+    const due = addProviderPaymentPeriod(input.first_due_date, freq, i);
+    const parts = [
+      "Pagamento operacional",
+      input.providerName,
+      input.serviceName,
+      input.clientName,
+    ].filter(Boolean);
+    const base = parts.join(" — ");
+    const parcela = totalLabel ? `Parcela ${i + 1}/${totalLabel}` : `Parcela ${i + 1}`;
+    items.push({
+      installment_number: i + 1,
+      installments_total: totalLabel,
+      due_date: due,
+      amount,
+      description: `${base} — ${parcela}`,
+    });
+  }
+  return items;
+}
+
+/** Faz upsert idempotente do cronograma. Não toca em parcelas pagas/lançadas. */
+export async function persistAssignmentSchedule(args: {
+  organization_id: string;
+  provider_id: string;
+  assignment_id: string;
+  client_id: string | null;
+  service_id: string | null;
+  schedule: ScheduleItem[];
+}) {
+  if (args.schedule.length === 0) return { created: 0, updated: 0, cancelled: 0 };
+
+  const { data: existing, error: exErr } = await supabase
+    .from("provider_payables")
+    .select("id, installment_number, status, financial_transaction_id, due_date, amount")
+    .eq("provider_assignment_id", args.assignment_id);
+  if (exErr) throw exErr;
+
+  const byInstallment = new Map<number, any>();
+  for (const r of (existing ?? []) as any[]) {
+    if (r.installment_number != null) byInstallment.set(r.installment_number, r);
+  }
+
+  let created = 0,
+    updated = 0,
+    cancelled = 0;
+
+  const lastInstallment = Math.max(...args.schedule.map((s) => s.installment_number));
+
+  for (const item of args.schedule) {
+    const cur = byInstallment.get(item.installment_number);
+    if (!cur) {
+      const { error } = await supabase.from("provider_payables").insert({
+        organization_id: args.organization_id,
+        provider_id: args.provider_id,
+        provider_assignment_id: args.assignment_id,
+        client_id: args.client_id,
+        service_id: args.service_id,
+        amount: item.amount,
+        due_date: item.due_date,
+        reference_month: monthAnchor(item.due_date),
+        description: item.description,
+        installment_number: item.installment_number,
+        installments_total: item.installments_total,
+        status: "nao_lancada",
+      } as any);
+      if (error) throw error;
+      created++;
+    } else if (
+      cur.status === "nao_lancada" &&
+      !cur.financial_transaction_id &&
+      (Number(cur.amount) !== item.amount || cur.due_date !== item.due_date)
+    ) {
+      const { error } = await supabase
+        .from("provider_payables")
+        .update({
+          amount: item.amount,
+          due_date: item.due_date,
+          reference_month: monthAnchor(item.due_date),
+          description: item.description,
+          installments_total: item.installments_total,
+        } as any)
+        .eq("id", cur.id);
+      if (error) throw error;
+      updated++;
+    }
+  }
+
+  // Cancela ocorrências futuras excedentes (não pagas / não lançadas).
+  for (const cur of (existing ?? []) as any[]) {
+    if (
+      cur.installment_number != null &&
+      cur.installment_number > lastInstallment &&
+      cur.status === "nao_lancada" &&
+      !cur.financial_transaction_id
+    ) {
+      const { error } = await supabase
+        .from("provider_payables")
+        .update({ status: "cancelada" })
+        .eq("id", cur.id);
+      if (error) throw error;
+      cancelled++;
+    }
+  }
+
+  // Atualiza end_date com a última due_date do cronograma.
+  const lastDue = args.schedule[args.schedule.length - 1]?.due_date ?? null;
+  if (lastDue) {
+    await supabase
+      .from("provider_assignments")
+      .update({ end_date: lastDue } as any)
+      .eq("id", args.assignment_id);
+  }
+
+  return { created, updated, cancelled };
+}
+
+/** Lança parcelas no Financeiro conforme política. */
+export async function applyLaunchBehavior(args: {
+  organization_id: string;
+  provider_id: string;
+  assignment_id: string;
+  launch_behavior: LaunchBehavior;
+}) {
+  if (args.launch_behavior === "planning_only") return;
+
+  const { data: payables, error } = await supabase
+    .from("provider_payables")
+    .select("*")
+    .eq("provider_assignment_id", args.assignment_id)
+    .neq("status", "cancelada")
+    .order("installment_number", { ascending: true });
+  if (error) throw error;
+
+  const list = ((payables ?? []) as any[]).filter((p) => !p.financial_transaction_id);
+  const target = args.launch_behavior === "launch_first" ? list.slice(0, 1) : list;
+
+  for (const p of target) {
+    await launchPayableInFinance({
+      id: p.id,
+      organization_id: args.organization_id,
+      provider_id: args.provider_id,
+      client_id: p.client_id,
+      service_id: p.service_id,
+      description: p.description,
+      amount: Number(p.amount ?? 0),
+      due_date: p.due_date,
+      bank_id: p.bank_id,
+      notes: p.notes,
+      financial_transaction_id: p.financial_transaction_id,
+    });
+  }
+}

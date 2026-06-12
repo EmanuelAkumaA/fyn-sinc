@@ -674,18 +674,23 @@ export type Database = {
       provider_assignments: {
         Row: {
           assignment_type: string
+          auto_generate_payables: boolean
           client_id: string | null
           client_recurring_contract_id: string | null
           compensation_type: string
           created_at: string
           end_date: string | null
+          first_due_date: string | null
           fixed_amount: number | null
           frequency: string | null
           id: string
+          installments_count: number | null
+          launch_behavior: string
           notes: string | null
           organization_id: string
           percentage: number | null
           provider_id: string
+          recurrence_mode: string
           service_id: string | null
           start_date: string
           status: string
@@ -693,18 +698,23 @@ export type Database = {
         }
         Insert: {
           assignment_type: string
+          auto_generate_payables?: boolean
           client_id?: string | null
           client_recurring_contract_id?: string | null
           compensation_type: string
           created_at?: string
           end_date?: string | null
+          first_due_date?: string | null
           fixed_amount?: number | null
           frequency?: string | null
           id?: string
+          installments_count?: number | null
+          launch_behavior?: string
           notes?: string | null
           organization_id: string
           percentage?: number | null
           provider_id: string
+          recurrence_mode?: string
           service_id?: string | null
           start_date?: string
           status?: string
@@ -712,18 +722,23 @@ export type Database = {
         }
         Update: {
           assignment_type?: string
+          auto_generate_payables?: boolean
           client_id?: string | null
           client_recurring_contract_id?: string | null
           compensation_type?: string
           created_at?: string
           end_date?: string | null
+          first_due_date?: string | null
           fixed_amount?: number | null
           frequency?: string | null
           id?: string
+          installments_count?: number | null
+          launch_behavior?: string
           notes?: string | null
           organization_id?: string
           percentage?: number | null
           provider_id?: string
+          recurrence_mode?: string
           service_id?: string | null
           start_date?: string
           status?: string
@@ -741,6 +756,8 @@ export type Database = {
           due_date: string
           financial_transaction_id: string | null
           id: string
+          installment_number: number | null
+          installments_total: number | null
           launched_at: string | null
           notes: string | null
           organization_id: string
@@ -761,6 +778,8 @@ export type Database = {
           due_date: string
           financial_transaction_id?: string | null
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           launched_at?: string | null
           notes?: string | null
           organization_id: string
@@ -781,6 +800,8 @@ export type Database = {
           due_date?: string
           financial_transaction_id?: string | null
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           launched_at?: string | null
           notes?: string | null
           organization_id?: string

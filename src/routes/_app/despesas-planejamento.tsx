@@ -210,6 +210,22 @@ function DespesasPlanejamentoPage() {
     },
   });
 
+  // Saídas operacionais previstas (provider_payables) no período
+  const providerPayablesQ = useQuery({
+    queryKey: ["expense-provider-payables", range.from, range.to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("provider_payables")
+        .select("*, providers(id, name), clients(id, name), services(id, name)")
+        .gte("due_date", range.from)
+        .lte("due_date", range.to)
+        .neq("status", "cancelada")
+        .order("due_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   // ─── Derived metrics ────────────────────────────────────────────────────────
   const plans = plansQ.data ?? [];
   const occurrences = occurrencesQ.data ?? [];
@@ -455,6 +471,36 @@ function DespesasPlanejamentoPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
 
+  const launchProviderPayable = useMutation({
+    mutationFn: async (p: any) => {
+      const org = await getCurrentOrgId();
+      if (!org) throw new Error("Sem organização");
+      const { launchPayableInFinance } = await import("@/lib/providers");
+      await launchPayableInFinance({
+        id: p.id,
+        organization_id: org,
+        provider_id: p.provider_id,
+        client_id: p.client_id,
+        service_id: p.service_id,
+        description: p.description,
+        amount: Number(p.amount ?? 0),
+        due_date: p.due_date,
+        bank_id: p.bank_id,
+        notes: p.notes,
+        financial_transaction_id: p.financial_transaction_id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Lançado no Financeiro");
+      qc.invalidateQueries({ queryKey: ["expense-provider-payables"] });
+      qc.invalidateQueries({ queryKey: ["provider-payables"] });
+      invalidateAll();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+
+
+
   const genNext = useMutation({
     mutationFn: async (planId: string) => {
       const org = await getCurrentOrgId();
@@ -654,6 +700,53 @@ function DespesasPlanejamentoPage() {
           </TabsList>
         </div>
       </Tabs>
+
+      {(providerPayablesQ.data ?? []).length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold mb-2">Saídas de prestadores no período</h3>
+          <ul className="grid sm:grid-cols-2 gap-3">
+            {(providerPayablesQ.data ?? []).map((pp: any) => {
+              const launched = !!pp.financial_transaction_id;
+              const status = pp.status as string;
+              return (
+                <li key={pp.id} className="glass rounded-2xl p-3 sm:p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{pp.description}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-2">
+                        <span>Origem: Prestador</span>
+                        {pp.providers?.name && <><span>·</span><span>{pp.providers.name}</span></>}
+                        {pp.installment_number != null && <><span>·</span><span>Parcela {pp.installment_number}{pp.installments_total ? `/${pp.installments_total}` : ""}</span></>}
+                        {pp.clients?.name && <><span>·</span><span>{pp.clients.name}</span></>}
+                        {pp.services?.name && <><span>·</span><span>{pp.services.name}</span></>}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Vence {formatDate(pp.due_date)} · {status}
+                      </div>
+                    </div>
+                    <div className="font-mono font-semibold whitespace-nowrap">{formatBRL(Number(pp.amount))}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {!launched && status !== "paga" && (
+                      <Button size="sm" variant="outline" onClick={() => launchProviderPayable.mutate(pp)} disabled={launchProviderPayable.isPending}>
+                        <Send className="h-3.5 w-3.5 mr-1" /> Lançar no Financeiro
+                      </Button>
+                    )}
+                    {launched && (
+                      <Button size="sm" variant="ghost" asChild>
+                        <Link to="/financeiro"><ExternalLink className="h-3.5 w-3.5 mr-1" />Ver no Financeiro</Link>
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to="/equipe-prestadores"><ExternalLink className="h-3.5 w-3.5 mr-1" />Ver prestador</Link>
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Lista */}
       {plansQ.isLoading ? (
