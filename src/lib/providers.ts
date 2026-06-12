@@ -67,6 +67,9 @@ export const providerSchema = z.object({
 
 export type ProviderInput = z.infer<typeof providerSchema>;
 
+export type RecurrenceMode = "finite" | "continuous";
+export type LaunchBehavior = "planning_only" | "launch_first" | "launch_all";
+
 export const assignmentSchema = z
   .object({
     provider_id: z.string().uuid(),
@@ -83,6 +86,11 @@ export const assignmentSchema = z
       .optional(),
     start_date: z.string().min(1),
     end_date: z.string().nullable().optional(),
+    first_due_date: z.string().min(1, "Data do primeiro vencimento obrigatória"),
+    installments_count: z.number().int().min(1).nullable().optional(),
+    recurrence_mode: z.enum(["finite", "continuous"]).default("finite"),
+    auto_generate_payables: z.boolean().default(true),
+    launch_behavior: z.enum(["planning_only", "launch_first", "launch_all"]).default("planning_only"),
     status: z.enum(["ativo", "pausado", "encerrado", "cancelado"]).default("ativo"),
     notes: z.string().max(1000).optional().or(z.literal("")),
   })
@@ -93,7 +101,14 @@ export const assignmentSchema = z
   .refine((v) => (v.compensation_type === "porcentagem" ? v.percentage != null : true), {
     message: "Percentual obrigatório",
     path: ["percentage"],
-  });
+  })
+  .refine(
+    (v) =>
+      v.recurrence_mode === "continuous" ||
+      v.assignment_type === "pontual" ||
+      (v.installments_count != null && v.installments_count >= 1),
+    { message: "Quantidade de lançamentos obrigatória (mínimo 1)", path: ["installments_count"] },
+  );
 
 export type AssignmentInput = z.infer<typeof assignmentSchema>;
 
