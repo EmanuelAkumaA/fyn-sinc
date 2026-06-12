@@ -467,6 +467,7 @@ export function ProviderDossier({
             {providerId && (
               <AssignmentForm
                 providerId={providerId}
+                providerName={p.name}
                 initial={assignmentSheet.initial}
                 loading={saveAssignment.isPending}
                 onSubmit={(data) => saveAssignment.mutate(data)}
