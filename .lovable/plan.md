@@ -1,114 +1,100 @@
-## Objetivo
-Ao criar/editar um `provider_assignment`, gerar automaticamente o cronograma de `provider_payables` com base em **frequência + data do primeiro vencimento + quantidade de lançamentos** (ou modo contínuo). As obrigações aparecem em Equipe & Prestadores e em Despesas & Planejamento como saída operacional **prevista** (não pagas, sem reduzir banco). Lançamento no Financeiro e baixa continuam exclusivos do Financeiro existente, sem duplicar `financial_transactions`.
+# Despesas & Planejamento — acompanhamento dinâmico
 
-## Mudanças no banco (migration única)
+Objetivo: cada despesa passa a exibir pagas / restantes / vencidas / próxima parcela / progresso, refletindo automaticamente as baixas feitas no Financeiro. Sem fluxo paralelo de pagamento, sem duplicar ocorrências nem transações.
 
-`provider_assignments` — adicionar:
-- `first_due_date date`
-- `installments_count integer` (>=1 quando `recurrence_mode='finite'`)
-- `recurrence_mode text not null default 'finite'` (`finite` | `continuous`)
-- `auto_generate_payables boolean not null default true`
-- `launch_behavior text not null default 'planning_only'` (`planning_only` | `launch_first` | `launch_all`)
-- `end_date` mantida para compatibilidade; passa a ser calculada do último `due_date`.
+## 1. Migração de schema (incremental e idempotente)
 
-`provider_payables` — adicionar:
-- `installment_number integer`
-- `installments_total integer`
-- Índice único parcial: `(provider_assignment_id, installment_number)` quando `installment_number is not null`.
-- Continua usando guard atual por `(assignment_id, reference_month)` para casos mensais.
+`expense_plans` — adicionar apenas o que falta:
+- `installments_count integer null`
+- `recurrence_mode text not null default 'finite'` com check `in ('finite','continuous')`
+- Constraint: quando `recurrence_mode='finite'` e `frequency<>'unica'`, `installments_count >= 1`.
 
-`expense_occurrences` — já possui `provider_payable_id`. Adicionar (somente se ainda não existirem):
-- `source_type text` / `source_id uuid` (para origem `provider_payable`).
+`expense_occurrences` — colunas `paid_at` e `status` já existem. Adicionar apenas:
+- `installment_number integer null`
+- `installments_total integer null`
+- Índice único parcial `(expense_plan_id, due_date) where status <> 'cancelada'` para evitar duplicidade.
 
-RLS já existente é reutilizada; sem novas policies.
+Triggers (a função `sync_expense_occurrence_on_tx` já existe mas não está anexada):
+- `CREATE TRIGGER trg_sync_expense_occurrence_on_tx AFTER INSERT OR UPDATE ON financial_transactions FOR EACH ROW EXECUTE FUNCTION sync_expense_occurrence_on_tx();`
+- Ajustar a função para também tratar reversão: se transação passa de `pago` para `pendente`, voltar ocorrência para `lancada` e limpar `paid_at`; se transação é deletada/desvinculada, voltar para `nao_lancada`/`lancada` conforme vínculo (a função `unlink_tx_on_occurrence_delete` já cuida do delete da ocorrência; complementar com trigger `BEFORE DELETE` na transação que reseta status da occurrence).
 
-## Helper de datas
-Novo `addProviderPaymentPeriod(dateISO, frequency, installmentIndex)` em `src/lib/providers.ts`:
-- `unica`: só índice 0
-- `semanal`: +7d * i
-- `quinzenal`: +15d * i
-- `mensal/bimestral/trimestral/semestral/anual`: +N meses * i (preserva dia, com clamp de fim de mês)
+## 2. Backfill seguro (uma única migração de dados, idempotente)
 
-## Geração do cronograma
-Nova função `generateAssignmentSchedule(assignment)` em `src/lib/providers.ts`:
-- Calcula array `[{installment_number, due_date, amount, description}]`.
-- `amount` = `fixed_amount` ou `base_revenue * percentage/100` (base via `fetchAssignmentExpectedRevenue`).
-- Descrição: `Pagamento operacional — {prestador} — {serviço} — {cliente} — Parcela X/Y`.
-- `recurrence_mode='continuous'`: gera apenas a próxima ocorrência; botão "Gerar próxima" cria a seguinte.
+Para cada `expense_occurrence`:
+- Se houver `financial_transaction` vinculada com `status='pago'` → `status='paga'`, `paid_at = tx.paid_at`.
+- Se houver transação vinculada não paga → `status='lancada'`.
+- Sem transação e `due_date < hoje` e status atual `nao_lancada/lancada` → manter status mas considerar "vencida" via cálculo (não persistir como `vencida` automaticamente para preservar flexibilidade — a UI deriva).
+- Numerar `installment_number` por `expense_plan_id` em ordem crescente de `due_date` via `row_number()`.
+- `installments_total`: preencher só quando `expense_plans.installments_count` existir. Para despesas antigas sem total conhecido, deixar null e marcar plano como `recurrence_mode='continuous'`.
 
-Nova `persistAssignmentSchedule(assignmentId, schedule, launch_behavior)`:
-1. Faz upsert de `provider_payables` por `(assignment_id, installment_number)` — idempotente, nunca duplica.
-2. Atualiza `provider_assignments.end_date` com a última `due_date` (quando `finite`).
-3. Conforme `launch_behavior`: `planning_only` para; `launch_first` chama `launchPayableInFinance` na primeira; `launch_all` itera em todas que ainda não têm `financial_transaction_id`.
-4. Também espelha em `expense_occurrences` via vínculo `provider_payable_id` (não cria saída independente — função utilitária `mirrorPayableToPlanning` que faz upsert por `provider_payable_id`).
+Nenhum pagamento fictício, nenhuma transação criada.
 
-## Form de vínculo (`src/components/assignment-form.tsx`)
-Remover input visual `end_date`. Novos campos:
-- `frequency` (já existe) — opções completas (única → anual).
-- `first_due_date` (date, obrigatório).
-- `installments_count` (number, min 1) — escondido quando `recurrence_mode='continuous'`.
-- Checkbox "Sem quantidade definida" → `recurrence_mode='continuous'`.
-- Radio "Como deseja gerar os lançamentos?" → `launch_behavior`.
+## 3. Camada de cálculo (`src/lib/expenses.ts`)
 
-Validação Zod atualizada em `src/lib/providers.ts` (`assignmentSchema`):
-- `installments_count >= 1` quando `finite`.
-- `percentage` 0–100; valores não-negativos.
-- `first_due_date` obrigatório.
+Nova função `computePlanProgress(plan, occurrences) → { total, paid, remaining, overdue, pending, nextDueDate, progressPct, isContinuous }`:
+- `paid` = occurrences com `status='paga'` OU com tx vinculada `status='pago'`.
+- `overdue` = `due_date < hoje` e status ∉ {paga, cancelada, pausada}.
+- `pending` = status em {nao_lancada, lancada} e não pagas.
+- `nextDueDate` = menor `due_date` ainda não paga (futura ou vencida), ignorando canceladas/pausadas.
+- `total` = `installments_count` quando `recurrence_mode='finite'`; senão null.
+- `progressPct` só quando total conhecido.
 
-### Prévia do cronograma (dentro do form)
-Componente `<SchedulePreview>` em assignment-form:
-- Mostra: quantidade, valor/lançamento, total previsto prestador, receita prevista, lucro previsto, margem %, primeiro e último vencimento.
-- Lista compacta: 3 primeiras + 2 últimas, com "+ N lançamentos" no meio.
-- Atualiza ao mudar qualquer campo relevante; usa helpers acima sem persistir.
+## 4. UI — `src/routes/_app/despesas-planejamento.tsx`
 
-## Edição de vínculo
-Ao salvar edição:
-- Recalcula cronograma.
-- Ocorrências `paga` ou `lancada` (com `financial_transaction_id`) **não são alteradas nem removidas**.
-- Ocorrências `nao_lancada` futuras excedentes (quando reduz `installments_count`) → `status='cancelada'`.
-- Novas parcelas faltantes são inseridas via upsert.
-- Diálogo de confirmação quando houver mudanças que afetam ocorrências já lançadas → oferece "atualizar somente próximas" / "cancelar futuras e gerar novo cronograma".
+Cards de despesa: faixa compacta abaixo dos dados principais com:
+- Finitas: `X de Y pagas` · `Restam Z` · `N vencidas` (se >0) · `Próxima: dd/mm/aaaa` · barra de progresso fina + `%`.
+- Únicas: badge único (Pendente / Lançada / Pago em… / Vencida desde…).
+- Contínuas: `X realizadas` · `Y pendentes` · `N vencidas` · `Próxima: …` · badge "Contínua", sem barra/percentual.
 
-## Despesas & Planejamento (`src/routes/_app/despesas-planejamento.tsx`)
-Listagem passa a unir `expense_occurrences` + `provider_payables` espelhados:
-- Coluna Origem: "Prestador" quando `source_type='provider_payable'`.
-- Mostra prestador, cliente, serviço, parcela X/Y, status.
-- Botão "Lançar no Financeiro" chama `launchPayableInFinance`.
-- Botão "Ver prestador" abre dossiê.
-- Sem criar saídas independentes.
+Cores via tokens semânticos existentes (success/destructive/primary/muted). Sem novas cores hardcoded.
 
-## Dossiê do Prestador (`src/components/provider-dossier.tsx`)
-- Aba Pagamentos: filtros por período/status/cliente/serviço/vínculo; colunas descrição, cliente, serviço, parcela X/Y, vencimento, valor, status, ações (lançar / ver no financeiro).
-- Cards: Total previsto, A pagar, Em atraso, Pago, Custo recorrente mensal.
-- Aba Vínculos: colunas novas — quantidade, valor/lançamento, total previsto, primeiro/último vencimento, próxima obrigação.
-- Card de lucro/margem previstos do vínculo selecionado.
+Métricas topo (ajustar `MetricCard`s existentes, sem inflar):
+- Pagamentos realizados no mês (qtd + valor).
+- Parcelas restantes (qtd).
+- Despesas vencidas (qtd + valor).
+- Próximos vencimentos 30d (qtd + valor).
 
-## Lançamento e baixa no Financeiro
-- `launchPayableInFinance` já existe e é idempotente (verifica `financial_transaction_id`). Mantida.
-- Baixa permanece exclusiva no Financeiro. Trigger `sync_provider_payable_on_tx` já propaga status/paid_at/bank_id para `provider_payables`. Mantida; nada novo no fluxo de baixa.
-- **Não** mexer em Dashboard, Calendário, Bancos, Auth, Aportes.
+Detalhe da despesa (sheet/accordion existente): seção "Progresso dos pagamentos" com total / pagas / restantes / vencidas / % / próximo vencimento / valor previsto / pago / restante, seguida da lista de ocorrências (`Parcela n/total — status — vencimento/pago em`) e ações já existentes (lançar, ver no Financeiro, cancelar, editar vencimento se não paga).
 
-## Invalidação React Query
-Após criar/editar vínculo, gerar cronograma ou lançar no Financeiro, invalidar:
-`providers`, `provider-summary`, `provider-assignments`, `provider-payables`, `expense-planning`, `expense-occurrences`, `transactions`, `dashboard`, `banks`, `client-summary/{id}`, `service-summary/{id}`.
+Filtros: manter os atuais; adicionar `Com parcelas restantes`, `Quitadas`, `Contínuas`.
 
-## Segurança
-- Zod no form + revalidação no submit.
-- `organization_id` derivado de `getCurrentOrgId()` em toda inserção.
-- Nenhum uso de service role no frontend.
-- Guards de duplicidade por `(assignment_id, installment_number)` e `(assignment_id, reference_month)`.
+## 5. Formulário de despesa
 
-## Responsividade
-`assignment-form` revisto: grid 2 colunas no desktop, 1 coluna no mobile; prévia em lista vertical; modal fullscreen no mobile (já é `Sheet`).
+Adicionar campos `recurrence_mode` (radio finite/continuous, default finite) e `installments_count` (number, exigido quando finite e frequência ≠ única; oculto quando continuous ou única). Geração inicial de ocorrências respeita o total.
 
-## Fora do escopo
-- Dashboard visual, Calendário Financeiro, Bancos, Auth, regras de aportes.
-- Qualquer ajuste em `currency-input` ou máscaras (já entregue).
+## 6. Sincronização e invalidação
 
-## Arquivos afetados
-- migration SQL nova
-- `src/lib/providers.ts` (schema, helpers, geração, espelho)
-- `src/components/assignment-form.tsx` (campos novos, prévia, remoção de end_date)
-- `src/components/provider-dossier.tsx` (colunas, filtros, ações)
-- `src/routes/_app/equipe-prestadores.tsx` (uso das novas colunas se necessário)
-- `src/routes/_app/despesas-planejamento.tsx` (origem prestador + ação lançar)
+A baixa continua acontecendo só no Financeiro. O trigger garante `expense_occurrences.status` sincronizado. No client, invalidar após qualquer mutação relevante:
+- `['expense-plans', orgId]`, `['expense-occurrences', orgId]`, `['expense-summary', orgId]`, `['transactions', orgId]`, `['dashboard', orgId]`, `['banks', orgId]`.
+Reutilizar `invalidateFinanceCaches` adicionando as keys acima onde faltar.
+
+## 7. Segurança
+
+- Todas as queries com `organization_id = getCurrentOrgId()`.
+- RLS já ativa em `expense_plans` / `expense_occurrences` — sem alteração.
+- Sem Lovable Cloud; somente o Supabase externo já conectado.
+- Sem service role no client.
+
+## Fora de escopo
+
+Calendário Financeiro, regras de bancos/cashback/taxas/aportes, criação automática de novas transações no backfill, dashboards visuais além das métricas indicadas.
+
+## Resumo técnico
+
+```
+migration:
+  expense_plans      += installments_count, recurrence_mode (+check)
+  expense_occurrences+= installment_number, installments_total
+                      + unique(expense_plan_id, due_date) where status<>'cancelada'
+  trigger AFTER INS/UPD on financial_transactions -> sync_expense_occurrence_on_tx
+  trigger BEFORE DEL  on financial_transactions -> reset occurrence status
+  data backfill: status/paid_at/installment_number a partir das tx existentes
+
+code:
+  src/lib/expenses.ts            -> computePlanProgress + helpers
+  src/routes/_app/despesas-planejamento.tsx
+                                  -> card faixa progresso, métricas topo,
+                                     filtros novos, detalhe com lista de parcelas
+  form de despesa                -> recurrence_mode + installments_count
+  invalidações React Query nas mutações existentes
+```
