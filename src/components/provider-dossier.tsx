@@ -20,11 +20,13 @@ import {
   COMPENSATION_TYPE_LABELS,
   computeProviderCost,
   assignmentMonthlyCost,
-  nextPayableDate,
-  generateNextPayable,
   cancelPayable,
   launchPayableInFinance,
   fetchAssignmentExpectedRevenue,
+  generateAssignmentSchedule,
+  persistAssignmentSchedule,
+  applyLaunchBehavior,
+  addProviderPaymentPeriod,
   type PayableStatus,
 } from "@/lib/providers";
 import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
