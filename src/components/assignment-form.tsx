@@ -8,17 +8,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   assignmentSchema,
   ASSIGNMENT_TYPE_LABELS,
   COMPENSATION_TYPE_LABELS,
   computeProviderCost,
   fetchAssignmentExpectedRevenue,
+  generateAssignmentSchedule,
   type AssignmentType,
   type CompensationType,
+  type LaunchBehavior,
+  type RecurrenceMode,
 } from "@/lib/providers";
 import { FREQUENCY_LABELS, type ExpenseFrequency } from "@/lib/expenses";
-import { formatBRL } from "@/lib/fynsinc";
+import { formatBRL, formatDate } from "@/lib/fynsinc";
 
 export type AssignmentRecord = {
   id?: string;
@@ -33,6 +38,11 @@ export type AssignmentRecord = {
   frequency: ExpenseFrequency | null;
   start_date: string;
   end_date: string | null;
+  first_due_date: string;
+  installments_count: number | null;
+  recurrence_mode: RecurrenceMode;
+  auto_generate_payables: boolean;
+  launch_behavior: LaunchBehavior;
   status: "ativo" | "pausado" | "encerrado" | "cancelado";
   notes: string | null;
 };
@@ -41,11 +51,13 @@ const FREQS: ExpenseFrequency[] = ["unica", "semanal", "quinzenal", "mensal", "b
 
 export function AssignmentForm({
   providerId,
+  providerName,
   initial,
   loading,
   onSubmit,
 }: {
   providerId: string;
+  providerName?: string;
   initial: Partial<AssignmentRecord> | null;
   loading: boolean;
   onSubmit: (data: AssignmentRecord) => void;
@@ -61,7 +73,10 @@ export function AssignmentForm({
     percentage: initial?.percentage?.toString() ?? "",
     frequency: (initial?.frequency ?? "mensal") as ExpenseFrequency,
     start_date: initial?.start_date ?? today,
-    end_date: initial?.end_date ?? "",
+    first_due_date: initial?.first_due_date ?? initial?.start_date ?? today,
+    installments_count: initial?.installments_count?.toString() ?? "12",
+    recurrence_mode: (initial?.recurrence_mode ?? "finite") as RecurrenceMode,
+    launch_behavior: (initial?.launch_behavior ?? "planning_only") as LaunchBehavior,
     status: (initial?.status ?? "ativo") as AssignmentRecord["status"],
     notes: initial?.notes ?? "",
     manual_revenue: "",
@@ -103,17 +118,57 @@ export function AssignmentForm({
     return manual > 0 ? manual : expectedRevenue;
   }, [form.manual_revenue, expectedRevenue]);
 
+  const clientName = useMemo(
+    () => (clients as any[]).find((c) => c.id === form.client_id)?.name ?? null,
+    [clients, form.client_id],
+  );
+  const serviceName = useMemo(
+    () => (services as any[]).find((s) => s.id === form.service_id)?.name ?? null,
+    [services, form.service_id],
+  );
+
+  const schedule = useMemo(
+    () =>
+      generateAssignmentSchedule({
+        assignment_type: form.assignment_type,
+        compensation_type: form.compensation_type,
+        fixed_amount: Number(form.fixed_amount || 0),
+        percentage: Number(form.percentage || 0),
+        frequency: form.frequency,
+        first_due_date: form.first_due_date,
+        recurrence_mode: form.recurrence_mode,
+        installments_count: Number(form.installments_count || 0),
+        revenue,
+        providerName,
+        clientName,
+        serviceName,
+      }),
+    [form, revenue, providerName, clientName, serviceName],
+  );
+
   const cost = computeProviderCost(
     form.compensation_type,
     Number(form.fixed_amount || 0),
     Number(form.percentage || 0),
     revenue,
   );
-  const profit = revenue - cost;
-  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+  const profitPer = revenue - cost;
+  const totalCost = cost * schedule.length;
+  const totalRevenue = revenue * schedule.length;
+  const totalProfit = totalRevenue - totalCost;
+  const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  const showInstallments =
+    form.assignment_type === "recorrente" && form.recurrence_mode === "finite";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    const installments =
+      form.assignment_type === "pontual"
+        ? 1
+        : form.recurrence_mode === "continuous"
+          ? null
+          : Math.max(1, Math.floor(Number(form.installments_count || 0)));
     const payload: AssignmentRecord = {
       provider_id: providerId,
       client_id: form.client_id || null,
@@ -125,7 +180,12 @@ export function AssignmentForm({
       percentage: form.compensation_type === "porcentagem" ? Number(form.percentage || 0) : null,
       frequency: form.assignment_type === "recorrente" ? form.frequency : "unica",
       start_date: form.start_date,
-      end_date: form.end_date || null,
+      end_date: schedule.length > 0 ? schedule[schedule.length - 1].due_date : null,
+      first_due_date: form.first_due_date,
+      installments_count: installments,
+      recurrence_mode: form.assignment_type === "pontual" ? "finite" : form.recurrence_mode,
+      auto_generate_payables: true,
+      launch_behavior: form.launch_behavior,
       status: form.status,
       notes: form.notes || null,
     };
@@ -136,6 +196,15 @@ export function AssignmentForm({
     }
     onSubmit(payload);
   }
+
+  const previewItems = (() => {
+    if (schedule.length <= 5) return schedule.map((s) => ({ ...s, _kind: "row" as const }));
+    return [
+      ...schedule.slice(0, 3).map((s) => ({ ...s, _kind: "row" as const })),
+      { _kind: "gap" as const, hidden: schedule.length - 5 },
+      ...schedule.slice(-2).map((s) => ({ ...s, _kind: "row" as const })),
+    ];
+  })();
 
   return (
     <form onSubmit={submit} className="space-y-4 mt-6">
@@ -211,7 +280,7 @@ export function AssignmentForm({
         )}
         {form.assignment_type === "recorrente" && (
           <div className="space-y-2">
-            <Label>Frequência</Label>
+            <Label>Frequência *</Label>
             <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v as ExpenseFrequency })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -227,9 +296,25 @@ export function AssignmentForm({
           <Input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
         </div>
         <div className="space-y-2">
-          <Label>Data final</Label>
-          <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+          <Label>Data do primeiro vencimento *</Label>
+          <Input type="date" required value={form.first_due_date} onChange={(e) => setForm({ ...form, first_due_date: e.target.value })} />
         </div>
+        {showInstallments && (
+          <div className="space-y-2">
+            <Label>Quantidade de lançamentos *</Label>
+            <Input type="number" min={1} step={1} value={form.installments_count} onChange={(e) => setForm({ ...form, installments_count: e.target.value })} />
+          </div>
+        )}
+        {form.assignment_type === "recorrente" && (
+          <div className="space-y-2 md:col-span-2 flex items-center gap-2">
+            <Checkbox
+              id="cont"
+              checked={form.recurrence_mode === "continuous"}
+              onCheckedChange={(v) => setForm({ ...form, recurrence_mode: v ? "continuous" : "finite" })}
+            />
+            <Label htmlFor="cont" className="cursor-pointer">Sem quantidade definida (recorrência contínua)</Label>
+          </div>
+        )}
         <div className="space-y-2">
           <Label>Status</Label>
           <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as AssignmentRecord["status"] })}>
@@ -244,18 +329,61 @@ export function AssignmentForm({
         </div>
       </div>
 
-      {expectedRevenue === 0 && (form.compensation_type === "porcentagem" || true) && (
+      {expectedRevenue === 0 && (
         <div className="space-y-2">
           <Label>Receita estimada do cliente (simulação)</Label>
           <CurrencyInput placeholder="Opcional, apenas para preview" value={form.manual_revenue} onValueChange={(v) => setForm({ ...form, manual_revenue: v })} />
+          <p className="text-[11px] text-muted-foreground">Valor utilizado apenas para cálculo previsto.</p>
         </div>
       )}
 
       <div className="glass rounded-2xl p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <Preview label="Receita prevista" value={formatBRL(revenue)} />
-        <Preview label="Custo prestador" value={formatBRL(cost)} />
-        <Preview label="Lucro previsto" value={formatBRL(profit)} tone={profit >= 0 ? "success" : "destructive"} />
+        <Preview label="Receita / lançamento" value={formatBRL(revenue)} />
+        <Preview label="Custo / lançamento" value={formatBRL(cost)} />
+        <Preview label="Lucro / lançamento" value={formatBRL(profitPer)} tone={profitPer >= 0 ? "success" : "destructive"} />
+        <Preview label="Lançamentos" value={form.recurrence_mode === "continuous" ? "Contínuo" : String(schedule.length || 0)} />
+        <Preview label="Receita total" value={formatBRL(totalRevenue)} />
+        <Preview label="Custo total" value={formatBRL(totalCost)} />
+        <Preview label="Lucro previsto" value={formatBRL(totalProfit)} tone={totalProfit >= 0 ? "success" : "destructive"} />
         <Preview label="Margem" value={`${margin.toFixed(1)}%`} tone={margin >= 0 ? "success" : "destructive"} />
+      </div>
+
+      {schedule.length > 0 && (
+        <div className="glass rounded-2xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Prévia dos pagamentos</h4>
+            <span className="text-xs text-muted-foreground">
+              {schedule[0]?.due_date && `Início ${formatDate(schedule[0].due_date)}`}
+              {schedule.length > 1 && schedule[schedule.length - 1]?.due_date && ` · Fim ${formatDate(schedule[schedule.length - 1].due_date)}`}
+            </span>
+          </div>
+          <ul className="text-sm divide-y divide-border/40">
+            {previewItems.map((it, i) => it._kind === "gap" ? (
+              <li key={`gap-${i}`} className="py-1.5 text-xs text-muted-foreground text-center">+ {it.hidden} lançamentos</li>
+            ) : (
+              <li key={it.installment_number} className="py-1.5 flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Parcela {it.installment_number}{it.installments_total ? `/${it.installments_total}` : ""}</span>
+                <span>{formatDate(it.due_date)}</span>
+                <span className="font-medium">{formatBRL(it.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Como deseja gerar os lançamentos?</Label>
+        <RadioGroup value={form.launch_behavior} onValueChange={(v) => setForm({ ...form, launch_behavior: v as LaunchBehavior })} className="gap-2">
+          <LaunchOption value="planning_only" current={form.launch_behavior}
+            title="Gerar somente previsão operacional"
+            desc="Cria as obrigações futuras em Equipe & Prestadores e Despesas & Planejamento, sem lançar despesas no Financeiro." />
+          <LaunchOption value="launch_first" current={form.launch_behavior}
+            title="Gerar previsão e lançar a primeira ocorrência no Financeiro"
+            desc="Cria todo o cronograma e lança apenas o primeiro pagamento como despesa pendente no Financeiro." />
+          <LaunchOption value="launch_all" current={form.launch_behavior}
+            title="Gerar previsão e lançar todas as ocorrências no Financeiro"
+            desc="Cria todo o cronograma e lança todos os pagamentos futuros como despesas pendentes no Financeiro." />
+        </RadioGroup>
       </div>
 
       <div className="space-y-2">
@@ -267,6 +395,18 @@ export function AssignmentForm({
         {loading ? "Salvando..." : "Salvar vínculo"}
       </Button>
     </form>
+  );
+}
+
+function LaunchOption({ value, current, title, desc }: { value: LaunchBehavior; current: LaunchBehavior; title: string; desc: string }) {
+  return (
+    <label className={`flex items-start gap-2 rounded-xl border p-3 cursor-pointer transition-colors ${current === value ? "border-primary bg-primary/5" : "border-border"}`}>
+      <RadioGroupItem value={value} className="mt-0.5" />
+      <div className="flex-1">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{desc}</div>
+      </div>
+    </label>
   );
 }
 
