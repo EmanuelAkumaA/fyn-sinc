@@ -1,52 +1,114 @@
 ## Objetivo
-Aplicar máscara de moeda BRL (R$) em tempo real em todos os inputs de valores monetários do sistema. Conforme o usuário digita só os dígitos, o campo formata automaticamente para `R$ 1.234,56`.
+Ao criar/editar um `provider_assignment`, gerar automaticamente o cronograma de `provider_payables` com base em **frequência + data do primeiro vencimento + quantidade de lançamentos** (ou modo contínuo). As obrigações aparecem em Equipe & Prestadores e em Despesas & Planejamento como saída operacional **prevista** (não pagas, sem reduzir banco). Lançamento no Financeiro e baixa continuam exclusivos do Financeiro existente, sem duplicar `financial_transactions`.
 
-## Abordagem
-Criar um componente reutilizável `CurrencyInput` baseado no `<Input>` do shadcn, com máscara automática, e substituir os inputs `type="number"` que representam dinheiro pelos novos.
+## Mudanças no banco (migration única)
 
-Campos de **percentual** (ex.: comissão %), **dias** (vencimento, extensão de trial) e **quantidade** continuam `type="number"`. A máscara é apenas para valores em R$.
+`provider_assignments` — adicionar:
+- `first_due_date date`
+- `installments_count integer` (>=1 quando `recurrence_mode='finite'`)
+- `recurrence_mode text not null default 'finite'` (`finite` | `continuous`)
+- `auto_generate_payables boolean not null default true`
+- `launch_behavior text not null default 'planning_only'` (`planning_only` | `launch_first` | `launch_all`)
+- `end_date` mantida para compatibilidade; passa a ser calculada do último `due_date`.
 
-## Implementação
+`provider_payables` — adicionar:
+- `installment_number integer`
+- `installments_total integer`
+- Índice único parcial: `(provider_assignment_id, installment_number)` quando `installment_number is not null`.
+- Continua usando guard atual por `(assignment_id, reference_month)` para casos mensais.
 
-### 1. Helpers em `src/lib/masks.ts`
-Adicionar:
-- `maskCurrencyBRL(input: string): string` — recebe string com dígitos/lixo, retorna `R$ 1.234,56` (sempre 2 casas, baseado em centavos).
-- `parseCurrencyBRL(masked: string): number` — converte de volta para `number` (ex.: `12.34`).
+`expense_occurrences` — já possui `provider_payable_id`. Adicionar (somente se ainda não existirem):
+- `source_type text` / `source_id uuid` (para origem `provider_payable`).
 
-Regra: extrai dígitos, divide por 100, formata com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`. String vazia → `""`.
+RLS já existente é reutilizada; sem novas policies.
 
-### 2. Novo componente `src/components/ui/currency-input.tsx`
-```
-type Props = Omit<InputProps, 'value' | 'onChange' | 'type'> & {
-  value: number | string | null | undefined;   // valor numérico do form
-  onValueChange: (value: number) => void;       // emite número (ex.: 1234.56)
-};
-```
-- Estado interno guarda string mascarada; sincroniza com `value` prop.
-- `onChange`: aplica `maskCurrencyBRL`, atualiza estado, chama `onValueChange(parseCurrencyBRL(...))`.
-- `inputMode="decimal"`, placeholder `R$ 0,00`.
+## Helper de datas
+Novo `addProviderPaymentPeriod(dateISO, frequency, installmentIndex)` em `src/lib/providers.ts`:
+- `unica`: só índice 0
+- `semanal`: +7d * i
+- `quinzenal`: +15d * i
+- `mensal/bimestral/trimestral/semestral/anual`: +N meses * i (preserva dia, com clamp de fim de mês)
 
-### 3. Substituições (apenas campos monetários R$)
-Trocar `<Input type="number" step="0.01" ...>` por `<CurrencyInput value={...} onValueChange={(n) => setForm({ ...form, campo: n })} />` nos arquivos:
+## Geração do cronograma
+Nova função `generateAssignmentSchedule(assignment)` em `src/lib/providers.ts`:
+- Calcula array `[{installment_number, due_date, amount, description}]`.
+- `amount` = `fixed_amount` ou `base_revenue * percentage/100` (base via `fetchAssignmentExpectedRevenue`).
+- Descrição: `Pagamento operacional — {prestador} — {serviço} — {cliente} — Parcela X/Y`.
+- `recurrence_mode='continuous'`: gera apenas a próxima ocorrência; botão "Gerar próxima" cria a seguinte.
 
-- `src/components/assignment-form.tsx` — `fixed_amount`, `manual_revenue` (NÃO o `percentage`).
-- `src/components/pay-transaction-dialog.tsx` — `feeAmount`.
-- `src/routes/_app/servicos.tsx` — `default_value`.
-- `src/routes/_app/planos.tsx` — `amount_received_from_client`, `amount_paid_to_supplier`, `full_value`, `commission_value`, `cashback_expected`, `cashback_received` (NÃO `commission_pct`).
-- `src/routes/_app/bancos.tsx` — `initial_balance`.
-- `src/routes/_app/recorrencias.tsx` — `amount` (linha 527) e os dois `type="number"` de valor (linhas 412 e 558, confirmar que são monetários ao editar).
-- `src/routes/_app/aportes.tsx` — `amount` (3 ocorrências) e `cashback_expected`.
-- `src/routes/_app/financeiro.tsx` — `amount_gross`, `cashback.amount`.
-- `src/routes/_app/despesas-planejamento.tsx` — `amount` (valor previsto). `dueDay` permanece numérico.
+Nova `persistAssignmentSchedule(assignmentId, schedule, launch_behavior)`:
+1. Faz upsert de `provider_payables` por `(assignment_id, installment_number)` — idempotente, nunca duplica.
+2. Atualiza `provider_assignments.end_date` com a última `due_date` (quando `finite`).
+3. Conforme `launch_behavior`: `planning_only` para; `launch_first` chama `launchPayableInFinance` na primeira; `launch_all` itera em todas que ainda não têm `financial_transaction_id`.
+4. Também espelha em `expense_occurrences` via vínculo `provider_payable_id` (não cria saída independente — função utilitária `mirrorPayableToPlanning` que faz upsert por `provider_payable_id`).
 
-### 4. Ajuste de estado nos formulários
-Atualmente os forms guardam strings (`form.amount: ""`). Como o `CurrencyInput` emite `number`, atualizar os tipos/estados afetados para `number | null` e ajustar os `Number(form.xxx || 0)` correspondentes. Onde já existe `Number(...)` no submit, fica mais limpo.
+## Form de vínculo (`src/components/assignment-form.tsx`)
+Remover input visual `end_date`. Novos campos:
+- `frequency` (já existe) — opções completas (única → anual).
+- `first_due_date` (date, obrigatório).
+- `installments_count` (number, min 1) — escondido quando `recurrence_mode='continuous'`.
+- Checkbox "Sem quantidade definida" → `recurrence_mode='continuous'`.
+- Radio "Como deseja gerar os lançamentos?" → `launch_behavior`.
 
-### 5. Verificação
-- Build/typecheck.
-- Abrir Bancos, Serviços, Recorrências, Financeiro, Aportes e validar visualmente: digitar `1234` → mostra `R$ 12,34`; digitar `12345678` → `R$ 123.456,78`.
+Validação Zod atualizada em `src/lib/providers.ts` (`assignmentSchema`):
+- `installments_count >= 1` quando `finite`.
+- `percentage` 0–100; valores não-negativos.
+- `first_due_date` obrigatório.
+
+### Prévia do cronograma (dentro do form)
+Componente `<SchedulePreview>` em assignment-form:
+- Mostra: quantidade, valor/lançamento, total previsto prestador, receita prevista, lucro previsto, margem %, primeiro e último vencimento.
+- Lista compacta: 3 primeiras + 2 últimas, com "+ N lançamentos" no meio.
+- Atualiza ao mudar qualquer campo relevante; usa helpers acima sem persistir.
+
+## Edição de vínculo
+Ao salvar edição:
+- Recalcula cronograma.
+- Ocorrências `paga` ou `lancada` (com `financial_transaction_id`) **não são alteradas nem removidas**.
+- Ocorrências `nao_lancada` futuras excedentes (quando reduz `installments_count`) → `status='cancelada'`.
+- Novas parcelas faltantes são inseridas via upsert.
+- Diálogo de confirmação quando houver mudanças que afetam ocorrências já lançadas → oferece "atualizar somente próximas" / "cancelar futuras e gerar novo cronograma".
+
+## Despesas & Planejamento (`src/routes/_app/despesas-planejamento.tsx`)
+Listagem passa a unir `expense_occurrences` + `provider_payables` espelhados:
+- Coluna Origem: "Prestador" quando `source_type='provider_payable'`.
+- Mostra prestador, cliente, serviço, parcela X/Y, status.
+- Botão "Lançar no Financeiro" chama `launchPayableInFinance`.
+- Botão "Ver prestador" abre dossiê.
+- Sem criar saídas independentes.
+
+## Dossiê do Prestador (`src/components/provider-dossier.tsx`)
+- Aba Pagamentos: filtros por período/status/cliente/serviço/vínculo; colunas descrição, cliente, serviço, parcela X/Y, vencimento, valor, status, ações (lançar / ver no financeiro).
+- Cards: Total previsto, A pagar, Em atraso, Pago, Custo recorrente mensal.
+- Aba Vínculos: colunas novas — quantidade, valor/lançamento, total previsto, primeiro/último vencimento, próxima obrigação.
+- Card de lucro/margem previstos do vínculo selecionado.
+
+## Lançamento e baixa no Financeiro
+- `launchPayableInFinance` já existe e é idempotente (verifica `financial_transaction_id`). Mantida.
+- Baixa permanece exclusiva no Financeiro. Trigger `sync_provider_payable_on_tx` já propaga status/paid_at/bank_id para `provider_payables`. Mantida; nada novo no fluxo de baixa.
+- **Não** mexer em Dashboard, Calendário, Bancos, Auth, Aportes.
+
+## Invalidação React Query
+Após criar/editar vínculo, gerar cronograma ou lançar no Financeiro, invalidar:
+`providers`, `provider-summary`, `provider-assignments`, `provider-payables`, `expense-planning`, `expense-occurrences`, `transactions`, `dashboard`, `banks`, `client-summary/{id}`, `service-summary/{id}`.
+
+## Segurança
+- Zod no form + revalidação no submit.
+- `organization_id` derivado de `getCurrentOrgId()` em toda inserção.
+- Nenhum uso de service role no frontend.
+- Guards de duplicidade por `(assignment_id, installment_number)` e `(assignment_id, reference_month)`.
+
+## Responsividade
+`assignment-form` revisto: grid 2 colunas no desktop, 1 coluna no mobile; prévia em lista vertical; modal fullscreen no mobile (já é `Sheet`).
 
 ## Fora do escopo
-- Inputs de % (comissão), dias e quantidades.
-- Tabelas/labels de exibição (já usam `formatBRL`).
-- Inputs de valor em telas admin que não representam dinheiro.
+- Dashboard visual, Calendário Financeiro, Bancos, Auth, regras de aportes.
+- Qualquer ajuste em `currency-input` ou máscaras (já entregue).
+
+## Arquivos afetados
+- migration SQL nova
+- `src/lib/providers.ts` (schema, helpers, geração, espelho)
+- `src/components/assignment-form.tsx` (campos novos, prévia, remoção de end_date)
+- `src/components/provider-dossier.tsx` (colunas, filtros, ações)
+- `src/routes/_app/equipe-prestadores.tsx` (uso das novas colunas se necessário)
+- `src/routes/_app/despesas-planejamento.tsx` (origem prestador + ação lançar)
