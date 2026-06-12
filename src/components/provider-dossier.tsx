@@ -132,45 +132,92 @@ export function ProviderDossier({
   const saveAssignment = useMutation({
     mutationFn: async (data: AssignmentRecord) => {
       const org = await getCurrentOrgId();
-      if (!org) throw new Error("Organização não encontrada");
-      if (assignmentSheet.initial?.id) {
-        const { error } = await supabase.from("provider_assignments").update(data).eq("id", assignmentSheet.initial.id);
+      if (!org || !providerId) throw new Error("Organização não encontrada");
+      const dbPayload = {
+        provider_id: data.provider_id,
+        client_id: data.client_id,
+        service_id: data.service_id,
+        client_recurring_contract_id: data.client_recurring_contract_id,
+        assignment_type: data.assignment_type,
+        compensation_type: data.compensation_type,
+        fixed_amount: data.fixed_amount,
+        percentage: data.percentage,
+        frequency: data.frequency,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        first_due_date: data.first_due_date,
+        installments_count: data.installments_count,
+        recurrence_mode: data.recurrence_mode,
+        auto_generate_payables: data.auto_generate_payables,
+        launch_behavior: data.launch_behavior,
+        status: data.status,
+        notes: data.notes,
+      };
+      let assignmentId = assignmentSheet.initial?.id ?? null;
+      if (assignmentId) {
+        const { error } = await supabase.from("provider_assignments").update(dbPayload as any).eq("id", assignmentId);
         if (error) throw error;
-        return assignmentSheet.initial.id;
+      } else {
+        const { data: ins, error } = await supabase
+          .from("provider_assignments")
+          .insert({ ...dbPayload, organization_id: org } as any)
+          .select("id")
+          .single();
+        if (error) throw error;
+        assignmentId = ins.id as string;
       }
-      const { data: ins, error } = await supabase
-        .from("provider_assignments")
-        .insert({ ...data, organization_id: org })
-        .select("id")
-        .single();
-      if (error) throw error;
-      // Para vínculo pontual, já gerar uma obrigação se houver valor.
-      if (data.assignment_type === "pontual") {
-        const revenue = await fetchAssignmentExpectedRevenue({
-          recurring_contract_id: data.client_recurring_contract_id,
+
+      const revenue = await fetchAssignmentExpectedRevenue({
+        recurring_contract_id: data.client_recurring_contract_id,
+        service_id: data.service_id,
+      });
+
+      const [providerRow, clientRow, serviceRow] = await Promise.all([
+        supabase.from("providers").select("name").eq("id", providerId).maybeSingle(),
+        data.client_id ? supabase.from("clients").select("name").eq("id", data.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
+        data.service_id ? supabase.from("services").select("name").eq("id", data.service_id).maybeSingle() : Promise.resolve({ data: null } as any),
+      ]);
+
+      const schedule = generateAssignmentSchedule({
+        assignment_type: data.assignment_type,
+        compensation_type: data.compensation_type,
+        fixed_amount: data.fixed_amount,
+        percentage: data.percentage,
+        frequency: data.frequency,
+        first_due_date: data.first_due_date,
+        recurrence_mode: data.recurrence_mode,
+        installments_count: data.installments_count,
+        revenue,
+        providerName: (providerRow as any).data?.name,
+        clientName: (clientRow as any).data?.name ?? null,
+        serviceName: (serviceRow as any).data?.name ?? null,
+      });
+
+      if (schedule.length > 0) {
+        await persistAssignmentSchedule({
+          organization_id: org,
+          provider_id: providerId,
+          assignment_id: assignmentId,
+          client_id: data.client_id,
           service_id: data.service_id,
+          schedule,
         });
-        const cost = computeProviderCost(data.compensation_type, data.fixed_amount, data.percentage, revenue);
-        if (cost > 0 && providerId) {
-          await generateNextPayable({
-            organization_id: org,
-            provider_id: providerId,
-            assignment_id: ins.id,
-            client_id: data.client_id,
-            service_id: data.service_id,
-            amount: cost,
-            due_date: data.start_date,
-            description: `Pagamento pontual — prestador`,
-          });
-        }
+        await applyLaunchBehavior({
+          organization_id: org,
+          provider_id: providerId,
+          assignment_id: assignmentId,
+          launch_behavior: data.launch_behavior,
+        });
       }
-      return ins.id;
+      return assignmentId;
     },
     onSuccess: () => {
       toast.success(assignmentSheet.initial?.id ? "Vínculo atualizado" : "Vínculo criado");
       qc.invalidateQueries({ queryKey: ["provider-assignments", providerId] });
       qc.invalidateQueries({ queryKey: ["provider-payables", providerId] });
       qc.invalidateQueries({ queryKey: ["provider-summary"] });
+      invalidateFinanceCaches(qc);
+      qc.invalidateQueries({ queryKey: ["expense-occurrences"] });
       setAssignmentSheet({ open: false, initial: null });
     },
     onError: (e: any) => toast.error(e.message),
@@ -187,25 +234,38 @@ export function ProviderDossier({
       const cost = computeProviderCost(a.compensation_type, a.fixed_amount, a.percentage, revenue);
       if (cost <= 0) throw new Error("Custo zero — defina valor ou percentual e receita prevista");
 
-      // Próximo due_date: última obrigação + frequência, ou start_date para a primeira.
-      const last = (payables.data ?? []).find((p: any) => p.provider_assignment_id === a.id);
-      const baseDate = last?.due_date ?? a.start_date;
+      // Última parcela existente para esse vínculo.
+      const list = (payables.data ?? []).filter((p: any) => p.provider_assignment_id === a.id);
+      const last = list.reduce((acc: any, cur: any) => {
+        if (!acc) return cur;
+        return (cur.installment_number ?? 0) > (acc.installment_number ?? 0) ? cur : acc;
+      }, null as any);
+      const nextNumber = last ? (Number(last.installment_number ?? 0) + 1) : 1;
       const freq = (a.frequency as ExpenseFrequency) ?? "mensal";
-      const due = last ? nextPayableDate(baseDate, freq) : baseDate;
-      const r = await generateNextPayable({
+      const baseDate = a.first_due_date ?? a.start_date;
+      const due = addProviderPaymentPeriod(baseDate, freq, nextNumber - 1);
+
+      const description = `Pagamento operacional — ${a.clients?.name ?? ""} — Parcela ${nextNumber}`.replace(/—  —/g, "—");
+
+      const { error } = await supabase.from("provider_payables").insert({
         organization_id: org,
         provider_id: providerId,
-        assignment_id: a.id,
+        provider_assignment_id: a.id,
         client_id: a.client_id,
         service_id: a.service_id,
         amount: cost,
         due_date: due,
-        description: `Pagamento ${ASSIGNMENT_TYPE_LABELS[a.assignment_type as "pontual" | "recorrente"]?.toLowerCase() ?? "recorrente"} — prestador`,
-      });
-      return r;
+        reference_month: due.slice(0, 7) + "-01",
+        description,
+        installment_number: nextNumber,
+        installments_total: a.installments_count ?? null,
+        status: "nao_lancada",
+      } as any);
+      if (error) throw error;
+      return { created: true };
     },
-    onSuccess: (r) => {
-      toast.success(r.created ? "Obrigação gerada" : "Já existia obrigação para este mês");
+    onSuccess: () => {
+      toast.success("Próxima obrigação gerada");
       qc.invalidateQueries({ queryKey: ["provider-payables", providerId] });
       qc.invalidateQueries({ queryKey: ["provider-summary"] });
     },
