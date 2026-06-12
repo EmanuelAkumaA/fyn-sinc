@@ -537,7 +537,10 @@ function PayableRow({ pay, onLaunch, onView, onCancel }: { pay: any; onLaunch: (
           <span className="text-[10px] text-muted-foreground">{PAYABLE_STATUS_LABELS[status]}</span>
         </div>
         <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-2">
-          {pay.clients?.name && <span>{pay.clients.name}</span>}
+          {pay.installment_number != null && (
+            <span>Parcela {pay.installment_number}{pay.installments_total ? `/${pay.installments_total}` : ""}</span>
+          )}
+          {pay.clients?.name && <><span>·</span><span>{pay.clients.name}</span></>}
           {pay.services?.name && <><span>·</span><span>{pay.services.name}</span></>}
           <span>·</span><span>Vence {formatDate(pay.due_date)}</span>
           {pay.banks?.name && <><span>·</span><span>{pay.banks.name}</span></>}
