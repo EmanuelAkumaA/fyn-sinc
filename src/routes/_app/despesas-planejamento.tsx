@@ -497,6 +497,9 @@ function DespesasPlanejamentoPage() {
       invalidateAll();
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+
+
 
   const genNext = useMutation({
     mutationFn: async (planId: string) => {
