@@ -471,6 +471,33 @@ function DespesasPlanejamentoPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
 
+  const launchProviderPayable = useMutation({
+    mutationFn: async (p: any) => {
+      const org = await getCurrentOrgId();
+      if (!org) throw new Error("Sem organização");
+      const { launchPayableInFinance } = await import("@/lib/providers");
+      await launchPayableInFinance({
+        id: p.id,
+        organization_id: org,
+        provider_id: p.provider_id,
+        client_id: p.client_id,
+        service_id: p.service_id,
+        description: p.description,
+        amount: Number(p.amount ?? 0),
+        due_date: p.due_date,
+        bank_id: p.bank_id,
+        notes: p.notes,
+        financial_transaction_id: p.financial_transaction_id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Lançado no Financeiro");
+      qc.invalidateQueries({ queryKey: ["expense-provider-payables"] });
+      qc.invalidateQueries({ queryKey: ["provider-payables"] });
+      invalidateAll();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro"),
+
   const genNext = useMutation({
     mutationFn: async (planId: string) => {
       const org = await getCurrentOrgId();
