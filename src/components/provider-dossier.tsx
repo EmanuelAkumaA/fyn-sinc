@@ -508,6 +508,9 @@ function AssignmentRow({ a, onEdit, onPause, onEnd, onGenerate }: {
           {ASSIGNMENT_TYPE_LABELS[a.assignment_type as "pontual" | "recorrente"]} · {COMPENSATION_TYPE_LABELS[a.compensation_type as "valor_fixo" | "porcentagem"]}
           {a.compensation_type === "valor_fixo" ? ` · ${formatBRL(a.fixed_amount)}` : ` · ${Number(a.percentage ?? 0).toFixed(1)}%`}
           {a.frequency && a.assignment_type === "recorrente" && ` · ${FREQUENCY_LABELS[a.frequency as ExpenseFrequency]}`}
+          {a.recurrence_mode === "continuous" ? " · Contínuo" : a.installments_count ? ` · ${a.installments_count} lançamentos` : ""}
+          {a.first_due_date && ` · 1º venc. ${formatDate(a.first_due_date)}`}
+          {a.end_date && ` · último ${formatDate(a.end_date)}`}
         </div>
       </div>
       <div className="flex items-center gap-1">
