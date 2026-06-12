@@ -701,6 +701,53 @@ function DespesasPlanejamentoPage() {
         </div>
       </Tabs>
 
+      {(providerPayablesQ.data ?? []).length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold mb-2">Saídas de prestadores no período</h3>
+          <ul className="grid sm:grid-cols-2 gap-3">
+            {(providerPayablesQ.data ?? []).map((pp: any) => {
+              const launched = !!pp.financial_transaction_id;
+              const status = pp.status as string;
+              return (
+                <li key={pp.id} className="glass rounded-2xl p-3 sm:p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{pp.description}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-2">
+                        <span>Origem: Prestador</span>
+                        {pp.providers?.name && <><span>·</span><span>{pp.providers.name}</span></>}
+                        {pp.installment_number != null && <><span>·</span><span>Parcela {pp.installment_number}{pp.installments_total ? `/${pp.installments_total}` : ""}</span></>}
+                        {pp.clients?.name && <><span>·</span><span>{pp.clients.name}</span></>}
+                        {pp.services?.name && <><span>·</span><span>{pp.services.name}</span></>}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Vence {formatDate(pp.due_date)} · {status}
+                      </div>
+                    </div>
+                    <div className="font-mono font-semibold whitespace-nowrap">{formatBRL(Number(pp.amount))}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {!launched && status !== "paga" && (
+                      <Button size="sm" variant="outline" onClick={() => launchProviderPayable.mutate(pp)} disabled={launchProviderPayable.isPending}>
+                        <Send className="h-3.5 w-3.5 mr-1" /> Lançar no Financeiro
+                      </Button>
+                    )}
+                    {launched && (
+                      <Button size="sm" variant="ghost" asChild>
+                        <Link to="/financeiro"><ExternalLink className="h-3.5 w-3.5 mr-1" />Ver no Financeiro</Link>
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to="/equipe-prestadores"><ExternalLink className="h-3.5 w-3.5 mr-1" />Ver prestador</Link>
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {/* Lista */}
       {plansQ.isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
