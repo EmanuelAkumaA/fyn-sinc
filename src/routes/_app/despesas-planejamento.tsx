@@ -32,9 +32,10 @@ import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
 import { invalidateFinanceCaches } from "@/lib/finance";
 import {
   EXPENSE_TYPE_LABELS, FREQUENCY_LABELS, addFrequency, monthlyEquivalent,
-  computeFirstDueDate, monthAnchor, ensureDefaultCategories,
+  computeFirstDueDate, monthAnchor, ensureDefaultCategories, computePlanProgress,
   type ExpenseFrequency, type ExpenseType, type ExpenseOccurrenceStatus,
 } from "@/lib/expenses";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export const Route = createFileRoute("/_app/despesas-planejamento")({
   component: DespesasPlanejamentoPage,
@@ -75,7 +76,15 @@ const planSchema = z.object({
   client_id: z.string().uuid().nullable(),
   service_id: z.string().uuid().nullable(),
   notes: z.string().max(500).optional(),
-});
+  recurrence_mode: z.enum(["finite", "continuous"]).default("finite"),
+  installments_count: z.number().int().min(1).nullable(),
+}).refine(
+  (v) =>
+    v.frequency === "unica" ||
+    v.recurrence_mode === "continuous" ||
+    (v.installments_count != null && v.installments_count >= 1),
+  { message: "Informe a quantidade de parcelas", path: ["installments_count"] },
+);
 
 function DespesasPlanejamentoPage() {
   const qc = useQueryClient();
@@ -299,6 +308,41 @@ function DespesasPlanejamentoPage() {
       .slice(0, 5);
   }, [plans]);
 
+  // Progress por plano (usa TODAS as ocorrências)
+  const allOcc = allOccQ.data ?? [];
+  const progressByPlan = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computePlanProgress>>();
+    for (const p of plans) {
+      const occs = allOcc.filter((o) => o.expense_plan_id === p.id);
+      map.set(p.id, computePlanProgress(p, occs, today));
+    }
+    return map;
+  }, [plans, allOcc, today]);
+
+  // Métricas de acompanhamento dinâmico
+  const trackingMetrics = useMemo(() => {
+    const in30 = new Date();
+    in30.setDate(in30.getDate() + 30);
+    const in30ISO = in30.toISOString().slice(0, 10);
+    let pagasMes = 0, pagasMesValor = 0;
+    let restantes = 0;
+    let vencidasQty = 0, vencidasValor = 0;
+    let proxQty = 0, proxValor = 0;
+    for (const o of allOcc) {
+      if (o.status === "cancelada" || o.status === "pausada") continue;
+      const amt = Number(o.amount ?? 0);
+      if (o.status === "paga") {
+        const ref = (o.paid_at ?? "").slice(0, 10) || o.due_date;
+        if (ref >= range.from && ref <= range.to) { pagasMes++; pagasMesValor += amt; }
+      } else {
+        restantes++;
+        if (o.due_date < today) { vencidasQty++; vencidasValor += amt; }
+        else if (o.due_date <= in30ISO) { proxQty++; proxValor += amt; }
+      }
+    }
+    return { pagasMes, pagasMesValor, restantes, vencidasQty, vencidasValor, proxQty, proxValor };
+  }, [allOcc, range.from, range.to, today]);
+
   // Filtered list
   const filteredPlans = useMemo(() => {
     return plans.filter((p) => {
@@ -308,6 +352,10 @@ function DespesasPlanejamentoPage() {
       if (tab === "investimentos") return p.expense_type === "investimento";
       if (tab === "pausadas") return p.status === "pausado";
       if (tab === "canceladas") return p.status === "cancelado";
+      const prog = progressByPlan.get(p.id);
+      if (tab === "restantes") return prog && (prog.remaining ?? prog.pending) > 0;
+      if (tab === "quitadas") return prog && prog.total != null && prog.remaining === 0;
+      if (tab === "continuas") return prog?.isContinuous;
       // status de ocorrência → filtra planos com ao menos uma ocorrência nesse status no período
       const occs = enriched.filter((o) => o.expense_plan_id === p.id);
       if (tab === "nao_lancadas") return occs.some((o) => o.status === "nao_lancada");
@@ -316,7 +364,8 @@ function DespesasPlanejamentoPage() {
       if (tab === "vencidas") return occs.some((o) => o.effectiveStatus === "vencida");
       return true;
     });
-  }, [plans, tab, enriched]);
+  }, [plans, tab, enriched, progressByPlan]);
+
 
   // ─── Mutations ──────────────────────────────────────────────────────────────
   const invalidateAll = () => {
@@ -331,8 +380,15 @@ function DespesasPlanejamentoPage() {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
       const v = args.values;
-      const due = computeFirstDueDate(v.start_date, v.due_day);
-      const refMonth = monthAnchor(due);
+      const firstDue = computeFirstDueDate(v.start_date, v.due_day);
+
+      const isFinite = v.recurrence_mode === "finite";
+      const installmentsTotal =
+        v.frequency === "unica"
+          ? 1
+          : isFinite
+            ? Math.max(1, v.installments_count ?? 1)
+            : null;
 
       const { data: plan, error } = await (supabase as any)
         .from("expense_plans")
@@ -351,27 +407,43 @@ function DespesasPlanejamentoPage() {
           client_id: v.client_id,
           service_id: v.service_id,
           notes: v.notes || null,
+          recurrence_mode: v.recurrence_mode,
+          installments_count: installmentsTotal,
         })
         .select("*").single();
       if (error) throw error;
 
-      const { data: occ, error: occErr } = await (supabase as any)
-        .from("expense_occurrences")
-        .insert({
-          organization_id: org,
-          expense_plan_id: plan.id,
-          reference_month: refMonth,
-          description: plan.name,
-          amount: plan.amount,
-          due_date: due,
-          status: "nao_lancada",
-          bank_id: plan.default_bank_id,
-        })
-        .select("*").single();
-      if (occErr) throw occErr;
+      // Gera todas as parcelas previstas (finite) ou apenas a primeira (continuous)
+      const occurrencesToCreate = installmentsTotal ?? 1;
+      let firstOcc: any = null;
+      let currentDue = firstDue;
+      for (let i = 0; i < occurrencesToCreate; i++) {
+        const due = i === 0 ? firstDue : (currentDue = addFrequency(currentDue, v.frequency as ExpenseFrequency));
+        const refMonth = monthAnchor(due);
+        const { data: occ, error: occErr } = await (supabase as any)
+          .from("expense_occurrences")
+          .insert({
+            organization_id: org,
+            expense_plan_id: plan.id,
+            reference_month: refMonth,
+            description: plan.name,
+            amount: plan.amount,
+            due_date: due,
+            status: "nao_lancada",
+            bank_id: plan.default_bank_id,
+            installment_number: i + 1,
+            installments_total: installmentsTotal,
+          })
+          .select("*").single();
+        if (occErr) {
+          if (occErr.code === "23505") continue;
+          throw occErr;
+        }
+        if (i === 0) firstOcc = occ;
+      }
 
-      if (args.launchNow) {
-        await launchOccurrenceFn(occ, plan, org);
+      if (args.launchNow && firstOcc) {
+        await launchOccurrenceFn(firstOcc, plan, org);
       }
     },
     onSuccess: (_d, v) => {
@@ -381,6 +453,7 @@ function DespesasPlanejamentoPage() {
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
+
 
   const updatePlan = useMutation({
     mutationFn: async (args: { id: string; values: z.infer<typeof planSchema> }) => {
@@ -400,6 +473,13 @@ function DespesasPlanejamentoPage() {
           client_id: args.values.client_id,
           service_id: args.values.service_id,
           notes: args.values.notes || null,
+          recurrence_mode: args.values.recurrence_mode,
+          installments_count:
+            args.values.frequency === "unica"
+              ? 1
+              : args.values.recurrence_mode === "continuous"
+                ? null
+                : args.values.installments_count,
         })
         .eq("id", args.id);
       if (error) throw error;
@@ -620,6 +700,14 @@ function DespesasPlanejamentoPage() {
         <MetricCard label="Falta pagar" value={formatBRL(faltaPagar)} tone="destructive" />
       </div>
 
+      {/* Acompanhamento dinâmico */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard label="Pagamentos no período" value={String(trackingMetrics.pagasMes)} hint={formatBRL(trackingMetrics.pagasMesValor)} tone="success" />
+        <MetricCard label="Parcelas restantes" value={String(trackingMetrics.restantes)} />
+        <MetricCard label="Vencidas" value={String(trackingMetrics.vencidasQty)} hint={formatBRL(trackingMetrics.vencidasValor)} tone="destructive" />
+        <MetricCard label="Próximos 30 dias" value={String(trackingMetrics.proxQty)} hint={formatBRL(trackingMetrics.proxValor)} tone="primary" />
+      </div>
+
       {/* Projeção de caixa — colapsável no mobile, aberta em lg+ */}
       <Accordion type="single" collapsible defaultValue="" className="lg:hidden">
         <AccordionItem value="projecao" className="glass rounded-2xl border-0 px-4">
@@ -695,6 +783,9 @@ function DespesasPlanejamentoPage() {
             <TabsTrigger value="lancadas">Lançadas</TabsTrigger>
             <TabsTrigger value="pagas">Pagas</TabsTrigger>
             <TabsTrigger value="vencidas">Vencidas</TabsTrigger>
+            <TabsTrigger value="restantes">Com restantes</TabsTrigger>
+            <TabsTrigger value="quitadas">Quitadas</TabsTrigger>
+            <TabsTrigger value="continuas">Contínuas</TabsTrigger>
             <TabsTrigger value="pausadas">Pausadas</TabsTrigger>
             <TabsTrigger value="canceladas">Canceladas</TabsTrigger>
           </TabsList>
@@ -766,6 +857,8 @@ function DespesasPlanejamentoPage() {
             const cat = categories.find((c) => c.id === p.category_id);
             const client = clientsQ.data?.find((c: any) => c.id === p.client_id);
             const bank = banksQ.data?.find((b: any) => b.id === p.default_bank_id);
+            const prog = progressByPlan.get(p.id);
+            const isUnica = p.frequency === "unica";
             return (
               <li key={p.id} className="glass rounded-2xl p-3 sm:p-4 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3">
@@ -784,15 +877,49 @@ function DespesasPlanejamentoPage() {
                     )}
                   </div>
                 </div>
-                {nextOcc && (
+
+                {/* Faixa de progresso */}
+                {prog && !isUnica && (
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center gap-2 text-xs flex-wrap">
+                      {prog.total != null ? (
+                        <span><strong>{prog.paid}</strong> de {prog.total} pagas</span>
+                      ) : (
+                        <span><strong>{prog.paid}</strong> pagamentos realizados</span>
+                      )}
+                      {prog.remaining != null && prog.remaining > 0 && (
+                        <span className="text-muted-foreground">• Restam {prog.remaining}</span>
+                      )}
+                      {prog.isContinuous && (
+                        <span className="text-[10px] uppercase tracking-wide rounded-full bg-secondary/60 px-2 py-0.5">Contínua</span>
+                      )}
+                      {prog.overdue > 0 && (
+                        <span className="text-[color:var(--destructive)] inline-flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> {prog.overdue} vencida{prog.overdue > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {prog.nextDueDate && (
+                        <span className="text-muted-foreground">• Próxima: {formatDate(prog.nextDueDate)}</span>
+                      )}
+                    </div>
+                    {prog.progressPct != null && (
+                      <div className="flex items-center gap-2">
+                        <Progress value={prog.progressPct} className="h-1.5 flex-1" />
+                        <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(prog.progressPct)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isUnica && nextOcc && (
                   <div className="flex items-center gap-2 text-xs flex-wrap">
                     {nextOcc.effectiveStatus === "vencida" && <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--destructive)]" />}
                     {nextOcc.status === "paga" && <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--success)]" />}
                     {nextOcc.status === "lancada" && nextOcc.effectiveStatus !== "vencida" && <Clock className="h-3.5 w-3.5 text-primary" />}
-                    <span>Próx: {formatDate(nextOcc.due_date)}</span>
+                    <span>Vence: {formatDate(nextOcc.due_date)}</span>
                     <span className="text-muted-foreground capitalize">• {nextOcc.effectiveStatus.replace("_", " ")}</span>
                   </div>
                 )}
+
                 {(bank || client) && (
                   <div className="text-xs text-muted-foreground truncate">
                     {bank && <>Banco: {bank.name}</>}
@@ -933,6 +1060,8 @@ function PlanFormSheet({
   const [clientId, setClientId] = useState<string>("");
   const [serviceId, setServiceId] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [recurrenceMode, setRecurrenceMode] = useState<"finite" | "continuous">("finite");
+  const [installmentsCount, setInstallmentsCount] = useState<string>("12");
 
   useEffect(() => {
     if (open) {
@@ -950,11 +1079,14 @@ function PlanFormSheet({
         setClientId(initial.client_id ?? "");
         setServiceId(initial.service_id ?? "");
         setNotes(initial.notes ?? "");
+        setRecurrenceMode((initial.recurrence_mode as any) ?? "finite");
+        setInstallmentsCount(initial.installments_count ? String(initial.installments_count) : "12");
       } else {
         setName(""); setDescription(""); setExpenseType("fixa"); setCategoryId("");
         setAmount(""); setFrequency("mensal"); setDueDay("");
         setStartDate(new Date().toISOString().slice(0, 10)); setEndDate("");
         setBankId(""); setClientId(""); setServiceId(""); setNotes("");
+        setRecurrenceMode("finite"); setInstallmentsCount("12");
       }
     }
   }, [open, initial]);
@@ -973,6 +1105,15 @@ function PlanFormSheet({
       client_id: clientId || null,
       service_id: serviceId || null,
       notes: notes || undefined,
+      recurrence_mode: recurrenceMode,
+      installments_count:
+        frequency === "unica"
+          ? 1
+          : recurrenceMode === "continuous"
+            ? null
+            : installmentsCount
+              ? Number(installmentsCount)
+              : null,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
@@ -980,6 +1121,7 @@ function PlanFormSheet({
     }
     return parsed.data;
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -1028,6 +1170,29 @@ function PlanFormSheet({
             <div><Label>Início *</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
             <div><Label>Fim</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
           </div>
+
+          {frequency !== "unica" && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Recorrência</Label>
+              <RadioGroup value={recurrenceMode} onValueChange={(v) => setRecurrenceMode(v as any)} className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="finite" id="rm-finite" />
+                  Quantidade definida
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="continuous" id="rm-continuous" />
+                  Contínua (sem fim)
+                </label>
+              </RadioGroup>
+              {recurrenceMode === "finite" && (
+                <div>
+                  <Label>Quantidade de parcelas *</Label>
+                  <Input type="number" min="1" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Gera todas as parcelas previstas no planejamento.</p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Banco padrão</Label>
@@ -1108,6 +1273,40 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
         <div><span className="text-muted-foreground">Início:</span> {formatDate(plan.start_date)}</div>
       </div>
       {plan.notes && <div className="text-xs text-muted-foreground border-l-2 pl-2">{plan.notes}</div>}
+
+      {/* Progresso dos pagamentos */}
+      {(() => {
+        const prog = computePlanProgress(plan, occs);
+        return (
+          <div className="rounded-xl border border-border/50 p-3 space-y-2">
+            <h4 className="text-sm font-semibold">Progresso dos pagamentos</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <div><span className="text-muted-foreground">Total:</span> <strong>{prog.total ?? "—"}</strong></div>
+              <div><span className="text-muted-foreground">Pagas:</span> <strong className="text-[color:var(--success)]">{prog.paid}</strong></div>
+              <div><span className="text-muted-foreground">Restantes:</span> <strong>{prog.remaining ?? prog.pending}</strong></div>
+              <div><span className="text-muted-foreground">Vencidas:</span> <strong className={prog.overdue > 0 ? "text-[color:var(--destructive)]" : ""}>{prog.overdue}</strong></div>
+              <div><span className="text-muted-foreground">Próxima:</span> <strong>{prog.nextDueDate ? formatDate(prog.nextDueDate) : "—"}</strong></div>
+              <div><span className="text-muted-foreground">%:</span> <strong>{prog.progressPct != null ? `${Math.round(prog.progressPct)}%` : "—"}</strong></div>
+            </div>
+            {prog.progressPct != null && <Progress value={prog.progressPct} className="h-1.5" />}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Previsto</div>
+                <div className="font-mono">{formatBRL(prog.plannedAmount)}</div>
+              </div>
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Pago</div>
+                <div className="font-mono">{formatBRL(prog.paidAmount)}</div>
+              </div>
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Restante</div>
+                <div className="font-mono">{prog.remainingAmount != null ? formatBRL(prog.remainingAmount) : "—"}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-secondary/30 p-2 text-xs">
           <div className="text-muted-foreground">Previsto no ano</div>
@@ -1127,8 +1326,18 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
             {occs.map((o) => (
               <li key={o.id} className="flex justify-between items-center text-xs border-b border-border/30 py-1.5">
                 <div>
-                  <div className="font-medium">{formatDate(o.due_date)}</div>
-                  <div className="text-muted-foreground capitalize">{String(o.status).replace("_", " ")}</div>
+                  <div className="font-medium">
+                    {o.installment_number != null && (
+                      <span className="text-muted-foreground mr-1">
+                        Parcela {o.installment_number}{o.installments_total ? `/${o.installments_total}` : ""} —
+                      </span>
+                    )}
+                    {formatDate(o.due_date)}
+                  </div>
+                  <div className="text-muted-foreground capitalize">
+                    {String(o.status).replace("_", " ")}
+                    {o.paid_at && o.status === "paga" && ` em ${formatDate(o.paid_at.slice(0, 10))}`}
+                  </div>
                 </div>
                 <span className="font-mono">{formatBRL(Number(o.amount))}</span>
               </li>
@@ -1136,6 +1345,7 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
           </ul>
         )}
       </div>
+
     </div>
   );
 }

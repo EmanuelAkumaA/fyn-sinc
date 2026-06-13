@@ -229,6 +229,8 @@ export type Database = {
           expense_plan_id: string
           financial_transaction_id: string | null
           id: string
+          installment_number: number | null
+          installments_total: number | null
           launched_at: string | null
           notes: string | null
           organization_id: string
@@ -247,6 +249,8 @@ export type Database = {
           expense_plan_id: string
           financial_transaction_id?: string | null
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           launched_at?: string | null
           notes?: string | null
           organization_id: string
@@ -265,6 +269,8 @@ export type Database = {
           expense_plan_id?: string
           financial_transaction_id?: string | null
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           launched_at?: string | null
           notes?: string | null
           organization_id?: string
@@ -297,9 +303,11 @@ export type Database = {
           expense_type: string
           frequency: string | null
           id: string
+          installments_count: number | null
           name: string
           notes: string | null
           organization_id: string
+          recurrence_mode: string
           service_id: string | null
           start_date: string
           status: string
@@ -317,9 +325,11 @@ export type Database = {
           expense_type: string
           frequency?: string | null
           id?: string
+          installments_count?: number | null
           name: string
           notes?: string | null
           organization_id: string
+          recurrence_mode?: string
           service_id?: string | null
           start_date?: string
           status?: string
@@ -337,9 +347,11 @@ export type Database = {
           expense_type?: string
           frequency?: string | null
           id?: string
+          installments_count?: number | null
           name?: string
           notes?: string | null
           organization_id?: string
+          recurrence_mode?: string
           service_id?: string | null
           start_date?: string
           status?: string
