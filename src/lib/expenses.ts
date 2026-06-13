@@ -152,3 +152,75 @@ export async function ensureDefaultCategories(orgId: string) {
   }));
   await (supabase as any).from("expense_categories").insert(rows);
 }
+
+// ── Progresso por despesa ───────────────────────────────────────────────────
+export type RecurrenceMode = "finite" | "continuous";
+
+export type PlanProgress = {
+  isContinuous: boolean;
+  total: number | null;
+  paid: number;
+  remaining: number | null;
+  overdue: number;
+  pending: number;
+  nextDueDate: string | null;
+  progressPct: number | null;
+  paidAmount: number;
+  plannedAmount: number;
+  remainingAmount: number | null;
+};
+
+export function computePlanProgress(
+  plan: {
+    recurrence_mode?: string | null;
+    installments_count?: number | null;
+    frequency?: string | null;
+    amount?: number | null;
+  },
+  occurrences: Array<{
+    status: string;
+    due_date: string;
+    amount: number | string | null;
+    paid_at?: string | null;
+  }>,
+  today: string = new Date().toISOString().slice(0, 10),
+): PlanProgress {
+  const isContinuous =
+    (plan.recurrence_mode ?? "finite") === "continuous" ||
+    (!plan.installments_count && !!plan.frequency && plan.frequency !== "unica");
+
+  const active = occurrences.filter((o) => o.status !== "cancelada" && o.status !== "pausada");
+  const paidOccs = active.filter((o) => o.status === "paga");
+  const paid = paidOccs.length;
+  const overdue = active.filter((o) => o.status !== "paga" && o.due_date < today).length;
+  const pending = active.filter((o) => o.status !== "paga").length;
+
+  const total = !isContinuous && plan.installments_count ? Number(plan.installments_count) : null;
+  const remaining = total != null ? Math.max(0, total - paid) : null;
+  const progressPct = total && total > 0 ? Math.min(100, (paid / total) * 100) : null;
+
+  const nextOcc = active
+    .filter((o) => o.status !== "paga")
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+
+  const paidAmount = paidOccs.reduce((s, o) => s + Number(o.amount ?? 0), 0);
+  const unit = Number(plan.amount ?? 0);
+  const plannedAmount =
+    total != null ? total * unit : active.reduce((s, o) => s + Number(o.amount ?? 0), 0);
+  const remainingAmount = total != null ? Math.max(0, plannedAmount - paidAmount) : null;
+
+  return {
+    isContinuous,
+    total,
+    paid,
+    remaining,
+    overdue,
+    pending,
+    nextDueDate: nextOcc?.due_date ?? null,
+    progressPct,
+    paidAmount,
+    plannedAmount,
+    remainingAmount,
+  };
+}
+
