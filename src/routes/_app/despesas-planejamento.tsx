@@ -890,6 +890,9 @@ function DespesasPlanejamentoPage() {
                       {prog.remaining != null && prog.remaining > 0 && (
                         <span className="text-muted-foreground">• Restam {prog.remaining}</span>
                       )}
+                      {prog.open > 0 && (
+                        <span className="text-muted-foreground">• {prog.open} em aberto</span>
+                      )}
                       {prog.isContinuous && (
                         <span className="text-[10px] uppercase tracking-wide rounded-full bg-secondary/60 px-2 py-0.5">Contínua</span>
                       )}
