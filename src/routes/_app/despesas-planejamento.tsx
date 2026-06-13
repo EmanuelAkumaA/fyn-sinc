@@ -890,6 +890,9 @@ function DespesasPlanejamentoPage() {
                       {prog.remaining != null && prog.remaining > 0 && (
                         <span className="text-muted-foreground">• Restam {prog.remaining}</span>
                       )}
+                      {prog.open > 0 && (
+                        <span className="text-muted-foreground">• {prog.open} em aberto</span>
+                      )}
                       {prog.isContinuous && (
                         <span className="text-[10px] uppercase tracking-wide rounded-full bg-secondary/60 px-2 py-0.5">Contínua</span>
                       )}
@@ -1281,18 +1284,25 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
           <div className="rounded-xl border border-border/50 p-3 space-y-2">
             <h4 className="text-sm font-semibold">Progresso dos pagamentos</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              <div><span className="text-muted-foreground">Total:</span> <strong>{prog.total ?? "—"}</strong></div>
+              <div><span className="text-muted-foreground">Total previsto:</span> <strong>{prog.total ?? "—"}</strong></div>
+              <div><span className="text-muted-foreground">Lançadas:</span> <strong>{prog.launched}</strong></div>
               <div><span className="text-muted-foreground">Pagas:</span> <strong className="text-[color:var(--success)]">{prog.paid}</strong></div>
+              <div><span className="text-muted-foreground">Em aberto:</span> <strong>{prog.open}</strong></div>
+              <div><span className="text-muted-foreground">Não lançadas:</span> <strong>{prog.notLaunched}</strong></div>
               <div><span className="text-muted-foreground">Restantes:</span> <strong>{prog.remaining ?? prog.pending}</strong></div>
               <div><span className="text-muted-foreground">Vencidas:</span> <strong className={prog.overdue > 0 ? "text-[color:var(--destructive)]" : ""}>{prog.overdue}</strong></div>
               <div><span className="text-muted-foreground">Próxima:</span> <strong>{prog.nextDueDate ? formatDate(prog.nextDueDate) : "—"}</strong></div>
               <div><span className="text-muted-foreground">%:</span> <strong>{prog.progressPct != null ? `${Math.round(prog.progressPct)}%` : "—"}</strong></div>
             </div>
             {prog.progressPct != null && <Progress value={prog.progressPct} className="h-1.5" />}
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
               <div className="rounded-lg bg-secondary/30 p-2 text-xs">
-                <div className="text-muted-foreground">Previsto</div>
+                <div className="text-muted-foreground">Valor previsto</div>
                 <div className="font-mono">{formatBRL(prog.plannedAmount)}</div>
+              </div>
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Lançado</div>
+                <div className="font-mono">{formatBRL(prog.launchedAmount)}</div>
               </div>
               <div className="rounded-lg bg-secondary/30 p-2 text-xs">
                 <div className="text-muted-foreground">Pago</div>
