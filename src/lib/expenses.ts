@@ -160,12 +160,16 @@ export type PlanProgress = {
   isContinuous: boolean;
   total: number | null;
   paid: number;
+  launched: number;
+  open: number;
+  notLaunched: number;
   remaining: number | null;
   overdue: number;
   pending: number;
   nextDueDate: string | null;
   progressPct: number | null;
   paidAmount: number;
+  launchedAmount: number;
   plannedAmount: number;
   remainingAmount: number | null;
 };
@@ -182,43 +186,65 @@ export function computePlanProgress(
     due_date: string;
     amount: number | string | null;
     paid_at?: string | null;
+    financial_transaction_id?: string | null;
   }>,
   today: string = new Date().toISOString().slice(0, 10),
 ): PlanProgress {
-  const isContinuous =
-    (plan.recurrence_mode ?? "finite") === "continuous" ||
-    (!plan.installments_count && !!plan.frequency && plan.frequency !== "unica");
+  const isContinuous = (plan.recurrence_mode ?? "finite") === "continuous";
 
-  const active = occurrences.filter((o) => o.status !== "cancelada" && o.status !== "pausada");
+  const active = occurrences.filter((o) => o.status !== "cancelada");
   const paidOccs = active.filter((o) => o.status === "paga");
-  const paid = paidOccs.length;
-  const overdue = active.filter((o) => o.status !== "paga" && o.due_date < today).length;
-  const pending = active.filter((o) => o.status !== "paga").length;
+  const launchedOccs = active.filter((o) => !!o.financial_transaction_id);
+  const notLaunchedOccs = active.filter(
+    (o) => !o.financial_transaction_id && o.status !== "pausada",
+  );
 
-  const total = !isContinuous && plan.installments_count ? Number(plan.installments_count) : null;
+  const paid = paidOccs.length;
+  const launched = launchedOccs.length;
+  const open = Math.max(0, launched - paid);
+  const notLaunched = notLaunchedOccs.length;
+  const overdue = active.filter(
+    (o) => o.status !== "paga" && o.status !== "pausada" && o.due_date < today,
+  ).length;
+  const pending = active.filter((o) => o.status !== "paga" && o.status !== "pausada").length;
+
+  const total =
+    isContinuous
+      ? null
+      : plan.installments_count
+        ? Number(plan.installments_count)
+        : active.length || null;
   const remaining = total != null ? Math.max(0, total - paid) : null;
   const progressPct = total && total > 0 ? Math.min(100, (paid / total) * 100) : null;
 
   const nextOcc = active
-    .filter((o) => o.status !== "paga")
+    .filter((o) => o.status !== "paga" && o.status !== "pausada")
     .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
 
   const paidAmount = paidOccs.reduce((s, o) => s + Number(o.amount ?? 0), 0);
+  const launchedAmount = launchedOccs.reduce((s, o) => s + Number(o.amount ?? 0), 0);
   const unit = Number(plan.amount ?? 0);
   const plannedAmount =
-    total != null ? total * unit : active.reduce((s, o) => s + Number(o.amount ?? 0), 0);
-  const remainingAmount = total != null ? Math.max(0, plannedAmount - paidAmount) : null;
+    plan.installments_count != null
+      ? Number(plan.installments_count) * unit
+      : active.reduce((s, o) => s + Number(o.amount ?? 0), 0);
+  const remainingAmount =
+    plan.installments_count != null ? Math.max(0, plannedAmount - paidAmount) : null;
 
   return {
     isContinuous,
     total,
     paid,
+    launched,
+    open,
+    notLaunched,
     remaining,
     overdue,
     pending,
     nextDueDate: nextOcc?.due_date ?? null,
     progressPct,
     paidAmount,
+    launchedAmount,
     plannedAmount,
     remainingAmount,
   };
