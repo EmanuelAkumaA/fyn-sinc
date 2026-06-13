@@ -1273,6 +1273,40 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
         <div><span className="text-muted-foreground">Início:</span> {formatDate(plan.start_date)}</div>
       </div>
       {plan.notes && <div className="text-xs text-muted-foreground border-l-2 pl-2">{plan.notes}</div>}
+
+      {/* Progresso dos pagamentos */}
+      {(() => {
+        const prog = computePlanProgress(plan, occs);
+        return (
+          <div className="rounded-xl border border-border/50 p-3 space-y-2">
+            <h4 className="text-sm font-semibold">Progresso dos pagamentos</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <div><span className="text-muted-foreground">Total:</span> <strong>{prog.total ?? "—"}</strong></div>
+              <div><span className="text-muted-foreground">Pagas:</span> <strong className="text-[color:var(--success)]">{prog.paid}</strong></div>
+              <div><span className="text-muted-foreground">Restantes:</span> <strong>{prog.remaining ?? prog.pending}</strong></div>
+              <div><span className="text-muted-foreground">Vencidas:</span> <strong className={prog.overdue > 0 ? "text-[color:var(--destructive)]" : ""}>{prog.overdue}</strong></div>
+              <div><span className="text-muted-foreground">Próxima:</span> <strong>{prog.nextDueDate ? formatDate(prog.nextDueDate) : "—"}</strong></div>
+              <div><span className="text-muted-foreground">%:</span> <strong>{prog.progressPct != null ? `${Math.round(prog.progressPct)}%` : "—"}</strong></div>
+            </div>
+            {prog.progressPct != null && <Progress value={prog.progressPct} className="h-1.5" />}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Previsto</div>
+                <div className="font-mono">{formatBRL(prog.plannedAmount)}</div>
+              </div>
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Pago</div>
+                <div className="font-mono">{formatBRL(prog.paidAmount)}</div>
+              </div>
+              <div className="rounded-lg bg-secondary/30 p-2 text-xs">
+                <div className="text-muted-foreground">Restante</div>
+                <div className="font-mono">{prog.remainingAmount != null ? formatBRL(prog.remainingAmount) : "—"}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-secondary/30 p-2 text-xs">
           <div className="text-muted-foreground">Previsto no ano</div>
@@ -1292,8 +1326,18 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
             {occs.map((o) => (
               <li key={o.id} className="flex justify-between items-center text-xs border-b border-border/30 py-1.5">
                 <div>
-                  <div className="font-medium">{formatDate(o.due_date)}</div>
-                  <div className="text-muted-foreground capitalize">{String(o.status).replace("_", " ")}</div>
+                  <div className="font-medium">
+                    {o.installment_number != null && (
+                      <span className="text-muted-foreground mr-1">
+                        Parcela {o.installment_number}{o.installments_total ? `/${o.installments_total}` : ""} —
+                      </span>
+                    )}
+                    {formatDate(o.due_date)}
+                  </div>
+                  <div className="text-muted-foreground capitalize">
+                    {String(o.status).replace("_", " ")}
+                    {o.paid_at && o.status === "paga" && ` em ${formatDate(o.paid_at.slice(0, 10))}`}
+                  </div>
                 </div>
                 <span className="font-mono">{formatBRL(Number(o.amount))}</span>
               </li>
@@ -1301,6 +1345,7 @@ function PlanDetail({ plan, allOcc, categories, banks }: { plan: any; allOcc: an
           </ul>
         )}
       </div>
+
     </div>
   );
 }
