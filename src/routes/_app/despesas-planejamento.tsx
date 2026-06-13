@@ -340,8 +340,15 @@ function DespesasPlanejamentoPage() {
       const org = await getCurrentOrgId();
       if (!org) throw new Error("Sem organização");
       const v = args.values;
-      const due = computeFirstDueDate(v.start_date, v.due_day);
-      const refMonth = monthAnchor(due);
+      const firstDue = computeFirstDueDate(v.start_date, v.due_day);
+
+      const isFinite = v.recurrence_mode === "finite";
+      const installmentsTotal =
+        v.frequency === "unica"
+          ? 1
+          : isFinite
+            ? Math.max(1, v.installments_count ?? 1)
+            : null;
 
       const { data: plan, error } = await (supabase as any)
         .from("expense_plans")
@@ -360,27 +367,47 @@ function DespesasPlanejamentoPage() {
           client_id: v.client_id,
           service_id: v.service_id,
           notes: v.notes || null,
+          recurrence_mode: v.recurrence_mode,
+          installments_count: installmentsTotal,
         })
         .select("*").single();
       if (error) throw error;
 
-      const { data: occ, error: occErr } = await (supabase as any)
-        .from("expense_occurrences")
-        .insert({
-          organization_id: org,
-          expense_plan_id: plan.id,
-          reference_month: refMonth,
-          description: plan.name,
-          amount: plan.amount,
-          due_date: due,
-          status: "nao_lancada",
-          bank_id: plan.default_bank_id,
-        })
-        .select("*").single();
-      if (occErr) throw occErr;
+      // Gera todas as parcelas previstas (finite) ou apenas a primeira (continuous)
+      const occurrencesToCreate = installmentsTotal ?? 1;
+      let firstOcc: any = null;
+      for (let i = 0; i < occurrencesToCreate; i++) {
+        const due =
+          v.frequency === "unica"
+            ? firstDue
+            : i === 0
+              ? firstDue
+              : addNFrequency(firstDue, v.frequency as ExpenseFrequency, i);
+        const refMonth = monthAnchor(due);
+        const { data: occ, error: occErr } = await (supabase as any)
+          .from("expense_occurrences")
+          .insert({
+            organization_id: org,
+            expense_plan_id: plan.id,
+            reference_month: refMonth,
+            description: plan.name,
+            amount: plan.amount,
+            due_date: due,
+            status: "nao_lancada",
+            bank_id: plan.default_bank_id,
+            installment_number: i + 1,
+            installments_total: installmentsTotal,
+          })
+          .select("*").single();
+        if (occErr) {
+          if (occErr.code === "23505") continue;
+          throw occErr;
+        }
+        if (i === 0) firstOcc = occ;
+      }
 
-      if (args.launchNow) {
-        await launchOccurrenceFn(occ, plan, org);
+      if (args.launchNow && firstOcc) {
+        await launchOccurrenceFn(firstOcc, plan, org);
       }
     },
     onSuccess: (_d, v) => {
@@ -390,6 +417,7 @@ function DespesasPlanejamentoPage() {
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
+
 
   const updatePlan = useMutation({
     mutationFn: async (args: { id: string; values: z.infer<typeof planSchema> }) => {
