@@ -32,9 +32,10 @@ import { formatBRL, formatDate, getCurrentOrgId } from "@/lib/fynsinc";
 import { invalidateFinanceCaches } from "@/lib/finance";
 import {
   EXPENSE_TYPE_LABELS, FREQUENCY_LABELS, addFrequency, monthlyEquivalent,
-  computeFirstDueDate, monthAnchor, ensureDefaultCategories,
+  computeFirstDueDate, monthAnchor, ensureDefaultCategories, computePlanProgress,
   type ExpenseFrequency, type ExpenseType, type ExpenseOccurrenceStatus,
 } from "@/lib/expenses";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export const Route = createFileRoute("/_app/despesas-planejamento")({
   component: DespesasPlanejamentoPage,
