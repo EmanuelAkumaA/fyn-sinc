@@ -76,7 +76,15 @@ const planSchema = z.object({
   client_id: z.string().uuid().nullable(),
   service_id: z.string().uuid().nullable(),
   notes: z.string().max(500).optional(),
-});
+  recurrence_mode: z.enum(["finite", "continuous"]).default("finite"),
+  installments_count: z.number().int().min(1).nullable(),
+}).refine(
+  (v) =>
+    v.frequency === "unica" ||
+    v.recurrence_mode === "continuous" ||
+    (v.installments_count != null && v.installments_count >= 1),
+  { message: "Informe a quantidade de parcelas", path: ["installments_count"] },
+);
 
 function DespesasPlanejamentoPage() {
   const qc = useQueryClient();
