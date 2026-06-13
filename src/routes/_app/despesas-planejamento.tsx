@@ -308,6 +308,41 @@ function DespesasPlanejamentoPage() {
       .slice(0, 5);
   }, [plans]);
 
+  // Progress por plano (usa TODAS as ocorrências)
+  const allOcc = allOccQ.data ?? [];
+  const progressByPlan = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computePlanProgress>>();
+    for (const p of plans) {
+      const occs = allOcc.filter((o) => o.expense_plan_id === p.id);
+      map.set(p.id, computePlanProgress(p, occs, today));
+    }
+    return map;
+  }, [plans, allOcc, today]);
+
+  // Métricas de acompanhamento dinâmico
+  const trackingMetrics = useMemo(() => {
+    const in30 = new Date();
+    in30.setDate(in30.getDate() + 30);
+    const in30ISO = in30.toISOString().slice(0, 10);
+    let pagasMes = 0, pagasMesValor = 0;
+    let restantes = 0;
+    let vencidasQty = 0, vencidasValor = 0;
+    let proxQty = 0, proxValor = 0;
+    for (const o of allOcc) {
+      if (o.status === "cancelada" || o.status === "pausada") continue;
+      const amt = Number(o.amount ?? 0);
+      if (o.status === "paga") {
+        const ref = (o.paid_at ?? "").slice(0, 10) || o.due_date;
+        if (ref >= range.from && ref <= range.to) { pagasMes++; pagasMesValor += amt; }
+      } else {
+        restantes++;
+        if (o.due_date < today) { vencidasQty++; vencidasValor += amt; }
+        else if (o.due_date <= in30ISO) { proxQty++; proxValor += amt; }
+      }
+    }
+    return { pagasMes, pagasMesValor, restantes, vencidasQty, vencidasValor, proxQty, proxValor };
+  }, [allOcc, range.from, range.to, today]);
+
   // Filtered list
   const filteredPlans = useMemo(() => {
     return plans.filter((p) => {
@@ -317,6 +352,10 @@ function DespesasPlanejamentoPage() {
       if (tab === "investimentos") return p.expense_type === "investimento";
       if (tab === "pausadas") return p.status === "pausado";
       if (tab === "canceladas") return p.status === "cancelado";
+      const prog = progressByPlan.get(p.id);
+      if (tab === "restantes") return prog && (prog.remaining ?? prog.pending) > 0;
+      if (tab === "quitadas") return prog && prog.total != null && prog.remaining === 0;
+      if (tab === "continuas") return prog?.isContinuous;
       // status de ocorrência → filtra planos com ao menos uma ocorrência nesse status no período
       const occs = enriched.filter((o) => o.expense_plan_id === p.id);
       if (tab === "nao_lancadas") return occs.some((o) => o.status === "nao_lancada");
@@ -325,7 +364,8 @@ function DespesasPlanejamentoPage() {
       if (tab === "vencidas") return occs.some((o) => o.effectiveStatus === "vencida");
       return true;
     });
-  }, [plans, tab, enriched]);
+  }, [plans, tab, enriched, progressByPlan]);
+
 
   // ─── Mutations ──────────────────────────────────────────────────────────────
   const invalidateAll = () => {
