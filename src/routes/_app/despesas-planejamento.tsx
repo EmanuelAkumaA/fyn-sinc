@@ -1170,6 +1170,29 @@ function PlanFormSheet({
             <div><Label>Início *</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
             <div><Label>Fim</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
           </div>
+
+          {frequency !== "unica" && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Recorrência</Label>
+              <RadioGroup value={recurrenceMode} onValueChange={(v) => setRecurrenceMode(v as any)} className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="finite" id="rm-finite" />
+                  Quantidade definida
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="continuous" id="rm-continuous" />
+                  Contínua (sem fim)
+                </label>
+              </RadioGroup>
+              {recurrenceMode === "finite" && (
+                <div>
+                  <Label>Quantidade de parcelas *</Label>
+                  <Input type="number" min="1" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Gera todas as parcelas previstas no planejamento.</p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Banco padrão</Label>
