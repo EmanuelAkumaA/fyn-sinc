@@ -376,13 +376,9 @@ function DespesasPlanejamentoPage() {
       // Gera todas as parcelas previstas (finite) ou apenas a primeira (continuous)
       const occurrencesToCreate = installmentsTotal ?? 1;
       let firstOcc: any = null;
+      let currentDue = firstDue;
       for (let i = 0; i < occurrencesToCreate; i++) {
-        const due =
-          v.frequency === "unica"
-            ? firstDue
-            : i === 0
-              ? firstDue
-              : addNPeriods(firstDue, v.frequency as ExpenseFrequency, i);
+        const due = i === 0 ? firstDue : (currentDue = addFrequency(currentDue, v.frequency as ExpenseFrequency));
         const refMonth = monthAnchor(due);
         const { data: occ, error: occErr } = await (supabase as any)
           .from("expense_occurrences")
