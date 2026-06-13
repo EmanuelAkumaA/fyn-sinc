@@ -783,6 +783,9 @@ function DespesasPlanejamentoPage() {
             <TabsTrigger value="lancadas">Lançadas</TabsTrigger>
             <TabsTrigger value="pagas">Pagas</TabsTrigger>
             <TabsTrigger value="vencidas">Vencidas</TabsTrigger>
+            <TabsTrigger value="restantes">Com restantes</TabsTrigger>
+            <TabsTrigger value="quitadas">Quitadas</TabsTrigger>
+            <TabsTrigger value="continuas">Contínuas</TabsTrigger>
             <TabsTrigger value="pausadas">Pausadas</TabsTrigger>
             <TabsTrigger value="canceladas">Canceladas</TabsTrigger>
           </TabsList>
