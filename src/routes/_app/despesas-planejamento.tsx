@@ -1060,6 +1060,8 @@ function PlanFormSheet({
   const [clientId, setClientId] = useState<string>("");
   const [serviceId, setServiceId] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [recurrenceMode, setRecurrenceMode] = useState<"finite" | "continuous">("finite");
+  const [installmentsCount, setInstallmentsCount] = useState<string>("12");
 
   useEffect(() => {
     if (open) {
@@ -1077,11 +1079,14 @@ function PlanFormSheet({
         setClientId(initial.client_id ?? "");
         setServiceId(initial.service_id ?? "");
         setNotes(initial.notes ?? "");
+        setRecurrenceMode((initial.recurrence_mode as any) ?? "finite");
+        setInstallmentsCount(initial.installments_count ? String(initial.installments_count) : "12");
       } else {
         setName(""); setDescription(""); setExpenseType("fixa"); setCategoryId("");
         setAmount(""); setFrequency("mensal"); setDueDay("");
         setStartDate(new Date().toISOString().slice(0, 10)); setEndDate("");
         setBankId(""); setClientId(""); setServiceId(""); setNotes("");
+        setRecurrenceMode("finite"); setInstallmentsCount("12");
       }
     }
   }, [open, initial]);
@@ -1100,6 +1105,15 @@ function PlanFormSheet({
       client_id: clientId || null,
       service_id: serviceId || null,
       notes: notes || undefined,
+      recurrence_mode: recurrenceMode,
+      installments_count:
+        frequency === "unica"
+          ? 1
+          : recurrenceMode === "continuous"
+            ? null
+            : installmentsCount
+              ? Number(installmentsCount)
+              : null,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
@@ -1107,6 +1121,7 @@ function PlanFormSheet({
     }
     return parsed.data;
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
