@@ -857,6 +857,8 @@ function DespesasPlanejamentoPage() {
             const cat = categories.find((c) => c.id === p.category_id);
             const client = clientsQ.data?.find((c: any) => c.id === p.client_id);
             const bank = banksQ.data?.find((b: any) => b.id === p.default_bank_id);
+            const prog = progressByPlan.get(p.id);
+            const isUnica = p.frequency === "unica";
             return (
               <li key={p.id} className="glass rounded-2xl p-3 sm:p-4 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3">
@@ -875,15 +877,49 @@ function DespesasPlanejamentoPage() {
                     )}
                   </div>
                 </div>
-                {nextOcc && (
+
+                {/* Faixa de progresso */}
+                {prog && !isUnica && (
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center gap-2 text-xs flex-wrap">
+                      {prog.total != null ? (
+                        <span><strong>{prog.paid}</strong> de {prog.total} pagas</span>
+                      ) : (
+                        <span><strong>{prog.paid}</strong> pagamentos realizados</span>
+                      )}
+                      {prog.remaining != null && prog.remaining > 0 && (
+                        <span className="text-muted-foreground">• Restam {prog.remaining}</span>
+                      )}
+                      {prog.isContinuous && (
+                        <span className="text-[10px] uppercase tracking-wide rounded-full bg-secondary/60 px-2 py-0.5">Contínua</span>
+                      )}
+                      {prog.overdue > 0 && (
+                        <span className="text-[color:var(--destructive)] inline-flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> {prog.overdue} vencida{prog.overdue > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {prog.nextDueDate && (
+                        <span className="text-muted-foreground">• Próxima: {formatDate(prog.nextDueDate)}</span>
+                      )}
+                    </div>
+                    {prog.progressPct != null && (
+                      <div className="flex items-center gap-2">
+                        <Progress value={prog.progressPct} className="h-1.5 flex-1" />
+                        <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(prog.progressPct)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isUnica && nextOcc && (
                   <div className="flex items-center gap-2 text-xs flex-wrap">
                     {nextOcc.effectiveStatus === "vencida" && <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--destructive)]" />}
                     {nextOcc.status === "paga" && <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--success)]" />}
                     {nextOcc.status === "lancada" && nextOcc.effectiveStatus !== "vencida" && <Clock className="h-3.5 w-3.5 text-primary" />}
-                    <span>Próx: {formatDate(nextOcc.due_date)}</span>
+                    <span>Vence: {formatDate(nextOcc.due_date)}</span>
                     <span className="text-muted-foreground capitalize">• {nextOcc.effectiveStatus.replace("_", " ")}</span>
                   </div>
                 )}
+
                 {(bank || client) && (
                   <div className="text-xs text-muted-foreground truncate">
                     {bank && <>Banco: {bank.name}</>}
