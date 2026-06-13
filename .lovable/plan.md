@@ -1,100 +1,143 @@
-# Despesas & Planejamento — acompanhamento dinâmico
+## Diagnóstico
 
-Objetivo: cada despesa passa a exibir pagas / restantes / vencidas / próxima parcela / progresso, refletindo automaticamente as baixas feitas no Financeiro. Sem fluxo paralelo de pagamento, sem duplicar ocorrências nem transações.
+Verifiquei o Supabase externo:
 
-## 1. Migração de schema (incremental e idempotente)
+- `expense_plans` já tem `installments_count` e `recurrence_mode` (default `finite`).
+- `expense_occurrences` já tem `installment_number`, `installments_total`, `financial_transaction_id`, `paid_at`, `bank_id`, `status`.
+- As funções `sync_expense_occurrence_on_tx` e `reset_occurrence_on_tx_delete` existem, **mas nenhum trigger está anexado em `financial_transactions`** (`information_schema.triggers` vazio). Por isso baixa/reversão no Financeiro não atualiza a ocorrência.
+- Os 7 planos mais recentes (Mentoria, Cap Cut, Habilitação, etc.) estão com `recurrence_mode='finite'`, `installments_count=NULL` e apenas **1 ocorrência cada**. O form atual salvou `finite` sem total e não gerou as parcelas previstas. Com `total=null`, `computePlanProgress` retorna `total=—`, `remaining=null`, `progressPct=null` → exatamente o sintoma descrito.
 
-`expense_plans` — adicionar apenas o que falta:
-- `installments_count integer null`
-- `recurrence_mode text not null default 'finite'` com check `in ('finite','continuous')`
-- Constraint: quando `recurrence_mode='finite'` e `frequency<>'unica'`, `installments_count >= 1`.
+Reaproveito a estrutura existente. Nenhum dado é inventado. Continua 100% no Supabase externo.
 
-`expense_occurrences` — colunas `paid_at` e `status` já existem. Adicionar apenas:
-- `installment_number integer null`
-- `installments_total integer null`
-- Índice único parcial `(expense_plan_id, due_date) where status <> 'cancelada'` para evitar duplicidade.
+## 1. Migração SQL (idempotente)
 
-Triggers (a função `sync_expense_occurrence_on_tx` já existe mas não está anexada):
-- `CREATE TRIGGER trg_sync_expense_occurrence_on_tx AFTER INSERT OR UPDATE ON financial_transactions FOR EACH ROW EXECUTE FUNCTION sync_expense_occurrence_on_tx();`
-- Ajustar a função para também tratar reversão: se transação passa de `pago` para `pendente`, voltar ocorrência para `lancada` e limpar `paid_at`; se transação é deletada/desvinculada, voltar para `nao_lancada`/`lancada` conforme vínculo (a função `unlink_tx_on_occurrence_delete` já cuida do delete da ocorrência; complementar com trigger `BEFORE DELETE` na transação que reseta status da occurrence).
+```text
+-- 1.1 Anexar triggers ausentes
+CREATE TRIGGER trg_sync_expense_occurrence_on_tx
+  AFTER INSERT OR UPDATE OF status, paid_at, bank_id ON public.financial_transactions
+  FOR EACH ROW EXECUTE FUNCTION public.sync_expense_occurrence_on_tx();
 
-## 2. Backfill seguro (uma única migração de dados, idempotente)
+CREATE TRIGGER trg_reset_occurrence_on_tx_delete
+  BEFORE DELETE ON public.financial_transactions
+  FOR EACH ROW EXECUTE FUNCTION public.reset_occurrence_on_tx_delete();
 
-Para cada `expense_occurrence`:
-- Se houver `financial_transaction` vinculada com `status='pago'` → `status='paga'`, `paid_at = tx.paid_at`.
-- Se houver transação vinculada não paga → `status='lancada'`.
-- Sem transação e `due_date < hoje` e status atual `nao_lancada/lancada` → manter status mas considerar "vencida" via cálculo (não persistir como `vencida` automaticamente para preservar flexibilidade — a UI deriva).
-- Numerar `installment_number` por `expense_plan_id` em ordem crescente de `due_date` via `row_number()`.
-- `installments_total`: preencher só quando `expense_plans.installments_count` existir. Para despesas antigas sem total conhecido, deixar null e marcar plano como `recurrence_mode='continuous'`.
+-- mesmo para provider_payables (sync_provider_payable_on_tx já existe sem trigger)
+CREATE TRIGGER trg_sync_provider_payable_on_tx
+  AFTER INSERT OR UPDATE OF status, paid_at, bank_id ON public.financial_transactions
+  FOR EACH ROW EXECUTE FUNCTION public.sync_provider_payable_on_tx();
 
-Nenhum pagamento fictício, nenhuma transação criada.
+-- 1.2 Índice único parcial p/ evitar duplicidade
+CREATE UNIQUE INDEX IF NOT EXISTS ux_expense_occ_plan_due
+  ON public.expense_occurrences (expense_plan_id, due_date)
+  WHERE status <> 'cancelada';
 
-## 3. Camada de cálculo (`src/lib/expenses.ts`)
+-- 1.3 Constraint coerente em expense_plans
+ALTER TABLE public.expense_plans
+  ADD CONSTRAINT chk_plan_recurrence
+  CHECK (
+    recurrence_mode IN ('finite','continuous')
+    AND (recurrence_mode <> 'finite' OR frequency = 'unica' OR installments_count >= 1)
+  );
+```
 
-Nova função `computePlanProgress(plan, occurrences) → { total, paid, remaining, overdue, pending, nextDueDate, progressPct, isContinuous }`:
-- `paid` = occurrences com `status='paga'` OU com tx vinculada `status='pago'`.
-- `overdue` = `due_date < hoje` e status ∉ {paga, cancelada, pausada}.
-- `pending` = status em {nao_lancada, lancada} e não pagas.
-- `nextDueDate` = menor `due_date` ainda não paga (futura ou vencida), ignorando canceladas/pausadas.
-- `total` = `installments_count` quando `recurrence_mode='finite'`; senão null.
-- `progressPct` só quando total conhecido.
+## 2. Backfill seguro (idempotente, sem inventar pagamento)
 
-## 4. UI — `src/routes/_app/despesas-planejamento.tsx`
+```text
+-- a) Planos finite sem installments_count e sem como deduzir → vira continuous
+UPDATE expense_plans
+   SET recurrence_mode = 'continuous'
+ WHERE recurrence_mode = 'finite'
+   AND frequency IS NOT NULL AND frequency <> 'unica'
+   AND installments_count IS NULL;
 
-Cards de despesa: faixa compacta abaixo dos dados principais com:
-- Finitas: `X de Y pagas` · `Restam Z` · `N vencidas` (se >0) · `Próxima: dd/mm/aaaa` · barra de progresso fina + `%`.
-- Únicas: badge único (Pendente / Lançada / Pago em… / Vencida desde…).
-- Contínuas: `X realizadas` · `Y pendentes` · `N vencidas` · `Próxima: …` · badge "Contínua", sem barra/percentual.
+-- b) Status das ocorrências a partir das transações existentes
+UPDATE expense_occurrences eo
+   SET status='paga', paid_at=COALESCE(eo.paid_at, ft.paid_at::timestamptz, now())
+  FROM financial_transactions ft
+ WHERE ft.id = eo.financial_transaction_id
+   AND ft.status = 'pago' AND eo.status NOT IN ('paga','cancelada');
 
-Cores via tokens semânticos existentes (success/destructive/primary/muted). Sem novas cores hardcoded.
+UPDATE expense_occurrences eo
+   SET status='lancada', paid_at=NULL
+  FROM financial_transactions ft
+ WHERE ft.id = eo.financial_transaction_id
+   AND ft.status = 'pendente' AND eo.status NOT IN ('lancada','paga','cancelada','pausada');
 
-Métricas topo (ajustar `MetricCard`s existentes, sem inflar):
-- Pagamentos realizados no mês (qtd + valor).
-- Parcelas restantes (qtd).
-- Despesas vencidas (qtd + valor).
-- Próximos vencimentos 30d (qtd + valor).
+-- c) Numerar installment_number por plano (due_date asc)
+WITH ord AS (
+  SELECT id, row_number() OVER (PARTITION BY expense_plan_id ORDER BY due_date, created_at) rn
+    FROM expense_occurrences WHERE installment_number IS NULL
+)
+UPDATE expense_occurrences eo SET installment_number = ord.rn FROM ord WHERE ord.id = eo.id;
 
-Detalhe da despesa (sheet/accordion existente): seção "Progresso dos pagamentos" com total / pagas / restantes / vencidas / % / próximo vencimento / valor previsto / pago / restante, seguida da lista de ocorrências (`Parcela n/total — status — vencimento/pago em`) e ações já existentes (lançar, ver no Financeiro, cancelar, editar vencimento se não paga).
+-- d) Preencher installments_total quando conhecido
+UPDATE expense_occurrences eo
+   SET installments_total = ep.installments_count
+  FROM expense_plans ep
+ WHERE ep.id = eo.expense_plan_id
+   AND ep.installments_count IS NOT NULL
+   AND eo.installments_total IS DISTINCT FROM ep.installments_count;
+```
 
-Filtros: manter os atuais; adicionar `Com parcelas restantes`, `Quitadas`, `Contínuas`.
+Nenhuma transação financeira é criada. Nenhuma ocorrência duplicada.
 
-## 5. Formulário de despesa
+## 3. View `v_expense_plan_payment_progress`
 
-Adicionar campos `recurrence_mode` (radio finite/continuous, default finite) e `installments_count` (number, exigido quando finite e frequência ≠ única; oculto quando continuous ou única). Geração inicial de ocorrências respeita o total.
+`SECURITY INVOKER` (RLS de `expense_plans/occurrences/financial_transactions` aplica naturalmente) com `GRANT SELECT TO authenticated`.
 
-## 6. Sincronização e invalidação
+Colunas: `organization_id, expense_plan_id, expense_name, recurrence_mode, total_installments, launched_installments, paid_installments, open_installments, not_launched_installments, remaining_installments, overdue_installments, next_due_date, progress_percentage, planned_total_amount, launched_total_amount, paid_total_amount, remaining_total_amount`.
 
-A baixa continua acontecendo só no Financeiro. O trigger garante `expense_occurrences.status` sincronizado. No client, invalidar após qualquer mutação relevante:
-- `['expense-plans', orgId]`, `['expense-occurrences', orgId]`, `['expense-summary', orgId]`, `['transactions', orgId]`, `['dashboard', orgId]`, `['banks', orgId]`.
-Reutilizar `invalidateFinanceCaches` adicionando as keys acima onde faltar.
+Regras:
+- `total_installments = COALESCE(installments_count, count(occ não cancelada))` para finite; `NULL` para continuous.
+- `launched = count(financial_transaction_id IS NOT NULL AND status<>'cancelada')`.
+- `paid = count(status='paga' OR ft.status='pago')`.
+- `open = launched - paid`.
+- `not_launched = count(financial_transaction_id IS NULL AND status NOT IN ('cancelada','pausada'))`.
+- `overdue = count(status NOT IN ('paga','cancelada','pausada') AND due_date < current_date)`.
+- `next_due_date = min(due_date) WHERE status NOT IN ('paga','cancelada','pausada')`.
+- `progress_percentage = paid/total*100` quando `recurrence_mode='finite' AND total>0`, senão `NULL`.
+- Montantes somam `amount` de ocorrências (`planned`), das lançadas, das pagas; `remaining = planned - paid` quando total conhecido.
 
-## 7. Segurança
+## 4. Correção do form e geração de parcelas
 
-- Todas as queries com `organization_id = getCurrentOrgId()`.
-- RLS já ativa em `expense_plans` / `expense_occurrences` — sem alteração.
-- Sem Lovable Cloud; somente o Supabase externo já conectado.
-- Sem service role no client.
+`src/routes/_app/despesas-planejamento.tsx` (PlanFormSheet):
+
+- Quando `recurrence_mode='finite'` e `frequency<>'unica'`: campo `installments_count` **obrigatório** (Zod `min(1)`); botão Salvar desabilitado até preencher.
+- Na mutação de criação, gerar **todas** as ocorrências previstas em batch (loop `addFrequency` × `installments_count`) com `installment_number` e `installments_total` preenchidos. Hoje só cria a primeira — esse é o motivo de `occ_count=1`.
+- `recurrence_mode='continuous'`: comportamento atual de gerar próxima parcela permanece.
+- `unica`: 1 ocorrência, `installments_count=1`, `installments_total=1`.
+
+## 5. Hook + UI
+
+`src/lib/expenses.ts`: novo `fetchExpensePlanProgress(orgId)` lendo `v_expense_plan_payment_progress`. Manter `computePlanProgress` apenas como fallback client-side para listas combinadas.
+
+`despesas-planejamento.tsx`:
+- React Query key `['expense-progress', orgId]` invalidada junto com `expense-plans`, `expense-occurrences`, `expense-summary`, `transactions`, `dashboard`, `banks` em todas as mutações de pagar/reverter/lançar/cancelar/editar.
+- **Card** (faixa compacta):
+  - Finita: `X de Y pagas · Restam Z · N lançadas em aberto · Próxima dd/mm/aaaa` + barra de progresso + `%`; `N vencidas` em destructive quando >0.
+  - Única: badge único (Paga em… / Lançada / Não lançada / Vencida desde…).
+  - Contínua: `X pagamentos realizados · Y em aberto · N vencidas · Próxima…` + badge "Contínua", sem `%`.
+- **Modal** seção "Progresso dos pagamentos": Total previsto, Lançadas, Pagas, Em aberto, Ainda não lançadas, Restantes, Vencidas, Próxima, Progresso %, Valor previsto/lançado/pago/restante. Lista de ocorrências `Parcela n/total — status — vencimento/pago em` com ações já existentes (Lançar, Ver no Financeiro, Cancelar, Editar vencimento).
+
+## 6. Métricas topo
+
+Quatro `MetricCard` agregando a view: Pagas no período · Restantes · Vencidas · Próximos 30 dias (qtd + valor).
+
+## 7. PWA / segurança / env
+
+Já fora do escopo da correção atual:
+- `public/sw.js`: confirmar que `/rest/v1`, `/auth/v1`, `/storage/v1`, `/functions/v1` do domínio Supabase não são cacheados. Ajustar se necessário (verifico no build).
+- `.gitignore`: garantir `.env`, `.env.*`, `!.env.example`, `*.local`. Criar `.env.example` com placeholders se não existir. Sem `service_role_key` no client (já garantido).
+- RLS já ativa em todas as tabelas envolvidas; nada a alterar.
 
 ## Fora de escopo
 
-Calendário Financeiro, regras de bancos/cashback/taxas/aportes, criação automática de novas transações no backfill, dashboards visuais além das métricas indicadas.
+Calendário financeiro, regras de bancos, cashback/taxas, dashboards adicionais, criação automática de transações no backfill.
 
-## Resumo técnico
+## Critérios de aceite
 
-```
-migration:
-  expense_plans      += installments_count, recurrence_mode (+check)
-  expense_occurrences+= installment_number, installments_total
-                      + unique(expense_plan_id, due_date) where status<>'cancelada'
-  trigger AFTER INS/UPD on financial_transactions -> sync_expense_occurrence_on_tx
-  trigger BEFORE DEL  on financial_transactions -> reset occurrence status
-  data backfill: status/paid_at/installment_number a partir das tx existentes
-
-code:
-  src/lib/expenses.ts            -> computePlanProgress + helpers
-  src/routes/_app/despesas-planejamento.tsx
-                                  -> card faixa progresso, métricas topo,
-                                     filtros novos, detalhe com lista de parcelas
-  form de despesa                -> recurrence_mode + installments_count
-  invalidações React Query nas mutações existentes
-```
+- Card e modal exibem total, lançadas, pagas, em aberto, não lançadas, restantes, vencidas, próxima e %.
+- Baixa/reversão no Financeiro reflete instantaneamente (trigger + invalidação).
+- Planos antigos passam a mostrar progresso corretamente após backfill.
+- Nenhum pagamento ou transação fictícia criada; nenhuma duplicidade.
+- Tudo no Supabase externo; sem Lovable Cloud.
