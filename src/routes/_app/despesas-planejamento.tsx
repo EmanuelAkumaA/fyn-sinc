@@ -700,6 +700,14 @@ function DespesasPlanejamentoPage() {
         <MetricCard label="Falta pagar" value={formatBRL(faltaPagar)} tone="destructive" />
       </div>
 
+      {/* Acompanhamento dinâmico */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard label="Pagamentos no período" value={String(trackingMetrics.pagasMes)} hint={formatBRL(trackingMetrics.pagasMesValor)} tone="success" />
+        <MetricCard label="Parcelas restantes" value={String(trackingMetrics.restantes)} />
+        <MetricCard label="Vencidas" value={String(trackingMetrics.vencidasQty)} hint={formatBRL(trackingMetrics.vencidasValor)} tone="destructive" />
+        <MetricCard label="Próximos 30 dias" value={String(trackingMetrics.proxQty)} hint={formatBRL(trackingMetrics.proxValor)} tone="primary" />
+      </div>
+
       {/* Projeção de caixa — colapsável no mobile, aberta em lg+ */}
       <Accordion type="single" collapsible defaultValue="" className="lg:hidden">
         <AccordionItem value="projecao" className="glass rounded-2xl border-0 px-4">
