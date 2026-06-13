@@ -433,6 +433,13 @@ function DespesasPlanejamentoPage() {
           client_id: args.values.client_id,
           service_id: args.values.service_id,
           notes: args.values.notes || null,
+          recurrence_mode: args.values.recurrence_mode,
+          installments_count:
+            args.values.frequency === "unica"
+              ? 1
+              : args.values.recurrence_mode === "continuous"
+                ? null
+                : args.values.installments_count,
         })
         .eq("id", args.id);
       if (error) throw error;
