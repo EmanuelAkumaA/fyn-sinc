@@ -382,7 +382,7 @@ function DespesasPlanejamentoPage() {
             ? firstDue
             : i === 0
               ? firstDue
-              : addNFrequency(firstDue, v.frequency as ExpenseFrequency, i);
+              : addNPeriods(firstDue, v.frequency as ExpenseFrequency, i);
         const refMonth = monthAnchor(due);
         const { data: occ, error: occErr } = await (supabase as any)
           .from("expense_occurrences")
