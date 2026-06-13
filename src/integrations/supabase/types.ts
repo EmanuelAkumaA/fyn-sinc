@@ -288,6 +288,13 @@ export type Database = {
             referencedRelation: "expense_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "expense_occurrences_expense_plan_id_fkey"
+            columns: ["expense_plan_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_plan_payment_progress"
+            referencedColumns: ["expense_plan_id"]
+          },
         ]
       }
       expense_plans: {
@@ -1445,6 +1452,28 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_expense_plan_payment_progress: {
+        Row: {
+          expense_name: string | null
+          expense_plan_id: string | null
+          launched_installments: number | null
+          launched_total_amount: number | null
+          next_due_date: string | null
+          not_launched_installments: number | null
+          open_installments: number | null
+          organization_id: string | null
+          overdue_installments: number | null
+          paid_installments: number | null
+          paid_total_amount: number | null
+          planned_total_amount: number | null
+          progress_percentage: number | null
+          recurrence_mode: string | null
+          remaining_installments: number | null
+          remaining_total_amount: number | null
+          total_installments: number | null
+        }
+        Relationships: []
       }
       v_provider_summary: {
         Row: {
